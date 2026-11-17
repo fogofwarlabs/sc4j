@@ -35,8 +35,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * conversations with their unread whispers, the channels, conversations and members in compact rows, the shown channel's log and members,
  * lines and whispers sent from the input, leaving and joining a channel, a channel the chat joins shown at once, a whisper conversation
  * opened from elsewhere shown with the input focused and kept while the chat joins the shared channel, the player menu on a member and on a
- * name in the log with its commands, the input footer with the same room around its row and between the input and Send, and the notice of a
- * session without a connection. Each view is saved as a sample picture.
+ * name in the log with its commands, the input footer with the same room around its row and between the input and Send, the header controls
+ * with the same room on their right as above and below, and the notice of a session without a connection. Each view is saved as a sample picture.
  */
 final class ChatScreenTest {
     private static final double SCENE_WIDTH = 1280;
@@ -308,6 +308,8 @@ final class ChatScreenTest {
             Assertions.assertFalse(getList(shell, LOG).getStyleClass().contains(COMPACT_LIST_STYLE_CLASS));
             Assertions.assertEquals(COMPACT_CELL_PADDING, ((ListCell<?>) findCell(shell, MEMBER_LIST, ZERATUL)).getPadding().getTop(),
                                     TOLERANCE);
+            Assertions.assertEquals(3, LauncherFxScenario.assertHeaderInsets(root), "Join, Leave and the member count are checked");
+            Assertions.assertEquals(1, LauncherFxScenario.assertFooterInsets(root), "the input footer is checked");
             LauncherFxScenario.saveSample(root, scale, "chat-" + suffix);
 
             // The input row's footer: the same room on every side of the row and between the input and Send.

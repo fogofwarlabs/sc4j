@@ -366,7 +366,8 @@
     -fx-effect: dropshadow(gaussian, #000000a0, 18, 0.15, 0, 4);
 }
 
-/* Every panel header has the height of a header with a small button, whether it holds controls or not. */
+/* Every panel header has the height of a header with a small button, whether it holds controls or not. The padding leaves the same room
+   above, below and right of a small button; the header widens the room right of a lower control to the room above and below it. */
 .panel-header {
     -fx-min-height: 46;
     -fx-background-color: -sc4j-header-fill;
@@ -374,7 +375,7 @@
     -fx-border-color: transparent transparent -sc4j-border -sc4j-accent;
     -fx-border-width: 0 0 1 3;
     -fx-border-insets: 1 0 0 1;
-    -fx-padding: 9 14 9 13;
+    -fx-padding: 10 10 9 13;
     -fx-spacing: 8;
     -fx-alignment: center-left;
 }
@@ -396,20 +397,16 @@
     -fx-spacing: 0;
 }
 
+/* The same room left of the first control, right of the last, above and below them. */
 .panel-footer {
     -fx-background-color: -sc4j-border, -sc4j-footer-fill;
     -fx-background-insets: 0 1 1 1, 1 1 1 1;
-    -fx-padding: 10 16;
+    -fx-padding: 10;
     -fx-spacing: 8;
     -fx-alignment: center-left;
 }
 
-/* Footer of a text input and its action (a chat line and Send): the same room on every side of the input row and between the input and
-   the action. */
-.panel-footer.input-footer {
-    -fx-padding: 10;
-}
-
+/* Footer of a text input and its action (a chat line and Send): the gap between the input and the action equals the footer's padding. */
 .input-footer .input-row {
     -fx-spacing: 10;
 }
@@ -916,8 +913,15 @@
     -fx-background-color: transparent;
 }
 
+/* Text of an empty list: centred, also when it wraps, with the room of a panel body around it. */
+.list-view .placeholder {
+    -fx-padding: 16;
+}
+
 .list-view .placeholder .label {
     -fx-text-fill: -sc4j-text-faint;
+    -fx-alignment: center;
+    -fx-text-alignment: center;
 }
 
 .list-cell {

@@ -459,16 +459,9 @@ public final class ComponentUtils {
      * @return the created panel
      */
     public static @NotNull VBox createPanel(@NotNull Label title, @NotNull Node body, @NotNull Node @NotNull ... headerTrailing) {
-        HBox header = new HBox(title, createGrowingSpacer());
-        VBox panel;
+        VBox panel = new VBox(new PanelHeader(title, headerTrailing), body);
 
-        title.getStyleClass().add("panel-title");
-
-        header.getChildren().addAll(headerTrailing);
-        header.getStyleClass().add("panel-header");
         VBox.setVgrow(body, Priority.ALWAYS);
-
-        panel = new VBox(header, body);
         panel.getStyleClass().add("panel");
 
         return panel;

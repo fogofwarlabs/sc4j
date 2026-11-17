@@ -30,8 +30,9 @@ import java.util.function.Consumer;
 
 /**
  * Tests the Settings screen offscreen: two columns of equal width, the launcher panel's fields stacked one per row on the left and the
- * Beacon.Link panel with the peer list under it on the right, at 100% and 200% in English and Korean; Peers shows the list, and Ping asks
- * for the listed peers and marks every row as being pinged until the results come.
+ * Beacon.Link panel with the peer list under it on the right, at 100% and 200% in English and Korean, with the same room right of the header
+ * controls as above and below them and on every side of the peer footer; Peers shows the list, and Ping asks for the listed peers and marks
+ * every row as being pinged until the results come.
  */
 final class OptionsScreenTest {
     private static final @NotNull String VERSION = "1.1.0";
@@ -164,6 +165,7 @@ final class OptionsScreenTest {
 
             // The Beacon.Link panel on the right, and the peer list under it once shown.
             Assertions.assertEquals(List.of(texts.get("beaconlink.title")), listPanelTitles(right));
+            Assertions.assertEquals(1, LauncherFxScenario.assertHeaderInsets(root), "the Advanced button is checked");
             LauncherFxScenario.saveSample(root, scale, "settings-" + suffix);
             LauncherFxScenario.findButton(root, texts.get("beaconlink.advanced.show")).fire();
             root.applyCss();
@@ -172,6 +174,8 @@ final class OptionsScreenTest {
             Assertions.assertEquals(List.of(texts.get("beaconlink.title"), texts.get("nodes.title")), listPanelTitles(right));
             Assertions.assertTrue(getSceneBounds(right.getChildrenUnmodifiable().get(0)).getMaxY() <=
                                   getSceneBounds(right.getChildrenUnmodifiable().get(1)).getMinY(), "the peer list is under the Beacon.Link panel");
+            Assertions.assertEquals(2, LauncherFxScenario.assertHeaderInsets(root), "Advanced and Ping are checked");
+            Assertions.assertEquals(1, LauncherFxScenario.assertFooterInsets(root), "the peer footer is checked");
             LauncherFxScenario.saveSample(root, scale, "settings-peers-" + suffix);
 
             return null;

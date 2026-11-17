@@ -49,7 +49,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * text is centred in the entry, and the Chat entry shows its dot over the text's top right corner without moving or widening the entries.
  * In a window of the
  * launcher's minimum size, a screen taller than the space between the app bar and the status bar scrolls and leaves both bars in the window; a
- * shorter screen fills that space. The Mods screen's mod list keeps the regular list item.
+ * shorter screen fills that space. The Mods screen's mod list keeps the regular list item, and its footers keep the same room on every side of
+ * their buttons; an empty mod list shows its text centred, also on several lines, with the room of a panel body on its sides.
  */
 final class LauncherShellTest {
     private static final @NotNull String MANIFEST = """
@@ -78,6 +79,7 @@ final class LauncherShellTest {
                                                            }
                                                            """;
     private static final double REGULAR_CELL_PADDING = 10;
+    private static final @NotNull String LONG_FOLDER_NAME = "a-folder-with-a-rather-long-name-for-the-launcher-install";
     private static final double SCENE_WIDTH = 1280;
     private static final double SCENE_HEIGHT = 800;
     private static final double PERCENT_SCALE = 100;
@@ -409,7 +411,40 @@ final class LauncherShellTest {
 
             Assertions.assertFalse(list.getStyleClass().contains(COMPACT_LIST_STYLE_CLASS));
             Assertions.assertEquals(REGULAR_CELL_PADDING, cell.getPadding().getTop(), TOLERANCE);
+            Assertions.assertTrue(LauncherFxScenario.assertFooterInsets(shell.getRoot()) >= 2, "the list and the detail footers are checked");
             LauncherFxScenario.saveSample(shell.getRoot(), scale, "mods-list-" + Math.round(scale * PERCENT_SCALE) + "-" + language.getCode());
+
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1.0, en", "1.0, ko"})
+    void empty_mod_list_centres_its_wrapped_text(double scale, @NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
+        UiLanguage language = languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
+        InstallLayout install = InstallLayout.of(directory.resolve(LONG_FOLDER_NAME).resolve(LONG_FOLDER_NAME));
+
+        Files.createDirectories(install.getModsDirectory());
+
+        ModCatalog catalog = ModCatalog.scan(install, InstallationRecords.NONE);
+
+        LauncherFxScenario.run(() -> {
+            LauncherTexts texts = LauncherTexts.of(language);
+            LauncherShell shell = new LauncherShell(texts, install, scale, section -> {
+            }, () -> {
+            }, () -> {
+            });
+            ModsScreen screen = new ModsScreen(install, catalog, texts, scale, new SimpleBooleanProperty(false), new NoActions());
+            Scene scene = new Scene(shell.getRoot(), SCENE_WIDTH, SCENE_HEIGHT);
+
+            shell.show(LauncherShell.Section.MODS, screen.getRoot());
+            ThemeUtils.apply(scene, language);
+            shell.getRoot().applyCss();
+            shell.getRoot().layout();
+
+            LauncherFxScenario.assertPlaceholderCentred((ListView<?>) shell.getRoot().lookup(".list-view"));
+            Assertions.assertTrue(LauncherFxScenario.assertFooterInsets(shell.getRoot()) >= 1, "the list footer is checked");
+            LauncherFxScenario.saveSample(shell.getRoot(), scale, "mods-empty-" + Math.round(scale * PERCENT_SCALE) + "-" + language.getCode());
 
             return null;
         });

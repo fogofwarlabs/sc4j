@@ -76,7 +76,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * version.
  * The chat runs from the login on: the session joins the shared channel without the Chat screen. The Chat entry shows a dot while a line or
  * a whisper is unread and the sound plays for it while the Chat screen is hidden; reading the conversation clears its part of the dot, and the
- * Settings switch mutes the sound. Closing the window asks to minimize, quit or cancel.
+ * Settings switch mutes the sound. Closing the window asks to minimize, quit or cancel, in a dialog whose footer has the same room on every
+ * side of its buttons.
  */
 final class LauncherWindowTest {
     private static final double SCREEN_WIDTH = 1920;
@@ -768,6 +769,7 @@ final class LauncherWindowTest {
             Assertions.assertEquals(language == UiLanguage.KOREAN ? KOREAN_CLOSE_TEXT : ENGLISH_CLOSE_TEXT, texts.get("close.text"));
             Assertions.assertTrue(dialog.lookupAll(".label").stream().anyMatch(node -> ((Label) node).getText().equals(texts.get("close.text"))),
                                   "the dialog asks whether to quit");
+            Assertions.assertTrue(LauncherFxScenario.assertFooterInsets(dialog) >= 1, "the dialog footer is checked");
             LauncherFxScenario.saveSample(root, scale, "window-close-" + suffix);
 
             // Cancel and Escape keep the window.
