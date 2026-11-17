@@ -7,9 +7,14 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextArea;
+import org.fogofwarlabs.sc4j.catalog.ReleaseVersion;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseClient;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository;
+import org.fogofwarlabs.sc4j.catalog.test.ReleaseServerScenario;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
-import org.fogofwarlabs.sc4j.launcher.release.*;
+import org.fogofwarlabs.sc4j.launcher.release.ReleaseNotesUtils;
 import org.fogofwarlabs.sc4j.launcher.update.LauncherRelease;
 import org.fogofwarlabs.sc4j.launcher.update.LauncherUpdater;
 import org.fogofwarlabs.sc4j.launcher.update.PackageSwap;
@@ -276,7 +281,7 @@ final class LauncherUpdateDialogTest {
         LauncherRelease release;
 
         Assertions.assertNotNull(repository);
-        release = updater.findUpdate(repository, RUNNING_VERSION);
+        release = updater.findUpdate(repository, ReleaseVersion.parse(RUNNING_VERSION));
         Assertions.assertNotNull(release);
 
         return release;

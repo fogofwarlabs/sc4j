@@ -23,6 +23,10 @@ public final class EngineVersion {
      * launcher and the runtime check mods against it.
      */
     public static final @NotNull EngineVersion CURRENT;
+    /**
+     * The SC4J version of this release, such as {@code 0.1.0-SNAPSHOT}: the version that the build writes into this module.
+     */
+    public static final @NotNull String SC4J_VERSION;
 
     private static final @NotNull Pattern VERSION_PATTERN = Pattern.compile("(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})");
     private static final @NotNull Pattern SC4J_VERSION_PATTERN =
@@ -34,7 +38,8 @@ public final class EngineVersion {
     private static final @NotNull String SC4J_VERSION_KEY = "version";
 
     static {
-        CURRENT = fromSc4jVersion(readSc4jVersion());
+        SC4J_VERSION = readSc4jVersion();
+        CURRENT      = fromSc4jVersion(SC4J_VERSION);
     }
 
     /**

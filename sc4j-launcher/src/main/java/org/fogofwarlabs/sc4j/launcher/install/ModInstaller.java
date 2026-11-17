@@ -1,10 +1,12 @@
 package org.fogofwarlabs.sc4j.launcher.install;
 
-import org.fogofwarlabs.sc4j.base.exception.Exceptions;
+import org.fogofwarlabs.sc4j.catalog.ReleaseVersion;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseClient;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
+import org.fogofwarlabs.sc4j.catalog.mods.ModRelease;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModCatalog;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModEntry;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModStatus;
-import org.fogofwarlabs.sc4j.launcher.release.*;
 import org.fogofwarlabs.sc4j.launcher.update.UpdateFolder;
 import org.fogofwarlabs.sc4j.manifest.ModManifest;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
@@ -34,7 +36,6 @@ import java.util.function.DoubleConsumer;
 public final class ModInstaller {
     private static final @NotNull String SOURCES_FILE = "mod-sources.json";
     private static final @NotNull String JAR_EXTENSION = ".jar";
-    private static final @NotNull String CHECKSUM_EXTENSION = ".sha256";
     private static final long MAXIMUM_JAR_SIZE = 1024L * 1024 * 1024;
 
     private final @NotNull InstallLayout install;
@@ -63,36 +64,10 @@ public final class ModInstaller {
     }
 
     /**
-     * Reads the latest release of a repository and finds its mod jar: a {@code .jar} file with its {@code .sha256} file. With several such
-     * jars, the one of the preferred name is taken, else the first.
-     *
-     * @param repository       the repository
-     * @param preferredJarName the jar name to prefer, such as the name of the installed jar, or {@code null}
-     * @return the mod release
-     * @throws ReleaseException if the release cannot be read or carries no jar with its checksum file
+     * @return the reader of the releases
      */
-    public @NotNull ModRelease findRelease(@NotNull ReleaseRepository repository, @Nullable String preferredJarName) throws ReleaseException {
-        Release release = this.client.findLatestRelease(repository);
-        ModRelease found = null;
-
-        for (ReleaseAsset asset : release.getAssets()) {
-            ReleaseAsset checksum = release.findAsset(asset.getName() + CHECKSUM_EXTENSION);
-
-            if (!asset.getName().endsWith(JAR_EXTENSION) || checksum == null) {
-                continue;
-            }
-
-            if (found == null || asset.getName().equals(preferredJarName)) {
-                found = new ModRelease(repository, release.getTag(), asset, checksum);
-            }
-        }
-
-        if (found == null) {
-            throw new ReleaseException(ReleaseProblem.ASSET_MISSING, Exceptions.format("The release {0} of {1} has no jar with its checksum file",
-                                                                                       release.getTag(), repository));
-        }
-
-        return found;
+    public @NotNull ReleaseClient getClient() {
+        return this.client;
     }
 
     /**
@@ -181,7 +156,7 @@ public final class ModInstaller {
             ModRelease latest;
 
             try {
-                latest = this.findRelease(source.getRepository(), source.getJarName());
+                latest = ModRelease.find(this.client, source.getRepository(), source.getJarName());
             } catch (ReleaseException exception) {
                 continue;
             }

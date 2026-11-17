@@ -1,6 +1,7 @@
 package org.fogofwarlabs.sc4j.launcher.ui.session;
 
 import javafx.application.Platform;
+import javafx.geometry.Bounds;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -15,7 +16,6 @@ import org.fogofwarlabs.sc4j.launcher.ui.LauncherShell;
 import org.fogofwarlabs.sc4j.launcher.ui.ThemeUtils;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.io.TempDir;
@@ -32,15 +32,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 /**
- * Tests the account menu at the top right at display scales of 100% and 200% in English and Korean: Friends, Whispers, My status, Sign out
- * everywhere else and Log out. With a connected session the Friends panel lists the friends with their state and device count, shows and
- * copies the own friend code, adds a friend by code (a text that is no code, the own code and a known friend are refused in one line),
- * whispers to, ignores and removes the selected friend; the Whispers panel keeps one conversation per player (friends first, newest first)
- * with that player's whispers both ways only, sends to the selected conversation's player whatever whisper is selected and counts unread
- * whispers per conversation, and the menu counts them all; My status sends the chosen status (an away text that is too long is refused), and
- * Sign out everywhere else asks once. Without a connection the panels and the menu say why, and Sign out everywhere else is disabled. With
- * the real sessions of three accounts at a node on 127.0.0.1 the panels show the friends added by code in the launcher, away with a text,
- * and the whispers of two friends in their own conversations. Each view is saved as a sample picture.
+ * Tests the account menu at the top right at display scales of 100% and 200% in English and Korean: Friends, My status, Sign out everywhere
+ * else and Log out. With a connected session the Friends panel lists eight friends at once in compact rows, inside the window, with their
+ * state and device count, shows and copies the own friend code, adds a friend by code (a text that is no code, the own code and a known
+ * friend are refused in one line), ignores and removes the selected friend, and hands Whisper to the window with the selected friend and
+ * closes; My status sends the chosen status (an away text that is too long is refused), and Sign out everywhere else asks once. Without a
+ * connection the panels and the menu say why, and Sign out everywhere else is disabled. With the real sessions of three accounts at a node on
+ * 127.0.0.1 the Friends panel shows the friends added by code in the launcher and away with a text. Each view is saved as a sample picture.
  */
 final class AccountMenuTest {
     private static final double SCENE_WIDTH = 1280;
@@ -49,18 +47,11 @@ final class AccountMenuTest {
     private static final @NotNull String TAGGED_NAME = "Raynor#60bf07";
     private static final @NotNull String AWAY_TEXT = "Back at 9";
     private static final @NotNull String TOO_LONG_AWAY_TEXT = "x".repeat(40);
-    private static final @NotNull String TOO_LONG_WHISPER = "x".repeat(300);
-    private static final @NotNull String MENU_SELECTOR = ".account-menu";
+    private static final @NotNull String MENU_SELECTOR = ".menu-panel";
     private static final @NotNull String DIALOG_SELECTOR = ".modal-scrim";
     private static final @NotNull String ACCOUNT_SELECTOR = ".account-button";
-    private static final @NotNull String FRIEND_LIST_SELECTOR = ".friend-list";
-    private static final @NotNull String FRIEND_CODE_SELECTOR = ".friend-code";
-    private static final @NotNull String FRIEND_CODE_INPUT_SELECTOR = ".friend-code-input";
-    private static final @NotNull String WHISPER_INPUT_SELECTOR = ".whisper-input";
-    private static final @NotNull String WHISPER_LIST_SELECTOR = ".whisper-list";
-    private static final @NotNull String CONVERSATION_LIST_SELECTOR = ".conversation-list";
-    private static final @NotNull String CELL_TITLE_SELECTOR = ".list-title";
-    private static final @NotNull String BADGE_SELECTOR = ".badge";
+    private static final @NotNull String FRIEND_CODE_SELECTOR = ".text-mono";
+    private static final @NotNull String COMPACT_LIST_STYLE_CLASS = "compact";
     private static final @NotNull String WARNING_MARKER = "status-marker-warning";
     private static final @NotNull String GAME_MOD_ID = "test-game";
     private static final @NotNull String GAME_NAME = "Test game";
@@ -70,102 +61,16 @@ final class AccountMenuTest {
     private static final @NotNull FriendCode ARTANIS = createCode(4);
     private static final @NotNull FriendCode FENIX = createCode(5);
     private static final @NotNull FriendCode NEW_FRIEND = createCode(6);
-    private static final @NotNull FriendCode TASSADAR = createCode(7);
     private static final @NotNull List<@NotNull FriendView> FRIENDS = List.of(
             new FriendView(KERRIGAN, "Kerrigan#a1b2c3", FriendState.IN_GAME, GAME_MOD_ID, "", 2, false),
             new FriendView(ZERATUL, "Zeratul#d4e5f6", FriendState.AWAY, null, "brb", 1, false),
             new FriendView(ARTANIS, "Artanis#0a0b0c", FriendState.IN_LAUNCHER, null, "", 1, true),
-            new FriendView(FENIX, "Fenix#112233", FriendState.OFFLINE, null, "", 0, false)
+            new FriendView(FENIX, "Fenix#112233", FriendState.OFFLINE, null, "", 0, false),
+            new FriendView(createCode(7), "Tassadar#998877", FriendState.IN_LAUNCHER, null, "", 1, false),
+            new FriendView(createCode(8), "Nova#445566", FriendState.IN_GAME, GAME_MOD_ID, "", 1, false),
+            new FriendView(createCode(9), "Swann#778899", FriendState.AWAY, null, "", 1, false),
+            new FriendView(createCode(10), "Stukov#aabbcc", FriendState.OFFLINE, null, "", 0, false)
     );
-    private static final @NotNull List<@NotNull WhisperView> WHISPERS = List.of(
-            new WhisperView(KERRIGAN, "Kerrigan#a1b2c3", "Ready for a game?", 1_000L, WhisperState.RECEIVED),
-            new WhisperView(ZERATUL, "Zeratul#d4e5f6", "Are you there?", 2_000L, WhisperState.NOT_DELIVERED),
-            new WhisperView(ZERATUL, "Zeratul#d4e5f6", "Here now", 3_000L, WhisperState.RECEIVED),
-            new WhisperView(ZERATUL, "Zeratul#d4e5f6", "Need a hand?", 4_000L, WhisperState.RECEIVED),
-            new WhisperView(TASSADAR, "Tassadar#998877", "Good game", 5_000L, WhisperState.RECEIVED)
-    );
-
-    /**
-     * Plays a session with friends and whispers and records the commands of the menu.
-     */
-    private static final class RecordingSession implements LauncherSessionView {
-        private final @NotNull List<@NotNull String> commands;
-        private @NotNull SelfView self;
-        private @Nullable Runnable listener;
-
-        private RecordingSession(@NotNull SelfView self) {
-            this.commands = new ArrayList<>();
-            this.self     = self;
-            this.listener = null;
-        }
-
-        @Override
-        public @NotNull SelfView getSelf() {
-            return this.self;
-        }
-
-        @Override
-        public @NotNull FriendCode getFriendCode() {
-            return OWN_CODE;
-        }
-
-        @Override
-        public @NotNull List<@NotNull FriendView> getFriends() {
-            return this.self.getState() == SessionState.CONNECTED ? FRIENDS : List.of();
-        }
-
-        @Override
-        public @NotNull List<@NotNull WhisperView> getWhispers() {
-            return this.self.getState() == SessionState.CONNECTED ? WHISPERS : List.of();
-        }
-
-        @Override
-        public void setOnChanged(@Nullable Runnable listener) {
-            this.listener = listener;
-        }
-
-        @Override
-        public void setStatus(@NotNull SelfStatus status, @NotNull String awayText) {
-            Runnable changed = this.listener;
-
-            this.commands.add("status " + status + ":" + awayText);
-            this.self = new SelfView(this.self.getState(), status, awayText, this.self.getDeviceCount(), this.self.getFailure());
-
-            if (changed != null) {
-                changed.run();
-            }
-        }
-
-        @Override
-        public void addFriend(@NotNull FriendCode friend) {
-            this.commands.add("add " + friend.getText());
-        }
-
-        @Override
-        public void removeFriend(@NotNull FriendCode friend) {
-            this.commands.add("remove " + friend.getText());
-        }
-
-        @Override
-        public void setIgnored(@NotNull FriendCode player, boolean ignored) {
-            this.commands.add((ignored ? "ignore " : "unignore ") + player.getText());
-        }
-
-        @Override
-        public void whisper(@NotNull FriendCode player, @NotNull String text) {
-            this.commands.add("whisper " + player.getText() + ":" + text);
-        }
-
-        @Override
-        public void signOutOtherDevices() {
-            this.commands.add("sign out");
-        }
-
-        @Override
-        public void close() {
-            this.listener = null;
-        }
-    }
 
     /**
      * Records what the menu hands to the window.
@@ -173,10 +78,12 @@ final class AccountMenuTest {
     private static final class RecordingActions implements AccountMenu.Actions {
         private final @NotNull AtomicInteger logOuts;
         private final @NotNull List<@NotNull String> copied;
+        private final @NotNull List<@NotNull String> whispered;
 
         private RecordingActions() {
-            this.logOuts = new AtomicInteger();
-            this.copied  = new ArrayList<>();
+            this.logOuts   = new AtomicInteger();
+            this.copied    = new ArrayList<>();
+            this.whispered = new ArrayList<>();
         }
 
         @Override
@@ -188,11 +95,24 @@ final class AccountMenuTest {
         public void onCopy(@NotNull String text) {
             this.copied.add(text);
         }
+
+        @Override
+        public void onWhisper(@NotNull FriendCode player, @NotNull String taggedName) {
+            this.whispered.add(player.getText() + " " + taggedName);
+        }
     }
 
     @BeforeAll
     static void startToolkit() {
         LauncherFxScenario.startToolkit();
+    }
+
+    private static @NotNull RecordingLauncherSession createSession(@NotNull SelfView self) {
+        RecordingLauncherSession session = new RecordingLauncherSession(OWN_CODE, self);
+
+        session.setFriends(FRIENDS);
+
+        return session;
     }
 
     private static @NotNull FriendCode createCode(int fill) {
@@ -235,65 +155,36 @@ final class AccountMenuTest {
         return (Parent) dialog;
     }
 
-    private static @NotNull TextField getField(@NotNull Parent root, @NotNull String selector) {
-        Node field = root.lookup(selector);
+    private static @NotNull TextField getCodeInput(@NotNull Parent dialog) {
+        List<TextField> fields = find(dialog, TextField.class);
 
-        Assertions.assertNotNull(field, selector);
+        Assertions.assertFalse(fields.isEmpty(), "the dialog has the friend code input");
 
-        return (TextField) field;
+        return fields.getFirst();
     }
 
     @SuppressWarnings("unchecked")
     private static @NotNull ListView<FriendView> getFriendList(@NotNull Parent dialog) {
-        return (ListView<FriendView>) dialog.lookup(FRIEND_LIST_SELECTOR);
-    }
-
-    private static @NotNull ListView<?> getList(@NotNull Parent dialog, @NotNull String selector) {
-        Node list = dialog.lookup(selector);
-
-        Assertions.assertNotNull(list, selector);
-
-        return (ListView<?>) list;
+        return (ListView<FriendView>) find(dialog, ListView.class).getFirst();
     }
 
     /**
-     * Lists the conversations of the Whispers panel from the top: each player's name and tag, and after it the unread count if any.
+     * Counts the rows of a list that lie wholly inside its visible part.
      */
-    private static @NotNull List<@NotNull String> listConversations(@NotNull Parent dialog) {
-        ListView<?> list = getList(dialog, CONVERSATION_LIST_SELECTOR);
-        String[] conversations = new String[list.getItems().size()];
+    private static int countShownRows(@NotNull ListView<?> list) {
+        int rows = 0;
 
         for (Node node : list.lookupAll(".list-cell")) {
-            if (node instanceof ListCell<?> cell && !cell.isEmpty() && cell.isVisible() && cell.getIndex() >= 0) {
-                String name = ((Label) cell.lookup(CELL_TITLE_SELECTOR)).getText();
-                Node badge = cell.lookup(BADGE_SELECTOR);
+            if (node instanceof ListCell<?> cell && !cell.isEmpty() && cell.isVisible()) {
+                Bounds bounds = list.sceneToLocal(cell.localToScene(cell.getBoundsInLocal()));
 
-                conversations[cell.getIndex()] = badge == null ? name : name + " " + ((Label) badge).getText();
+                if (bounds.getMinY() >= 0 && bounds.getMaxY() <= list.getHeight()) {
+                    rows++;
+                }
             }
         }
 
-        return Arrays.asList(conversations);
-    }
-
-    private static @NotNull String getSelectedConversation(@NotNull Parent dialog) {
-        int index = getList(dialog, CONVERSATION_LIST_SELECTOR).getSelectionModel().getSelectedIndex();
-
-        Assertions.assertTrue(index >= 0, "a conversation is selected");
-
-        return listConversations(dialog).get(index);
-    }
-
-    private static void selectConversation(@NotNull LauncherShell shell, @NotNull String taggedName) {
-        Parent dialog = getDialog(shell);
-        List<String> conversations = listConversations(dialog);
-        int index = 0;
-
-        while (!conversations.get(index).startsWith(taggedName)) {
-            index++;
-        }
-
-        getList(dialog, CONVERSATION_LIST_SELECTOR).getSelectionModel().select(index);
-        lay(shell);
+        return rows;
     }
 
     private static void lay(@NotNull LauncherShell shell) {
@@ -345,7 +236,7 @@ final class AccountMenuTest {
     private static void addFriend(@NotNull LauncherShell shell, @NotNull LauncherTexts texts, @NotNull String code) {
         Parent friends = getDialog(shell);
 
-        getField(friends, FRIEND_CODE_INPUT_SELECTOR).setText(code);
+        getCodeInput(friends).setText(code);
         LauncherFxScenario.findButton(friends, texts.get("session.friends.add")).fire();
         lay(shell);
     }
@@ -361,44 +252,24 @@ final class AccountMenuTest {
         UiLanguage language = selectLanguage(languageCode);
         LauncherTexts texts = LauncherTexts.of(language);
         String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
-        RecordingSession session = new RecordingSession(new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 2, null));
+        RecordingLauncherSession session = createSession(new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 2, null));
         RecordingActions actions = new RecordingActions();
 
         LauncherFxScenario.run(() -> {
             LauncherShell shell = createShell(texts, language, scale, directory, TAGGED_NAME, session, actions);
 
-            // The menu: its five entries under the account, the unread whispers of all players counted, the account's two devices.
+            // The menu: its four entries under the account, the account's two devices.
             openMenu(shell);
 
             Parent menu = getMenu(shell);
 
-            Assertions.assertEquals(List.of(texts.get("session.menu.friends"), texts.format("session.menu.whispers.new", 4),
-                                            texts.get("session.menu.status"), texts.get("session.menu.sign.out"), texts.get("session.menu.log.out")),
+            Assertions.assertEquals(List.of(texts.get("session.menu.friends"), texts.get("session.menu.status"), texts.get("session.menu.sign.out"),
+                                            texts.get("session.menu.log.out")),
                                     listMenuEntries(shell));
             Assertions.assertTrue(showsText(menu, TAGGED_NAME));
             Assertions.assertTrue(showsText(menu, texts.format("session.devices", 2)));
             Assertions.assertFalse(LauncherFxScenario.findButton(menu, texts.get("session.menu.sign.out")).isDisabled());
             LauncherFxScenario.saveSample(shell.getRoot(), scale, "menu-" + suffix);
-
-            // Whispers from the menu: one conversation per player, friends first, each newest first; the newest one with unread whispers
-            // is open and read, and the others keep their unread counts.
-            LauncherFxScenario.findButton(menu, texts.format("session.menu.whispers.new", 4)).fire();
-            lay(shell);
-
-            Parent unread = getDialog(shell);
-
-            Assertions.assertEquals(List.of("Zeratul#d4e5f6 2", "Kerrigan#a1b2c3 1", "Tassadar#998877"), listConversations(unread));
-            Assertions.assertEquals("Tassadar#998877", getSelectedConversation(unread));
-            Assertions.assertTrue(showsText(unread, texts.format("session.whisper.to", "Tassadar#998877")));
-            Assertions.assertTrue(showsText(unread, "Good game"));
-            Assertions.assertFalse(showsText(unread, "Ready for a game?"), "a conversation shows its own player's whispers only");
-            Assertions.assertFalse(showsText(unread, "Need a hand?"), "a conversation shows its own player's whispers only");
-            LauncherFxScenario.saveSample(shell.getRoot(), scale, "whispers-unread-" + suffix);
-            LauncherFxScenario.findButton(unread, texts.get("session.close")).fire();
-            openMenu(shell);
-            menu = getMenu(shell);
-
-            Assertions.assertTrue(listMenuEntries(shell).contains(texts.format("session.menu.whispers.new", 3)), "the menu counts the rest");
 
             // Friends: every friend with its state, mod name, devices and ignore mark; the own friend code, copied as it is.
             LauncherFxScenario.findButton(menu, texts.get("session.menu.friends")).fire();
@@ -420,7 +291,15 @@ final class AccountMenuTest {
             Assertions.assertFalse(showsText(friends, texts.get("session.not.connected")));
             Assertions.assertEquals(OWN_CODE.getGroupedText(), ((Label) friends.lookup(FRIEND_CODE_SELECTOR)).getText());
             Assertions.assertTrue(LauncherFxScenario.findButton(friends, texts.get("session.friends.whisper")).isDisabled(), "no friend is selected");
+
+            // The eight friends show at once in compact rows; the panel stays inside the window.
+            ListView<FriendView> friendList = getFriendList(friends);
+            Bounds panel = friendList.getParent().getParent().localToScene(friendList.getParent().getParent().getBoundsInLocal());
+
             LauncherFxScenario.saveSample(shell.getRoot(), scale, "friends-" + suffix);
+            Assertions.assertTrue(friendList.getStyleClass().contains(COMPACT_LIST_STYLE_CLASS));
+            Assertions.assertEquals(FRIENDS.size(), countShownRows(friendList), "every friend is shown without scrolling");
+            Assertions.assertTrue(panel.getMinY() >= 0 && panel.getMaxY() <= SCENE_HEIGHT, "the panel stays inside the window");
 
             LauncherFxScenario.findButton(friends, texts.get("session.friends.copy")).fire();
 
@@ -439,12 +318,12 @@ final class AccountMenuTest {
 
             Assertions.assertTrue(showsText(friends, texts.get("session.friends.known")));
             LauncherFxScenario.saveSample(shell.getRoot(), scale, "friends-add-refused-" + suffix);
-            Assertions.assertTrue(session.commands.isEmpty(), "nothing refused reaches the session");
+            Assertions.assertTrue(session.getCommands().isEmpty(), "nothing refused reaches the session");
 
             addFriend(shell, texts, NEW_FRIEND.getGroupedText());
 
-            Assertions.assertEquals(List.of("add " + NEW_FRIEND.getText()), session.commands);
-            Assertions.assertTrue(getField(friends, FRIEND_CODE_INPUT_SELECTOR).getText().isEmpty(), "an added code leaves the field");
+            Assertions.assertEquals(List.of("add " + NEW_FRIEND.getText()), session.getCommands());
+            Assertions.assertTrue(getCodeInput(friends).getText().isEmpty(), "an added code leaves the field");
 
             // The selected friend: ignore, remove.
             getFriendList(friends).getSelectionModel().select(0);
@@ -456,94 +335,26 @@ final class AccountMenuTest {
             LauncherFxScenario.findButton(friends, texts.get("session.friends.unignore")).fire();
 
             Assertions.assertEquals(List.of("add " + NEW_FRIEND.getText(), "ignore " + KERRIGAN.getText(), "remove " + KERRIGAN.getText(),
-                                            "unignore " + ARTANIS.getText()), session.commands);
+                                            "unignore " + ARTANIS.getText()), session.getCommands());
 
-            // Whisper to the selected friend: the Whispers panel opens on her conversation, which shows her whispers only and is read.
-            session.commands.clear();
+            // Whisper: an offline friend cannot be whispered to; the selected friend goes to the window and the panel closes.
+            getFriendList(friends).getSelectionModel().select(3);
+            lay(shell);
+
+            Assertions.assertTrue(LauncherFxScenario.findButton(friends, texts.get("session.friends.whisper")).isDisabled(), "Fenix is offline");
+
             getFriendList(friends).getSelectionModel().select(0);
             lay(shell);
             LauncherFxScenario.findButton(friends, texts.get("session.friends.whisper")).fire();
             lay(shell);
 
-            Parent whispers = getDialog(shell);
+            Assertions.assertEquals(List.of(KERRIGAN.getText() + " Kerrigan#a1b2c3"), actions.whispered);
+            Assertions.assertNull(shell.getRoot().lookup(DIALOG_SELECTOR), "Whisper closes the panel");
 
-            Assertions.assertEquals(List.of("Zeratul#d4e5f6 2", "Kerrigan#a1b2c3", "Tassadar#998877"), listConversations(whispers));
-            Assertions.assertEquals("Kerrigan#a1b2c3", getSelectedConversation(whispers));
-            Assertions.assertTrue(showsText(whispers, texts.format("session.whisper.to", "Kerrigan#a1b2c3")));
-            Assertions.assertTrue(showsText(whispers, "Ready for a game?"));
-            Assertions.assertTrue(showsText(whispers, texts.format("session.whisper.from", "Kerrigan#a1b2c3")));
-            Assertions.assertFalse(showsText(whispers, "Are you there?"), "Zeratul's whispers stay in his conversation");
-            Assertions.assertFalse(showsText(getList(whispers, WHISPER_LIST_SELECTOR), "Zeratul#d4e5f6"), "her conversation names no other player");
-
-            getField(whispers, WHISPER_INPUT_SELECTOR).setText(TOO_LONG_WHISPER);
-            LauncherFxScenario.findButton(whispers, texts.get("session.whispers.send")).fire();
-            lay(shell);
-
-            Assertions.assertTrue(showsText(whispers, texts.get("session.whispers.too.long")));
-
-            // Selecting a whisper leaves the recipient as it is.
-            getList(whispers, WHISPER_LIST_SELECTOR).getSelectionModel().select(0);
-            getField(whispers, WHISPER_INPUT_SELECTOR).setText("gg");
-            lay(shell);
-            LauncherFxScenario.saveSample(shell.getRoot(), scale, "whispers-" + suffix);
-            LauncherFxScenario.findButton(whispers, texts.get("session.whispers.send")).fire();
-
-            Assertions.assertEquals(List.of("whisper " + KERRIGAN.getText() + ":gg"), session.commands);
-            Assertions.assertTrue(getField(whispers, WHISPER_INPUT_SELECTOR).getText().isEmpty(), "a sent whisper leaves the field");
-
-            // Zeratul's conversation: his whispers both ways only, read once shown; the next whisper goes to him alone.
-            selectConversation(shell, "Zeratul#d4e5f6");
-
-            Assertions.assertEquals(List.of("Zeratul#d4e5f6", "Kerrigan#a1b2c3", "Tassadar#998877"), listConversations(whispers));
-            Assertions.assertTrue(showsText(whispers, texts.format("session.whisper.to", "Zeratul#d4e5f6")));
-            Assertions.assertTrue(showsText(whispers, "Need a hand?"));
-            Assertions.assertTrue(showsText(whispers, texts.get("session.whisper.not.delivered")));
-            Assertions.assertFalse(showsText(whispers, "Ready for a game?"), "Kerrigan's whispers stay in her conversation");
-
-            getList(whispers, WHISPER_LIST_SELECTOR).getSelectionModel().select(0);
-            getField(whispers, WHISPER_INPUT_SELECTOR).setText("on my way");
-            lay(shell);
-            LauncherFxScenario.saveSample(shell.getRoot(), scale, "whispers-other-" + suffix);
-            LauncherFxScenario.findButton(whispers, texts.get("session.whispers.send")).fire();
-
-            Assertions.assertEquals(List.of("whisper " + KERRIGAN.getText() + ":gg", "whisper " + ZERATUL.getText() + ":on my way"), session.commands);
-
-            LauncherFxScenario.findButton(whispers, texts.get("session.close")).fire();
-
-            Assertions.assertNull(shell.getRoot().lookup(DIALOG_SELECTOR));
-
-            // Whisper to a friend without whispers: a new empty conversation on top.
-            session.commands.clear();
-            openEntry(shell, texts.get("session.menu.friends"));
-            getFriendList(getDialog(shell)).getSelectionModel().select(2);
-            lay(shell);
-            LauncherFxScenario.findButton(getDialog(shell), texts.get("session.friends.whisper")).fire();
-            lay(shell);
-            whispers = getDialog(shell);
-
-            Assertions.assertEquals(List.of("Artanis#0a0b0c", "Zeratul#d4e5f6", "Kerrigan#a1b2c3", "Tassadar#998877"), listConversations(whispers));
-            Assertions.assertEquals("Artanis#0a0b0c", getSelectedConversation(whispers));
-            Assertions.assertTrue(showsText(whispers, texts.get("session.whispers.empty")));
-
-            getField(whispers, WHISPER_INPUT_SELECTOR).setText("hello");
-            LauncherFxScenario.findButton(whispers, texts.get("session.whispers.send")).fire();
-
-            Assertions.assertEquals(List.of("whisper " + ARTANIS.getText() + ":hello"), session.commands);
-
-            LauncherFxScenario.findButton(whispers, texts.get("session.close")).fire();
-
-            // The whispers were read: the menu no longer counts them, and its entry opens the newest conversation.
-            openEntry(shell, texts.get("session.menu.whispers"));
-
-            Assertions.assertEquals("Tassadar#998877", getSelectedConversation(getDialog(shell)));
-
-            LauncherFxScenario.findButton(getDialog(shell), texts.get("session.close")).fire();
             openMenu(shell);
 
-            Assertions.assertTrue(listMenuEntries(shell).contains(texts.get("session.menu.whispers")));
-
             // My status: Away with a text; a text that is too long is refused.
-            session.commands.clear();
+            session.getCommands().clear();
             LauncherFxScenario.findButton(getMenu(shell), texts.get("session.menu.status")).fire();
             lay(shell);
 
@@ -559,7 +370,7 @@ final class AccountMenuTest {
             lay(shell);
 
             Assertions.assertTrue(showsText(status, texts.get("session.status.too.long")));
-            Assertions.assertTrue(session.commands.isEmpty());
+            Assertions.assertTrue(session.getCommands().isEmpty());
 
             awayText.setText(AWAY_TEXT);
             lay(shell);
@@ -567,12 +378,12 @@ final class AccountMenuTest {
             LauncherFxScenario.findButton(status, texts.get("session.save")).fire();
             lay(shell);
 
-            Assertions.assertEquals(List.of("status " + SelfStatus.AWAY + ":" + AWAY_TEXT), session.commands);
+            Assertions.assertEquals(List.of("status " + SelfStatus.AWAY + ":" + AWAY_TEXT), session.getCommands());
             Assertions.assertNull(shell.getRoot().lookup(DIALOG_SELECTOR));
             Assertions.assertNotNull(shell.getRoot().lookup(ACCOUNT_SELECTOR).lookup("." + WARNING_MARKER), "the account button shows Away");
 
             // Sign out everywhere else: one confirmation, then the session.
-            session.commands.clear();
+            session.getCommands().clear();
             openMenu(shell);
 
             Assertions.assertTrue(showsText(getMenu(shell), AWAY_TEXT), "the menu shows the away text");
@@ -581,11 +392,11 @@ final class AccountMenuTest {
             lay(shell);
             LauncherFxScenario.saveSample(shell.getRoot(), scale, "sign-out-" + suffix);
 
-            Assertions.assertTrue(session.commands.isEmpty());
+            Assertions.assertTrue(session.getCommands().isEmpty());
 
             LauncherFxScenario.findButton(getDialog(shell), texts.get("session.sign.out")).fire();
 
-            Assertions.assertEquals(List.of("sign out"), session.commands);
+            Assertions.assertEquals(List.of("sign out"), session.getCommands());
             Assertions.assertNull(shell.getRoot().lookup(DIALOG_SELECTOR));
 
             // Log out: the menu closes and the window logs out.
@@ -605,7 +416,7 @@ final class AccountMenuTest {
         UiLanguage language = selectLanguage(languageCode);
         LauncherTexts texts = LauncherTexts.of(language);
         String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
-        RecordingSession session = new RecordingSession(new SelfView(SessionState.OFFLINE, SelfStatus.ONLINE, "", 0, SessionFailure.SIGNED_OUT));
+        RecordingLauncherSession session = createSession(new SelfView(SessionState.OFFLINE, SelfStatus.ONLINE, "", 0, SessionFailure.SIGNED_OUT));
 
         LauncherFxScenario.run(() -> {
             LauncherShell shell = createShell(texts, language, scale, directory, TAGGED_NAME, session, new RecordingActions());
@@ -625,15 +436,6 @@ final class AccountMenuTest {
             Assertions.assertEquals(OWN_CODE.getGroupedText(), ((Label) getDialog(shell).lookup(FRIEND_CODE_SELECTOR)).getText(),
                                     "the own code is known offline");
             LauncherFxScenario.saveSample(shell.getRoot(), scale, "friends-offline-" + suffix);
-            LauncherFxScenario.findButton(getDialog(shell), texts.get("session.close")).fire();
-
-            openEntry(shell, texts.get("session.menu.whispers"));
-
-            Assertions.assertTrue(showsText(getDialog(shell), texts.get("session.not.connected")));
-            Assertions.assertTrue(showsText(getDialog(shell), texts.get("session.whispers.empty")));
-            Assertions.assertTrue(LauncherFxScenario.findButton(getDialog(shell), texts.get("session.whispers.send")).isDisabled(),
-                                  "nothing to send without a connection");
-            LauncherFxScenario.saveSample(shell.getRoot(), scale, "whispers-offline-" + suffix);
             LauncherFxScenario.findButton(getDialog(shell), texts.get("session.close")).fire();
 
             openEntry(shell, texts.get("session.menu.status"));
@@ -710,70 +512,6 @@ final class AccountMenuTest {
                 LauncherFxScenario.run(() -> {
                     LauncherFxScenario.saveSample(shell.getRoot(), scale, "friends-away-live-" + suffix);
                     LauncherFxScenario.findButton(getDialog(shell), texts.get("session.close")).fire();
-
-                    return null;
-                });
-
-                // Kerrigan and then Zeratul whisper: the menu counts both, the Whispers panel opens on Zeratul's conversation with his whisper
-                // only, and Kerrigan's conversation keeps hers unread.
-                LauncherSessionScenario.await(() -> kerriganSession.getFriends().stream()
-                                                                   .anyMatch(friend -> friend.getState() == FriendState.IN_LAUNCHER),
-                                              "Kerrigan sees Raynor");
-                LauncherSessionScenario.await(() -> zeratulSession.getFriends().stream()
-                                                                  .anyMatch(friend -> friend.getState() == FriendState.IN_LAUNCHER),
-                                              "Zeratul sees Raynor");
-                kerriganSession.whisper(raynorCode, "Hi Raynor");
-                LauncherFxScenario.await(() -> raynorSession.getWhispers().stream().anyMatch(WhisperView::isIncoming),
-                                         "Raynor gets Kerrigan's whisper");
-                zeratulSession.whisper(raynorCode, "En taro Adun");
-                LauncherFxScenario.await(() -> raynorSession.getWhispers().stream().filter(WhisperView::isIncoming).count() == 2,
-                                         "Raynor gets Zeratul's whisper");
-                LauncherFxScenario.run(() -> {
-                    openMenu(shell);
-
-                    Assertions.assertTrue(listMenuEntries(shell).contains(texts.format("session.menu.whispers.new", 2)));
-
-                    LauncherFxScenario.saveSample(shell.getRoot(), scale, "menu-live-" + suffix);
-                    openEntry(shell, texts.get("session.menu.whispers"));
-
-                    Parent whispers = getDialog(shell);
-
-                    Assertions.assertEquals(List.of(zeratul.getTaggedName(), kerrigan.getTaggedName() + " 1"), listConversations(whispers));
-                    Assertions.assertEquals(zeratul.getTaggedName(), getSelectedConversation(whispers));
-                    Assertions.assertTrue(showsText(whispers, "En taro Adun"));
-                    Assertions.assertFalse(showsText(whispers, "Hi Raynor"), "Kerrigan's whisper stays in her conversation");
-
-                    // Raynor answers in Kerrigan's conversation; the answer reaches her alone.
-                    selectConversation(shell, kerrigan.getTaggedName());
-
-                    Assertions.assertEquals(List.of(zeratul.getTaggedName(), kerrigan.getTaggedName()), listConversations(whispers));
-                    Assertions.assertTrue(showsText(whispers, "Hi Raynor"));
-                    Assertions.assertFalse(showsText(whispers, "En taro Adun"), "Zeratul's whisper stays in his conversation");
-                    Assertions.assertTrue(showsText(whispers, texts.format("session.whisper.to", kerrigan.getTaggedName())), "the answer goes back");
-
-                    getField(whispers, WHISPER_INPUT_SELECTOR).setText("Hi Kerrigan");
-                    LauncherFxScenario.findButton(whispers, texts.get("session.whispers.send")).fire();
-
-                    return null;
-                });
-                LauncherSessionScenario.await(() -> kerriganSession.getWhispers().stream().anyMatch(whisper -> whisper.isIncoming() &&
-                                                                                                               whisper.getText().equals("Hi Kerrigan")),
-                                              "Kerrigan gets the answer");
-                LauncherFxScenario.await(() -> raynorSession.getWhispers().stream().anyMatch(whisper -> whisper.getState() == WhisperState.DELIVERED),
-                                         "Raynor's answer is delivered");
-                LauncherFxScenario.run(() -> {
-                    lay(shell);
-
-                    Assertions.assertTrue(showsText(getDialog(shell), "Hi Kerrigan"));
-                    Assertions.assertEquals(List.of(kerrigan.getTaggedName(), zeratul.getTaggedName()), listConversations(getDialog(shell)),
-                                            "the answer moves her conversation to the top");
-                    Assertions.assertTrue(zeratulSession.getWhispers().stream().noneMatch(WhisperView::isIncoming), "Zeratul gets no answer");
-
-                    LauncherFxScenario.saveSample(shell.getRoot(), scale, "whispers-live-" + suffix);
-                    LauncherFxScenario.findButton(getDialog(shell), texts.get("session.close")).fire();
-                    openMenu(shell);
-
-                    Assertions.assertTrue(listMenuEntries(shell).contains(texts.get("session.menu.whispers")), "both conversations were read");
 
                     return null;
                 });

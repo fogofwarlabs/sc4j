@@ -26,8 +26,57 @@ import java.util.function.Function;
  * thread of its own with its progress shown ({@link #runWork}).
  */
 public final class ModalDialog {
-    private static final double PANEL_WIDTH = 460;
+    private static final double GROWING_CONTENT_HEIGHT = 200;
+    private static final double GROWING_CONTENT_MINIMUM_HEIGHT = 120;
     private static final @NotNull String WORK_THREAD_NAME = "launcher-dialog-work";
+    private static final @NotNull String SCRIM_STYLE_CLASS = "modal-scrim";
+    private static final @NotNull String TALL_STYLE_CLASS = "tall";
+
+    /**
+     * Lists the widths of a dialog.
+     */
+    public enum Width {
+        /**
+         * 460 pixels, the common width.
+         */
+        REGULAR(460),
+        /**
+         * 580 pixels, for wider content such as a list beside a list or release notes.
+         */
+        WIDE(580);
+
+        private final double width;
+
+        /**
+         * Creates a {@link Width} instance.
+         *
+         * @param width the width of the panel in pixels
+         */
+        Width(double width) {
+            this.width = width;
+        }
+
+        /**
+         * @return the width of the panel in pixels
+         */
+        public double getWidth() {
+            return this.width;
+        }
+    }
+
+    /**
+     * Lists the heights of a dialog.
+     */
+    public enum Height {
+        /**
+         * As tall as its content; growing content ({@link #addGrowingContent}) takes a common height.
+         */
+        CONTENT,
+        /**
+         * The height of the launcher, with a wider margin above and below; growing content takes the room the other content leaves.
+         */
+        TALL
+    }
 
     /**
      * Carries out the slow part of a dialog's work away from the user interface thread, without changing the files the dialog is about.
@@ -77,28 +126,49 @@ public final class ModalDialog {
     private final @NotNull StackPane root;
 
     /**
-     * Creates a {@link ModalDialog} instance without buttons, of the common width.
+     * Creates a {@link ModalDialog} instance without buttons, of the common width, as tall as its content.
      *
      * @param title the title, shown in capitals by the stylesheet
      */
     public ModalDialog(@NotNull String title) {
-        this(title, PANEL_WIDTH);
+        this(title, Width.REGULAR, Height.CONTENT);
     }
 
     /**
-     * Creates a {@link ModalDialog} instance without buttons, of a width for wider content such as a list beside a list.
+     * Creates a {@link ModalDialog} instance without buttons, of the common width and a given height.
+     *
+     * @param title  the title, shown in capitals by the stylesheet
+     * @param height the height
+     */
+    public ModalDialog(@NotNull String title, @NotNull Height height) {
+        this(title, Width.REGULAR, height);
+    }
+
+    /**
+     * Creates a {@link ModalDialog} instance without buttons, of a given width, as tall as its content.
      *
      * @param title the title, shown in capitals by the stylesheet
-     * @param width the width of the panel, in logical units
+     * @param width the width
      */
-    public ModalDialog(@NotNull String title, double width) {
+    public ModalDialog(@NotNull String title, @NotNull Width width) {
+        this(title, width, Height.CONTENT);
+    }
+
+    /**
+     * Creates a {@link ModalDialog} instance without buttons.
+     *
+     * @param title  the title, shown in capitals by the stylesheet
+     * @param width  the width
+     * @param height the height
+     */
+    public ModalDialog(@NotNull String title, @NotNull Width width, @NotNull Height height) {
         VBox panel;
 
         this.body         = ComponentUtils.panelBody();
         this.message      = ComponentUtils.paragraph("", "field-message");
         this.progressText = ComponentUtils.label("", "text-caption");
         this.progress     = new ProgressBar(0);
-        this.progressRow  = ComponentUtils.column(ComponentUtils.Spacing.XS, this.progressText, this.progress);
+        this.progressRow  = ComponentUtils.column(Spacing.XS, this.progressText, this.progress);
         this.footer       = ComponentUtils.panelFooter();
         this.root         = new StackPane();
 
@@ -108,13 +178,17 @@ public final class ModalDialog {
         setShown(this.progressRow, false);
         this.footer.setAlignment(Pos.CENTER_RIGHT);
 
-        panel = ComponentUtils.panel(title, this.body);
-        panel.getChildren().add(this.footer);
-        panel.setPrefWidth(width);
-        panel.setMaxWidth(width);
-        panel.setMaxHeight(Region.USE_PREF_SIZE);
+        panel = ComponentUtils.panelWithFooter(title, this.body, this.footer);
+        panel.setPrefWidth(width.getWidth());
+        panel.setMaxWidth(width.getWidth());
+        panel.setMaxHeight(height == Height.TALL ? Double.MAX_VALUE : Region.USE_PREF_SIZE);
 
-        this.root.getStyleClass().add("modal-scrim");
+        this.root.getStyleClass().add(SCRIM_STYLE_CLASS);
+
+        if (height == Height.TALL) {
+            this.root.getStyleClass().add(TALL_STYLE_CLASS);
+        }
+
         this.root.getChildren().add(panel);
         StackPane.setAlignment(panel, Pos.CENTER);
     }
@@ -138,32 +212,39 @@ public final class ModalDialog {
     }
 
     /**
+     * Adds content that grows with the dialog to the body, above the message line and the progress bar, such as a list or a long text. In a
+     * dialog as tall as its content it takes a common height; in a tall dialog the room the other content leaves.
+     *
+     * @param content the content
+     */
+    public void addGrowingContent(@NotNull Region content) {
+        content.setMinHeight(GROWING_CONTENT_MINIMUM_HEIGHT);
+        content.setPrefHeight(GROWING_CONTENT_HEIGHT);
+        VBox.setVgrow(content, Priority.ALWAYS);
+        this.addContent(content);
+    }
+
+    /**
      * Sets the footer buttons from left to right, after a spacer: the cancel button (Escape) and the action button (Enter).
      *
      * @param cancel the button that closes the dialog without acting, or {@code null} for none
      * @param action the button that acts, or {@code null} for none
      */
     public void setButtons(@Nullable Button cancel, @Nullable Button action) {
-        this.setButtons(null, cancel, action);
+        this.setButtons(List.of(), cancel, action);
     }
 
     /**
-     * Sets the footer buttons from left to right: a button at the left end, then after a spacer the cancel button (Escape) and the action
+     * Sets the footer buttons from left to right: the buttons at the left end, then after a spacer the cancel button (Escape) and the action
      * button (Enter).
      *
-     * @param leading a button for another choice, such as skipping what the dialog offers, or {@code null} for none
+     * @param leading the buttons for other choices, such as skipping what the dialog offers or acting on a selected list item
      * @param cancel  the button that closes the dialog without acting, or {@code null} for none
      * @param action  the button that acts, or {@code null} for none
      */
-    public void setButtons(@Nullable Button leading, @Nullable Button cancel, @Nullable Button action) {
-        Region spacer = new Region();
-
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        this.footer.getChildren().setAll(spacer);
-
-        if (leading != null) {
-            this.footer.getChildren().addFirst(leading);
-        }
+    public void setButtons(@NotNull List<@NotNull Button> leading, @Nullable Button cancel, @Nullable Button action) {
+        this.footer.getChildren().setAll(leading);
+        this.footer.getChildren().add(ComponentUtils.growingSpacer());
 
         if (cancel != null) {
             cancel.setCancelButton(true);

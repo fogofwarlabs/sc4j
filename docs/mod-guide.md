@@ -168,7 +168,7 @@ READY   my-mod               my-mod.jar
 
 `<install>\launcher\bin\sc4j-launcher.bat` opens the launcher; starting "My Mod" shows `FirstScene`.
 
-Players install a released mod from the launcher: the latest GitHub release of the mod's repository carries `<id>.jar` and `<id>.jar.sha256`. The catalog [`fogofwarlabs/sc4j-mods`](https://github.com/fogofwarlabs/sc4j-mods) lists mods by name.
+Players install a released mod from the launcher: the latest GitHub release of the mod's repository carries `<id>.jar` and `<id>.jar.sha256`. The catalog [`fogofwarlabs/sc4j-mods`](https://github.com/fogofwarlabs/sc4j-mods) lists mods in its `mods.json` (`"format": 1`): each entry has `name`, `repository` (`owner/name`) and an optional `description`, with `name` and `description` in the manifest's localized form (`{"en": "My Mod", "ko": "내 모드"}`, chapter 3). The launcher shows them in the player's language.
 
 ### 2.6 Make it a game
 
@@ -303,12 +303,14 @@ The mod id is the `id` of `src/main/resources/sc4j-mod.json`; the mod version is
 
 | Task or setting | Effect |
 |---|---|
-| compile | against the engine API of the plugin's version (`org.fogofwarlabs.sc4j:sc4j-engine` with `sc4j-base`, `sc4j-mod-manifest`, engine modules); not packed |
+| compile | every source set of the mod, in whichever project of the build owns it, against the SC4J mod API of the plugin's version: the engine modules the runtime provides; not packed |
 | `processResources` | writes `version` and `engine` into `sc4j-mod.json` (chapter 3) |
 | `jar` | `build/libs/<id>.jar`, reproducible (no timestamps, fixed order, duplicates fail), `LICENSE` and `NOTICE` in `META-INF/`; fails when `sc4j-mod.json` names another id, other versions or a missing entry class |
 | `run` | runs the jar in the plugin's engine runtime with the install's user data (or `build/sc4j-run`); `--args=--headless`, `--debug-jvm` |
 | `installMod` | copies the jar into `<install>/mods/` (Gradle property `sc4j.install`) |
 | `sc4jMod` | `id` (optional, must equal the manifest `id`; needed when a build task writes the manifest), `sourceSets` (more source sets in the jar), `install`, `licenses` (files of `META-INF/`) |
+
+The catalog reader `sc4j-catalog` reads what is published: SC4J releases (`ReleaseCheck`, `ReleaseVersion`, `catalog.github`) and the mod catalog (`catalog.mods`). `ReleaseCheck.read(new ReleaseClient(ReleaseClient.GITHUB_API), ReleaseCheck.DEFAULT_REPOSITORY, ReleaseVersion.CURRENT)` reads the latest SC4J release over the network; call it off the frame thread.
 
 The tasks form the group `sc4j`; `tasks.named('jar') { from(...) }` adds files. A run-time library goes into the jar unless the runtime's `lib/` has it (LWJGL, FFmpeg, ...); check its licence (chapter 17).
 
@@ -419,7 +421,7 @@ Demo: `DemoLobby`, [`BeaconLinkScene`](../mods/demo/src/main/java/org/fogofwarla
 - **Friends and ignored players**: `addFriend`, `removeFriend` (at most 16 friends), `ignore`, `unignore`, `isIgnored`; the account owns the list; ignored players' lines and whispers are dropped, the mod hides their rooms.
 - **Listeners**: `addListener(CommunityListener)`: `onChatLine`, `onMembersChanged`, `onWhisper`, `onWhisperResult`, called inside `poll()`.
 
-`BeaconLinkSession.signOutOtherDevices()` ends the account's other connections. `engine.client.community` (`sc4j-engine`) holds community screen parts: `ChannelChat`, `RoomFilter`, `ChatLogBox`, `TableBox`. Wire: [protocol reference](beaconlink/protocol.md); public peers: [operator guide](beaconlink/operator.md).
+`BeaconLinkSession.signOutOtherDevices()` ends the account's other connections. `ChannelChat` (`engine.net.beaconlink.community.chat`, `sc4j-engine-net`) runs the channel chat; `engine.client.community` (`sc4j-engine`) holds community screen parts: `RoomFilter`, `ChatLogBox`, `TableBox`; `engine.client.lobby` holds `RecentMaps`. Wire: [protocol reference](beaconlink/protocol.md); public peers: [operator guide](beaconlink/operator.md).
 
 ## 15. Building, installing and running
 
@@ -431,7 +433,7 @@ Demo: `DemoLobby`, [`BeaconLinkScene`](../mods/demo/src/main/java/org/fogofwarla
 
 Details: [engine API policy](api-policy.md).
 
-- The API is the public and protected classes and members of `sc4j-base`, `sc4j-mod-manifest`, `sc4j-engine-core`, `-sim`, `-net`, `-client` and `sc4j-engine`, listed in `api/*.api`. The Javadoc of each class is its contract.
+- The API is the public and protected classes and members of `sc4j-base`, `sc4j-mod-manifest`, `sc4j-engine-core`, `-sim`, `-net`, `-client`, `sc4j-engine` and `sc4j-catalog`, listed in `api/*.api`. The Javadoc of each class is its contract.
 - Internal, not API (`@ApiStatus.Internal`): `engine.mod.loading`, `engine.client.render.gl`, `engine.client.audio.openal`, `GlfwClientHost`, `GlfwHostWindow`, `GlfwInput`, `GlfwKeyCodes`, `GlfwCursorSurface`, `WindowsTextInputMethod`, `WindowsSystemPointerSpeed`, `WindowsHostTickClock`. Use `engine.client.render` (`GraphicsDevice.getCurrent()`), `engine.client.audio` (`AudioDevice.openDefault()`) and the `engine.client.host` interfaces (`ClientHost.initialize()`; `HostWindow`: `createInput`, `isKeyDown`, `setPointerMode`, `createCursorSurface`, focus, clipboard, dropped files, gamma ramp, `getTextInputMethod`; `SystemPointerSpeed`, `HostTickClock`).
 - The SC4J version is a semantic version; its `MAJOR.MINOR` is the engine API version (`EngineVersion.CURRENT`), which the mod plugin writes into the manifest's `engine` field. A major may break mods, a minor only adds; at 0.x anything may change, visible as `.api` diffs.
 - Changed simulation results raise at least the minor version; replays and saves do not cross engine versions.
@@ -444,7 +446,7 @@ Details: [engine API policy](api-policy.md).
 ## 18. Testing your mod
 
 - Outside this repository: build the jar, install it into a scratch install, run the runtime headless twice and once on the replay, compare the frame hashes.
-- Published test fixtures ([API policy](api-policy.md#1-what-the-api-is)): `RecordingCommunitySession`, `RecordingBeaconLink` (`sc4j-engine`), `ClientScenario` with emulated NATs on 127.0.0.1 (`sc4j-beaconlink`), `FakeInstallationRecords` (`sc4j-mod-manifest`).
+- Published test fixtures ([API policy](api-policy.md#1-what-the-api-is)): `RecordingCommunitySession`, `RecordingBeaconLink` (`sc4j-engine-net`), `ClientScenario` with emulated NATs on 127.0.0.1 (`sc4j-beaconlink`), `FakeInstallationRecords` (`sc4j-mod-manifest`).
 - Inside this repository: `RuntimeSession.run` in the test JVM (`DemoModTest`), the client offscreen (`DemoClientScenario`), two runtime JVMs (`determinismCheck`).
 
 ## 19. Two ways a mod runs

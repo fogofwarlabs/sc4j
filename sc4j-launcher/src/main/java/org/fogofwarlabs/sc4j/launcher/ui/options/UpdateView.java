@@ -6,7 +6,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
-import org.fogofwarlabs.sc4j.launcher.ui.ComponentUtils;
+import org.fogofwarlabs.sc4j.launcher.ui.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -15,7 +15,6 @@ import org.jetbrains.annotations.Nullable;
  * last check, and Update when a newer version is available.
  */
 public final class UpdateView {
-    private static final double SOURCE_WIDTH = 260;
 
     /**
      * Receives the actions of the update part.
@@ -55,24 +54,24 @@ public final class UpdateView {
 
         this.texts  = texts;
         this.source = new TextField(source);
-        this.check  = ComponentUtils.button(texts.get("update.check"), ComponentUtils.ButtonRole.SECONDARY);
+        this.check  = ComponentUtils.button(texts.get("update.check"), ButtonRole.SECONDARY);
         this.status = ComponentUtils.label("", "text-caption");
-        this.update = ComponentUtils.button(texts.get("update.start"), ComponentUtils.ButtonRole.PRIMARY);
+        this.update = ComponentUtils.button(texts.get("update.start"), ButtonRole.PRIMARY);
 
-        this.source.setPrefWidth(SOURCE_WIDTH);
+        ComponentUtils.setControlWidth(this.source, ControlWidth.L);
         this.check.setOnAction(event -> actions.onCheck(this.source.getText()));
         this.update.setOnAction(event -> actions.onUpdate());
 
-        state     = ComponentUtils.column(ComponentUtils.Spacing.XS, ComponentUtils.label(texts.format("update.version", version), "text-caption"),
-                                          this.status);
+        state = ComponentUtils.column(Spacing.XS, ComponentUtils.label(texts.format("update.version", version), "text-caption"),
+                                      this.status);
         // The status lines take the row's height instead of setting it.
         state.setMinHeight(0);
         state.setPrefHeight(0);
         state.setAlignment(Pos.CENTER_LEFT);
         this.root = ComponentUtils.field(texts.get("update.source"),
-                                         ComponentUtils.row(ComponentUtils.Spacing.M, this.source, this.check, state, this.update));
+                                         ComponentUtils.row(Spacing.M, this.source, this.check, state, this.update));
 
-        this.showStatus(null, ComponentUtils.Tone.NEUTRAL, false);
+        this.showStatus(null, Tone.NEUTRAL, false);
     }
 
     /**
@@ -86,7 +85,7 @@ public final class UpdateView {
      * Shows that a check runs; Check now is disabled until its result is shown.
      */
     public void showChecking() {
-        this.showStatus(this.texts.get("update.checking"), ComponentUtils.Tone.ACCENT, false);
+        this.showStatus(this.texts.get("update.checking"), Tone.ACCENT, false);
         this.check.setDisable(true);
     }
 
@@ -97,12 +96,12 @@ public final class UpdateView {
      * @param tone      the result's colour role
      * @param updatable whether a newer version is available, which shows Update
      */
-    public void showStatus(@Nullable String text, @NotNull ComponentUtils.Tone tone, boolean updatable) {
+    public void showStatus(@Nullable String text, @NotNull Tone tone, boolean updatable) {
         this.check.setDisable(false);
         this.status.setText(text == null ? "" : text);
         this.status.getStyleClass().setAll("label", "text-caption");
 
-        if (tone != ComponentUtils.Tone.NEUTRAL && tone != ComponentUtils.Tone.ACCENT) {
+        if (tone != Tone.NEUTRAL && tone != Tone.ACCENT) {
             this.status.getStyleClass().add(OptionsScreen.getToneStyle(tone));
         }
         this.status.setVisible(text != null);

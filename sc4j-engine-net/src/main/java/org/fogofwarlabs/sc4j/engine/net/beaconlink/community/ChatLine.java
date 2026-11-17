@@ -49,7 +49,7 @@ public final class ChatLine {
      * @return the author's display name with its tag, {@code Name#abcd12}
      */
     public @NotNull String getTaggedAuthorName() {
-        return this.authorName + "#" + this.author.getTag();
+        return this.author.formatTaggedName(this.authorName);
     }
 
     /**

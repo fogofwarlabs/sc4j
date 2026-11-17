@@ -20,8 +20,8 @@ import java.util.function.Consumer;
 /**
  * Builds the frame shared by every launcher view: the grid backdrop under the fog vignette, the app bar, the content area and the status bar.
  * On the login step the app bar holds the brand and About only; once logged in it also holds the navigation and, at its right end, the
- * account with its status, which opens the account menu. The menu opens below the app bar over the whole window and closes on a click
- * outside it or Escape; dialogs open over the whole content area.
+ * account with its status, which opens the account menu. The menu opens below the app bar over the whole window, a context menu at the
+ * pointer; either closes on a click outside it or Escape. Dialogs open over the whole content area.
  */
 public final class LauncherShell {
     /**
@@ -29,9 +29,6 @@ public final class LauncherShell {
      */
     public static final @NotNull String CONTENT_MARGIN_STYLE_CLASS = "app-content";
 
-    private static final double APP_BAR_LOGO_SIZE = 40;
-    private static final double STATUS_BAR_LOGO_SIZE = 16;
-    private static final double NAVIGATION_GAP = 24;
     private static final @NotNull String PUBLISHER_NAME = "Fog of War Labs";
     private static final @NotNull String PRODUCT_NAME = "SC4J";
 
@@ -47,6 +44,10 @@ public final class LauncherShell {
          * The last run: its state, failure report and output.
          */
         RUN("nav.run"),
+        /**
+         * The Beacon.Link chat: channels, whispers and channel members.
+         */
+        CHAT("nav.chat"),
         /**
          * The launcher's own settings: UI language and Beacon.Link nodes.
          */
@@ -88,7 +89,7 @@ public final class LauncherShell {
     private final @NotNull Label nodeStatus;
     private final @NotNull HBox appBar;
 
-    private @Nullable StackPane menuLayer;
+    private @Nullable Pane menuLayer;
 
     /**
      * Creates a {@link LauncherShell} instance, showing the login step's app bar until {@link #show} shows a screen.
@@ -111,7 +112,7 @@ public final class LauncherShell {
         this.screenScroll      = new ScrollPane(this.screenArea);
         this.navigation        = new HBox();
         this.navigationButtons = new EnumMap<>(Section.class);
-        this.accountButton     = ComponentUtils.smallButton("", ComponentUtils.ButtonRole.SECONDARY);
+        this.accountButton     = ComponentUtils.smallButton("", ButtonRole.SECONDARY);
         this.catalogStatus     = new Label();
         this.nodeStatus        = new Label();
         this.appBar            = this.createAppBar(texts, imageScale, navigate, about, accountMenu);
@@ -175,7 +176,7 @@ public final class LauncherShell {
      * @param taggedName the account's name and tag ({@code Name#abcd12})
      * @param tone       the colour of the account's status
      */
-    public void setAccount(@NotNull String taggedName, @NotNull ComponentUtils.Tone tone) {
+    public void setAccount(@NotNull String taggedName, @NotNull Tone tone) {
         this.accountButton.setText(taggedName);
         this.accountButton.setGraphic(ComponentUtils.statusMarker(tone));
     }
@@ -202,10 +203,40 @@ public final class LauncherShell {
 
         this.closeMenu();
         menu.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-        layer.getStyleClass().add("menu-layer");
         layer.setAlignment(Pos.TOP_RIGHT);
         layer.paddingProperty().bind(Bindings.createObjectBinding(() -> new Insets(this.appBar.getHeight(), this.appBar.getPadding().getRight(), 0, 0),
                                                                   this.appBar.heightProperty(), this.appBar.paddingProperty()));
+        this.showMenuLayer(layer);
+    }
+
+    /**
+     * Opens a context menu at a point of the window, over the whole window, replacing an open menu; a menu that would cross the window's
+     * right or bottom edge opens to the left of or above the point. A click outside the menu or Escape closes it.
+     *
+     * @param menu   the menu
+     * @param sceneX the point's x in the window's scene
+     * @param sceneY the point's y in the window's scene
+     */
+    public void openMenu(@NotNull Region menu, double sceneX, double sceneY) {
+        Pane layer = new Pane(menu);
+
+        this.closeMenu();
+        layer.layoutBoundsProperty().addListener((observable, previous, current) -> {
+            double width = menu.prefWidth(-1);
+            double height = menu.prefHeight(width);
+
+            menu.relocate(sceneX + width > current.getWidth() ? Math.max(0, sceneX - width) : sceneX,
+                          sceneY + height > current.getHeight() ? Math.max(0, sceneY - height) : sceneY);
+        });
+        menu.relocate(sceneX, sceneY);
+        this.showMenuLayer(layer);
+    }
+
+    /**
+     * Shows a menu's layer over the whole window; a click on the layer outside the menu or Escape closes it.
+     */
+    private void showMenuLayer(@NotNull Pane layer) {
+        layer.getStyleClass().add("menu-layer");
         layer.setOnMousePressed(event -> {
             if (event.getTarget() == layer) {
                 this.closeMenu();
@@ -226,7 +257,7 @@ public final class LauncherShell {
      * Closes the open menu, if any.
      */
     public void closeMenu() {
-        StackPane layer = this.menuLayer;
+        Pane layer = this.menuLayer;
 
         if (layer != null) {
             this.menuLayer = null;
@@ -262,13 +293,13 @@ public final class LauncherShell {
         VBox brand = new VBox(ComponentUtils.label(PRODUCT_NAME, "app-title"), ComponentUtils.label(texts.get("app.subtitle"), "app-subtitle"));
         Region gap = new Region();
         ToggleGroup group = new ToggleGroup();
-        Button aboutButton = ComponentUtils.smallButton(texts.get("app.about"), ComponentUtils.ButtonRole.SECONDARY);
+        Button aboutButton = ComponentUtils.smallButton(texts.get("app.about"), ButtonRole.SECONDARY);
         HBox bar;
 
         brand.getStyleClass().add("app-brand");
         brand.setAlignment(Pos.CENTER_LEFT);
         brand.setMinWidth(Region.USE_PREF_SIZE);
-        gap.setMinWidth(NAVIGATION_GAP);
+        gap.getStyleClass().add("app-bar-gap");
 
         for (Section section : Section.values()) {
             ToggleButton button = new ToggleButton(texts.get(section.getTextKey()));
@@ -286,7 +317,7 @@ public final class LauncherShell {
         this.accountButton.setMinWidth(Region.USE_PREF_SIZE);
         this.accountButton.setOnAction(event -> accountMenu.run());
 
-        bar = new HBox(ComponentUtils.imageView(ThemeUtils.loadImage(ThemeUtils.SC4J_LOGO, APP_BAR_LOGO_SIZE, imageScale), APP_BAR_LOGO_SIZE),
+        bar = new HBox(ComponentUtils.imageView(ThemeUtils.loadImage(ThemeUtils.SC4J_LOGO, IconSize.M.getSize(), imageScale), IconSize.M.getSize()),
                        brand, gap, this.navigation,
                        ComponentUtils.growingSpacer(), ComponentUtils.label(texts.format("app.engine", EngineVersion.CURRENT), "text-caption"),
                        aboutButton, this.accountButton);
@@ -296,9 +327,10 @@ public final class LauncherShell {
     }
 
     private @NotNull HBox createStatusBar(@NotNull LauncherTexts texts, @NotNull InstallLayout install, double imageScale) {
-        HBox publisher = ComponentUtils.row(ComponentUtils.Spacing.XS,
-                                            ComponentUtils.imageView(ThemeUtils.loadImage(ThemeUtils.FOG_OF_WAR_LABS_LOGO, STATUS_BAR_LOGO_SIZE, imageScale),
-                                                                     STATUS_BAR_LOGO_SIZE),
+        double logoSize = IconSize.S.getSize();
+        HBox publisher = ComponentUtils.row(Spacing.XS,
+                                            ComponentUtils.imageView(ThemeUtils.loadImage(ThemeUtils.FOG_OF_WAR_LABS_LOGO, logoSize, imageScale),
+                                                                     logoSize),
                                             ComponentUtils.label(PUBLISHER_NAME));
         HBox bar = new HBox(ComponentUtils.label(texts.format("status.install", install.getRoot())), this.catalogStatus, this.nodeStatus,
                             ComponentUtils.growingSpacer(), publisher);

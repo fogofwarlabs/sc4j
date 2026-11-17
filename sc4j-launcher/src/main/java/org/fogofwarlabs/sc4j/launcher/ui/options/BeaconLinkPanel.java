@@ -19,8 +19,7 @@ import org.fogofwarlabs.sc4j.launcher.peer.LauncherNodeRunner;
 import org.fogofwarlabs.sc4j.launcher.peer.LauncherNodeStatus;
 import org.fogofwarlabs.sc4j.launcher.peer.NodeRole;
 import org.fogofwarlabs.sc4j.launcher.peer.NodeSettings;
-import org.fogofwarlabs.sc4j.launcher.ui.ComponentUtils;
-import org.fogofwarlabs.sc4j.launcher.ui.ThemeUtils;
+import org.fogofwarlabs.sc4j.launcher.ui.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -37,7 +36,7 @@ final class BeaconLinkPanel {
     private static final @NotNull Duration REFRESH_INTERVAL = Duration.seconds(1);
     private static final @NotNull List<@NotNull String> TONE_STYLES = List.of("text-success", "text-warning", "text-danger", "text-caption");
 
-    private static void setText(@NotNull Label label, @NotNull String text, @NotNull ComponentUtils.Tone tone) {
+    private static void setText(@NotNull Label label, @NotNull String text, @NotNull Tone tone) {
         label.setText(text);
         label.getStyleClass().removeAll(TONE_STYLES);
         label.getStyleClass().add(OptionsScreen.getToneStyle(tone));
@@ -48,20 +47,20 @@ final class BeaconLinkPanel {
         node.setManaged(shown);
     }
 
-    private static @NotNull ComponentUtils.Tone getTone(@NotNull BootstrapState state) {
+    private static @NotNull Tone getTone(@NotNull BootstrapState state) {
         return switch (state) {
-            case CONNECTED -> ComponentUtils.Tone.SUCCESS;
-            case CONNECTING -> ComponentUtils.Tone.ACCENT;
-            case NO_PEERS_KNOWN -> ComponentUtils.Tone.WARNING;
-            case NO_PEER_REACHABLE -> ComponentUtils.Tone.DANGER;
+            case CONNECTED -> Tone.SUCCESS;
+            case CONNECTING -> Tone.ACCENT;
+            case NO_PEERS_KNOWN -> Tone.WARNING;
+            case NO_PEER_REACHABLE -> Tone.DANGER;
         };
     }
 
-    private static @NotNull ComponentUtils.Tone getTone(@NotNull Reachability reachability) {
+    private static @NotNull Tone getTone(@NotNull Reachability reachability) {
         return switch (reachability) {
-            case REACHABLE -> ComponentUtils.Tone.SUCCESS;
-            case NOT_VERIFIED -> ComponentUtils.Tone.WARNING;
-            case NOT_REACHABLE -> ComponentUtils.Tone.DANGER;
+            case REACHABLE -> Tone.SUCCESS;
+            case NOT_VERIFIED -> Tone.WARNING;
+            case NOT_REACHABLE -> Tone.DANGER;
         };
     }
 
@@ -90,7 +89,7 @@ final class BeaconLinkPanel {
      */
     BeaconLinkPanel(@NotNull LauncherTexts texts, @NotNull LauncherNodeRunner runner, @NotNull Node advanced) {
         NodeSettings saved = runner.getSettings();
-        Button apply = ComponentUtils.button(texts.get("beaconlink.apply"), ComponentUtils.ButtonRole.PRIMARY);
+        Button apply = ComponentUtils.button(texts.get("beaconlink.apply"), ButtonRole.PRIMARY);
         Label help = ComponentUtils.paragraph(texts.get("beaconlink.node.help"), "text-caption");
         HBox portRow;
         VBox settings;
@@ -107,20 +106,19 @@ final class BeaconLinkPanel {
         this.reachability   = ComponentUtils.paragraph("", "text-caption");
         this.addresses      = ComponentUtils.label("", "text-caption", "text-mono");
         this.peers          = ComponentUtils.label("", "text-caption");
-        this.advancedToggle = ComponentUtils.smallButton(texts.get("beaconlink.advanced.show"), ComponentUtils.ButtonRole.SECONDARY);
+        this.advancedToggle = ComponentUtils.smallButton(texts.get("beaconlink.advanced.show"), ButtonRole.SECONDARY);
 
         this.helping.setSelected(saved.getRole() == NodeRole.AUTOMATIC);
-        this.port.setPrefWidth(OptionsScreen.PORT_WIDTH);
-        this.port.setMaxWidth(OptionsScreen.PORT_WIDTH);
+        ComponentUtils.setControlWidth(this.port, ControlWidth.S);
         setShown(this.message, false);
         setShown(this.advanced, false);
         apply.setOnAction(event -> this.apply());
         this.advancedToggle.setOnAction(event -> this.toggleAdvanced());
 
-        portRow = ComponentUtils.row(ComponentUtils.Spacing.M, ComponentUtils.label(texts.get("beaconlink.port"), "field-label"), this.port, apply);
+        portRow = ComponentUtils.row(Spacing.M, ComponentUtils.label(texts.get("beaconlink.port"), "field-label"), this.port, apply);
         portRow.setAlignment(Pos.CENTER_LEFT);
-        settings = ComponentUtils.column(ComponentUtils.Spacing.S, this.helping, help, portRow);
-        status   = ComponentUtils.column(ComponentUtils.Spacing.XS, this.state, this.reachability, this.addresses, this.peers);
+        settings = ComponentUtils.column(Spacing.S, this.helping, help, portRow);
+        status   = ComponentUtils.column(Spacing.XS, this.state, this.reachability, this.addresses, this.peers);
 
         this.root = ComponentUtils.panel(texts.get("beaconlink.title"),
                                          ComponentUtils.panelBody(settings, this.message, status),
@@ -186,9 +184,9 @@ final class BeaconLinkPanel {
     void showStatus(@Nullable LauncherNodeStatus status, boolean heldElsewhere, @Nullable String problem) {
         if (status == null) {
             if (heldElsewhere) {
-                setText(this.state, this.texts.get("beaconlink.elsewhere"), ComponentUtils.Tone.NEUTRAL);
+                setText(this.state, this.texts.get("beaconlink.elsewhere"), Tone.NEUTRAL);
             } else {
-                setText(this.state, this.texts.format("beaconlink.stopped", problem == null ? "" : problem), ComponentUtils.Tone.DANGER);
+                setText(this.state, this.texts.format("beaconlink.stopped", problem == null ? "" : problem), Tone.DANGER);
             }
 
             setShown(this.reachability, false);

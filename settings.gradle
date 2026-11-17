@@ -17,6 +17,8 @@ include 'sc4j-engine-client'
 include 'sc4j-engine'
 include 'sc4j-runtime'
 include 'sc4j-launcher'
+// The reader of what is published (SC4J releases and the mod catalog) that the launcher and the runtime share (no engine).
+include 'sc4j-catalog'
 // Beacon.Link: the wire protocol shared by the peers and the client, the peer library that the launcher, the runtime and the
 // node executable run, and the node executable (no engine).
 include 'sc4j-beaconlink-protocol'

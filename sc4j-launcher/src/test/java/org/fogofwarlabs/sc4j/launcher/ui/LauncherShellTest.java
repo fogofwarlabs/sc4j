@@ -4,9 +4,7 @@ import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.scene.Node;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.ToggleButton;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
@@ -44,10 +42,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Tests the launcher window's content at display scales of 100%, 150% and 200%: the layout keeps its logical size, every image is decoded at
  * its logical size times the scale (so it stays sharp), and the window renders at the scale; each rendering is saved as a sample picture.
- * Before the login the app bar shows neither the navigation nor an account; after it, it lists Mods, Run log and Settings (no Accounts tab)
+ * Before the login the app bar shows neither the navigation nor an account; after it, it lists Mods, Run log, Chat and Settings (no Accounts tab)
  * and ends with the account button with its status, which opens the account menu, at 100% and 200% in English and Korean. In a window of the
  * launcher's minimum size, a screen taller than the space between the app bar and the status bar scrolls and leaves both bars in the window; a
- * shorter screen fills that space.
+ * shorter screen fills that space. The Mods screen's mod list keeps the regular list item.
  */
 final class LauncherShellTest {
     private static final @NotNull String MANIFEST = """
@@ -64,6 +62,18 @@ final class LauncherShellTest {
                                                     """;
     private static final @NotNull String ICON_ENTRY = "meta/icon.png";
     private static final @NotNull String JAR_NAME = "example.jar";
+    private static final @NotNull String SECOND_JAR_NAME = "second.jar";
+    private static final @NotNull String SECOND_MANIFEST = """
+                                                           {
+                                                             "format": 1,
+                                                             "id": "second",
+                                                             "name": {"en": "Second mod"},
+                                                             "version": "2.1.0",
+                                                             "engine": "0.1",
+                                                             "entry": "org.example.SecondMod"
+                                                           }
+                                                           """;
+    private static final double REGULAR_CELL_PADDING = 10;
     private static final double SCENE_WIDTH = 1280;
     private static final double SCENE_HEIGHT = 800;
     private static final double PERCENT_SCALE = 100;
@@ -76,6 +86,7 @@ final class LauncherShellTest {
     private static final double MINIMUM_SCENE_HEIGHT = 720;
     private static final double TALL_SCREEN_HEIGHT = 2000;
     private static final double TOLERANCE = 1;
+    private static final @NotNull String COMPACT_LIST_STYLE_CLASS = "compact";
     private static final long FX_TIMEOUT_SECONDS = 60;
 
     /**
@@ -165,9 +176,9 @@ final class LauncherShellTest {
             Assertions.assertFalse(LauncherFxScenario.isShown(account), "no account before the login");
             LauncherFxScenario.saveSample(bar, scale, "top-bar-login-" + suffix);
 
-            // Logged in: Mods, Run log and Settings, and the account with its status at the right end.
+            // Logged in: Mods, Run log, Chat and Settings, and the account with its status at the right end.
             shell.show(LauncherShell.Section.MODS, new Region());
-            shell.setAccount(TAGGED_NAME, ComponentUtils.Tone.SUCCESS);
+            shell.setAccount(TAGGED_NAME, Tone.SUCCESS);
             shell.getRoot().applyCss();
             shell.getRoot().layout();
 
@@ -175,7 +186,8 @@ final class LauncherShellTest {
                 sections.add(((ToggleButton) button).getText());
             }
 
-            Assertions.assertEquals(List.of(texts.get("nav.mods"), texts.get("nav.run"), texts.get("nav.settings")), sections, "no Accounts tab");
+            Assertions.assertEquals(List.of(texts.get("nav.mods"), texts.get("nav.run"), texts.get("nav.chat"), texts.get("nav.settings")), sections,
+                                    "no Accounts tab");
             Assertions.assertSame(account, LauncherFxScenario.findButton(bar, TAGGED_NAME));
             Assertions.assertNotNull(account.getGraphic(), "the account shows its status");
             assertAtRightEnd(bar, account);
@@ -286,6 +298,54 @@ final class LauncherShellTest {
             } else {
                 Assertions.assertEquals(viewport, content, TOLERANCE, "a shorter screen fills the space");
             }
+
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
+    void mods_list_keeps_the_regular_list_item(double scale, @NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
+        UiLanguage language = languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
+        InstallLayout install = InstallLayout.of(directory);
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+
+        try (InputStream icon = ThemeUtils.class.getResourceAsStream(ThemeUtils.SC4J_LOGO)) {
+            Assertions.assertNotNull(icon);
+            entries.put(TestJarUtils.MANIFEST_ENTRY, MANIFEST.getBytes(StandardCharsets.UTF_8));
+            entries.put(ICON_ENTRY, icon.readAllBytes());
+        }
+
+        Files.createDirectories(install.getModsDirectory());
+        TestJarUtils.write(install.getModsDirectory().resolve(JAR_NAME), entries);
+        TestJarUtils.write(install.getModsDirectory().resolve(SECOND_JAR_NAME),
+                           Map.of(TestJarUtils.MANIFEST_ENTRY, SECOND_MANIFEST.getBytes(StandardCharsets.UTF_8)));
+
+        ModCatalog catalog = ModCatalog.scan(install, InstallationRecords.NONE);
+
+        LauncherFxScenario.run(() -> {
+            LauncherTexts texts = LauncherTexts.of(language);
+            LauncherShell shell = new LauncherShell(texts, install, scale, section -> {
+            }, () -> {
+            }, () -> {
+            });
+            ModsScreen screen = new ModsScreen(install, catalog, texts, scale, new SimpleBooleanProperty(false), new NoActions());
+            Scene scene = new Scene(shell.getRoot(), SCENE_WIDTH, SCENE_HEIGHT);
+            ModEntry entry = catalog.findByJarName(JAR_NAME);
+
+            Assertions.assertNotNull(entry);
+            shell.show(LauncherShell.Section.MODS, screen.getRoot());
+            screen.select(entry);
+            ThemeUtils.apply(scene, language);
+            shell.getRoot().applyCss();
+            shell.getRoot().layout();
+
+            ListView<?> list = (ListView<?>) shell.getRoot().lookup(".list-view");
+            ListCell<?> cell = (ListCell<?>) list.lookup(".list-cell");
+
+            Assertions.assertFalse(list.getStyleClass().contains(COMPACT_LIST_STYLE_CLASS));
+            Assertions.assertEquals(REGULAR_CELL_PADDING, cell.getPadding().getTop(), TOLERANCE);
+            LauncherFxScenario.saveSample(shell.getRoot(), scale, "mods-list-" + Math.round(scale * PERCENT_SCALE) + "-" + language.getCode());
 
             return null;
         });

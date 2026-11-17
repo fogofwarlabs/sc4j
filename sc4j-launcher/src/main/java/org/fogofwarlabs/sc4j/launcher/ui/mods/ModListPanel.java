@@ -1,11 +1,7 @@
 package org.fogofwarlabs.sc4j.launcher.ui.mods;
 
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
-import javafx.scene.image.Image;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModCatalog;
@@ -13,10 +9,9 @@ import org.fogofwarlabs.sc4j.launcher.catalog.ModEntry;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModIssue;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModStatus;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
-import org.fogofwarlabs.sc4j.launcher.ui.ComponentUtils;
+import org.fogofwarlabs.sc4j.launcher.ui.*;
 import org.fogofwarlabs.sc4j.manifest.ModManifest;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
 
@@ -25,61 +20,7 @@ import java.util.function.Consumer;
  * warning or error, and the status badge. The footer opens the folder, scans it again and installs a mod.
  */
 public final class ModListPanel {
-    private static final double PANEL_WIDTH = 360;
-    private static final double ICON_SIZE = 44;
-    private static final double ISSUE_WIDTH = 200;
     private static final @NotNull String SEPARATOR = " | ";
-
-    /**
-     * Shows one mod of the list.
-     */
-    private final class ModCell extends ListCell<ModEntry> {
-        /**
-         * Updates the item associated with this cell.
-         *
-         * @param entry the new item for the cell
-         * @param empty whether or not this cell represents data from the list
-         */
-        @Override
-        protected void updateItem(@Nullable ModEntry entry, boolean empty) {
-            super.updateItem(entry, empty);
-
-            if (empty || entry == null) {
-                this.setText(null);
-                this.setGraphic(null);
-
-                return;
-            }
-
-            ModManifest manifest = entry.getManifest();
-            VBox text = ComponentUtils.column(ComponentUtils.Spacing.XS,
-                                              ComponentUtils.label(ModArt.getName(entry, ModListPanel.this.texts), "list-title"));
-
-            if (manifest != null) {
-                String identity = manifest.getId() + SEPARATOR + manifest.getVersion() + SEPARATOR + String.join(", ", manifest.getAuthors());
-
-                text.getChildren().add(ComponentUtils.label(identity, "text-caption"));
-            } else {
-                text.getChildren().add(ComponentUtils.label(ModListPanel.this.texts.get("mods.no.manifest"), "text-caption"));
-            }
-
-            if (!entry.getIssues().isEmpty()) {
-                ModIssue issue = entry.getIssues().getFirst();
-                Label reason = ComponentUtils.label(issue.describe(ModListPanel.this.texts), "text-caption",
-                                                    issue.getStatus() == ModStatus.ERROR ? "text-danger" : "text-warning");
-
-                reason.setMaxWidth(ISSUE_WIDTH);
-                text.getChildren().add(reason);
-            }
-
-            Image icon = ModListPanel.this.art.getIcon(entry, ICON_SIZE);
-            HBox graphic = ComponentUtils.row(ComponentUtils.Spacing.M, ComponentUtils.thumbnail(icon, ICON_SIZE, ICON_SIZE), text,
-                                              ComponentUtils.growingSpacer(), ComponentUtils.statusBadge(entry.getStatus(), ModListPanel.this.texts));
-
-            ComponentUtils.setCellGraphic(this, graphic);
-        }
-    }
-
 
     private final @NotNull LauncherTexts texts;
     private final @NotNull ModArt art;
@@ -99,17 +40,16 @@ public final class ModListPanel {
      */
     public ModListPanel(@NotNull ModCatalog catalog, @NotNull LauncherTexts texts, @NotNull ModArt art, @NotNull Consumer<@NotNull ModEntry> onSelect,
                         @NotNull Runnable onOpenFolder, @NotNull Runnable onRefresh, @NotNull Runnable onInstall) {
-        Button openFolder = ComponentUtils.smallButton(texts.get("mods.open.folder"), ComponentUtils.ButtonRole.SECONDARY);
-        Button refresh = ComponentUtils.smallButton(texts.get("mods.refresh"), ComponentUtils.ButtonRole.SECONDARY);
-        Button install = ComponentUtils.smallButton(texts.get("mods.install"), ComponentUtils.ButtonRole.SECONDARY);
-        VBox body;
+        Button openFolder = ComponentUtils.smallButton(texts.get("mods.open.folder"), ButtonRole.SECONDARY);
+        Button refresh = ComponentUtils.smallButton(texts.get("mods.refresh"), ButtonRole.SECONDARY);
+        Button install = ComponentUtils.smallButton(texts.get("mods.install"), ButtonRole.SECONDARY);
 
         this.texts = texts;
         this.art   = art;
-        this.list  = new ListView<>();
+        this.list  = ComponentUtils.listView(ListItemSize.REGULAR);
 
         this.list.getItems().setAll(catalog.getEntries());
-        this.list.setCellFactory(view -> new ModCell());
+        this.list.setCellFactory(view -> new ListItemCell<>(this::createItem));
         this.list.setPlaceholder(ComponentUtils.paragraph(texts.format("mods.empty", catalog.getModsDirectory()), "text-caption"));
         this.list.getSelectionModel().selectedItemProperty().addListener((observable, previous, current) -> {
             if (current != null) {
@@ -122,12 +62,9 @@ public final class ModListPanel {
         refresh.setOnAction(event -> onRefresh.run());
         install.setOnAction(event -> onInstall.run());
 
-        body      = ComponentUtils.flushPanelBody(this.list);
-        this.root = ComponentUtils.panel(texts.get("mods.title"), body);
-        this.root.getChildren().add(ComponentUtils.panelFooter(openFolder, ComponentUtils.growingSpacer(), refresh, install));
-        this.root.setPrefWidth(PANEL_WIDTH);
-        this.root.setMinWidth(PANEL_WIDTH);
-        this.root.setMaxHeight(Double.MAX_VALUE);
+        this.root = ComponentUtils.panelWithFooter(texts.get("mods.title"), ComponentUtils.flushPanelBody(this.list),
+                                                   ComponentUtils.panelFooter(openFolder, ComponentUtils.growingSpacer(), refresh, install));
+        ComponentUtils.setColumnWidth(this.root, ColumnWidth.WIDE);
     }
 
     /**
@@ -145,5 +82,27 @@ public final class ModListPanel {
     public void select(@NotNull ModEntry entry) {
         this.list.getSelectionModel().select(entry);
         this.list.scrollTo(entry);
+    }
+
+    /**
+     * Creates the list item of a mod: its icon, its name over its id, version and authors and its first issue, and its status badge.
+     */
+    private @NotNull ListItem createItem(@NotNull ModEntry entry) {
+        ModManifest manifest = entry.getManifest();
+        ListItem item = new ListItem(ModArt.getName(entry, this.texts)).setThumbnail(this.art.getIcon(entry, ListItem.THUMBNAIL_SIZE.getSize()));
+
+        if (manifest != null) {
+            item.addCaption(manifest.getId() + SEPARATOR + manifest.getVersion() + SEPARATOR + String.join(", ", manifest.getAuthors()));
+        } else {
+            item.addCaption(this.texts.get("mods.no.manifest"));
+        }
+
+        if (!entry.getIssues().isEmpty()) {
+            ModIssue issue = entry.getIssues().getFirst();
+
+            item.addCaption(issue.describe(this.texts), issue.getStatus() == ModStatus.ERROR ? "text-danger" : "text-warning");
+        }
+
+        return item.setBadge(ModStatusUtils.createBadge(entry.getStatus(), this.texts));
     }
 }

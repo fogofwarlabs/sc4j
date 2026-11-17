@@ -92,7 +92,7 @@ public final class PlayerPresence {
      * @return the player's display name with its tag, {@code Name#abcd12}, which tells players of equal names apart
      */
     public @NotNull String getTaggedName() {
-        return this.name + "#" + this.player.getTag();
+        return this.player.formatTaggedName(this.name);
     }
 
     /**

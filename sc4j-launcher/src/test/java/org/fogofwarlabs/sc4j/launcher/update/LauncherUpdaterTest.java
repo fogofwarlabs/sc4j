@@ -1,6 +1,11 @@
 package org.fogofwarlabs.sc4j.launcher.update;
 
-import org.fogofwarlabs.sc4j.launcher.release.*;
+import org.fogofwarlabs.sc4j.catalog.ReleaseVersion;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseClient;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository;
+import org.fogofwarlabs.sc4j.catalog.test.ReleaseServerScenario;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
@@ -28,9 +33,9 @@ final class LauncherUpdaterTest {
 
     @Test
     void is_automatic_check_allowed_should_hold_for_release_builds_only() {
-        Assertions.assertTrue(LauncherUpdater.isAutomaticCheckAllowed("1.0.0"));
-        Assertions.assertFalse(LauncherUpdater.isAutomaticCheckAllowed("1.1.0-SNAPSHOT"));
-        Assertions.assertFalse(LauncherUpdater.isAutomaticCheckAllowed("development"));
+        Assertions.assertTrue(LauncherUpdater.isAutomaticCheckAllowed(ReleaseVersion.parse("1.0.0")));
+        Assertions.assertFalse(LauncherUpdater.isAutomaticCheckAllowed(ReleaseVersion.parse("1.1.0-SNAPSHOT")));
+        Assertions.assertFalse(LauncherUpdater.isAutomaticCheckAllowed(ReleaseVersion.parse("development")));
     }
 
     @Test
@@ -40,15 +45,15 @@ final class LauncherUpdaterTest {
             LauncherRelease release;
 
             server.addCheckedRelease(REPOSITORY, TAG, Map.of(PACKAGE_FILE, UserPackageScenario.createZip(PACKAGE, Map.of())));
-            release = updater.findUpdate(requireRepository(), "1.1.0");
+            release = updater.findUpdate(requireRepository(), ReleaseVersion.parse("1.1.0"));
 
             Assertions.assertNotNull(release);
             Assertions.assertEquals("1.2.0", release.getVersion().toString());
             Assertions.assertEquals(PACKAGE_FILE, release.getPackageFile().getName());
-            Assertions.assertNull(updater.findUpdate(requireRepository(), "1.2.0"));
-            Assertions.assertNull(updater.findUpdate(requireRepository(), "1.3.0"));
-            Assertions.assertNotNull(updater.findUpdate(requireRepository(), "1.2.0-SNAPSHOT"));
-            Assertions.assertNotNull(updater.findUpdate(requireRepository(), "development"));
+            Assertions.assertNull(updater.findUpdate(requireRepository(), ReleaseVersion.parse("1.2.0")));
+            Assertions.assertNull(updater.findUpdate(requireRepository(), ReleaseVersion.parse("1.3.0")));
+            Assertions.assertNotNull(updater.findUpdate(requireRepository(), ReleaseVersion.parse("1.2.0-SNAPSHOT")));
+            Assertions.assertNotNull(updater.findUpdate(requireRepository(), ReleaseVersion.parse("development")));
         }
     }
 
@@ -59,7 +64,7 @@ final class LauncherUpdaterTest {
             ReleaseException exception;
 
             server.addRelease(REPOSITORY, TAG, Map.of(PACKAGE_FILE, UserPackageScenario.createZip(PACKAGE, Map.of())));
-            exception = Assertions.assertThrows(ReleaseException.class, () -> updater.findUpdate(requireRepository(), "1.1.0"));
+            exception = Assertions.assertThrows(ReleaseException.class, () -> updater.findUpdate(requireRepository(), ReleaseVersion.parse("1.1.0")));
 
             Assertions.assertEquals(ReleaseProblem.ASSET_MISSING, exception.getProblem());
         }
@@ -136,20 +141,18 @@ final class LauncherUpdaterTest {
             LauncherUpdater updater = new LauncherUpdater(InstallLayout.of(directory), new ReleaseClient(server.getApi()));
             LauncherRelease release;
             Path packageFile;
-            ReleaseException exception;
 
             server.addCheckedRelease(REPOSITORY, TAG, Map.of(PACKAGE_FILE, zip));
             release     = requireUpdate(updater);
             packageFile = updater.download(release, share -> {
             });
-            exception   = Assertions.assertThrows(ReleaseException.class, () -> updater.unpack(release, packageFile));
 
-            Assertions.assertEquals(ReleaseProblem.INVALID_PACKAGE, exception.getProblem());
+            Assertions.assertThrows(InvalidPackageException.class, () -> updater.unpack(release, packageFile));
         }
     }
 
     private static @NotNull LauncherRelease requireUpdate(@NotNull LauncherUpdater updater) throws ReleaseException {
-        LauncherRelease release = updater.findUpdate(requireRepository(), "1.1.0");
+        LauncherRelease release = updater.findUpdate(requireRepository(), ReleaseVersion.parse("1.1.0"));
 
         Assertions.assertNotNull(release);
 

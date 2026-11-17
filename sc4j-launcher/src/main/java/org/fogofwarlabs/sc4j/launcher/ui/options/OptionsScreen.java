@@ -14,8 +14,7 @@ import org.fogofwarlabs.sc4j.launcher.nodes.NodeEntryProblem;
 import org.fogofwarlabs.sc4j.launcher.nodes.NodeListEditor;
 import org.fogofwarlabs.sc4j.launcher.nodes.NodePingResult;
 import org.fogofwarlabs.sc4j.launcher.peer.LauncherNodeRunner;
-import org.fogofwarlabs.sc4j.launcher.ui.ComponentUtils;
-import org.fogofwarlabs.sc4j.launcher.ui.ThemeUtils;
+import org.fogofwarlabs.sc4j.launcher.ui.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -35,9 +34,7 @@ public final class OptionsScreen {
     /**
      * The width of a port field.
      */
-    static final double PORT_WIDTH = 120;
 
-    private static final double LANGUAGE_WIDTH = 260;
     private static final @NotNull String LANGUAGE_NAME_KEY_PREFIX = "language.";
     private static final @NotNull String MESSAGE_SEPARATOR = " ";
 
@@ -100,49 +97,12 @@ public final class OptionsScreen {
     }
 
     /**
-     * Shows one node of the list: its address and the result of the last ping.
-     */
-    private final class NodeCell extends ListCell<ConfiguredNode> {
-        /**
-         * Updates the item associated with this cell.
-         *
-         * @param node  the new item for the cell
-         * @param empty whether or not this cell represents data from the list
-         */
-        @Override
-        protected void updateItem(@Nullable ConfiguredNode node, boolean empty) {
-            super.updateItem(node, empty);
-
-            if (empty || node == null) {
-                this.setText(null);
-                this.setGraphic(null);
-
-                return;
-            }
-
-            NodePingResult result = OptionsScreen.this.pingResults.get(node);
-            ComponentUtils.Tone tone = OptionsScreen.this.getPingTone(result);
-            VBox text = ComponentUtils.column(ComponentUtils.Spacing.XS, ComponentUtils.label(node.toString(), "list-title", "text-mono"));
-            HBox graphic = ComponentUtils.row(ComponentUtils.Spacing.M, ComponentUtils.statusMarker(tone), text);
-
-            if (result != null) {
-                text.getChildren().add(ComponentUtils.label(OptionsScreen.this.texts.describeNodePing(result), "text-caption",
-                                                            getToneStyle(tone)));
-            } else if (OptionsScreen.this.pinging) {
-                text.getChildren().add(ComponentUtils.label(OptionsScreen.this.texts.get("nodes.ping.running"), "text-caption"));
-            }
-
-            ComponentUtils.setCellGraphic(this, graphic);
-        }
-    }
-
-    /**
      * Returns the text style of a colour role.
      *
      * @param tone the colour role
      * @return the style class of a caption text in that colour
      */
-    static @NotNull String getToneStyle(@NotNull ComponentUtils.Tone tone) {
+    static @NotNull String getToneStyle(@NotNull Tone tone) {
         return switch (tone) {
             case SUCCESS -> "text-success";
             case WARNING -> "text-warning";
@@ -186,15 +146,15 @@ public final class OptionsScreen {
         this.texts     = texts;
         this.actions   = actions;
         this.editor    = new NodeListEditor(nodes);
-        this.nodeList  = new ListView<>();
+        this.nodeList  = ComponentUtils.listView(ListItemSize.REGULAR);
         this.host      = new TextField();
         this.port      = new TextField();
         this.message   = ComponentUtils.label("", "field-message");
         this.nodeCount = ComponentUtils.label(texts.formatCount("nodes.count", nodes.size()), "text-caption");
-        this.ping      = ComponentUtils.smallButton(texts.get("nodes.ping"), ComponentUtils.ButtonRole.SECONDARY);
+        this.ping      = ComponentUtils.smallButton(texts.get("nodes.ping"), ButtonRole.SECONDARY);
 
         this.nodeList.getItems().setAll(nodes);
-        this.nodeList.setCellFactory(view -> new NodeCell());
+        this.nodeList.setCellFactory(view -> new ListItemCell<>(this::createNodeItem));
         this.nodeList.setPlaceholder(ComponentUtils.paragraph(texts.get("nodes.empty"), "text-caption"));
         this.nodeList.getSelectionModel().selectedItemProperty().addListener((observable, previous, current) -> {
             if (current != null) {
@@ -207,7 +167,7 @@ public final class OptionsScreen {
         nodesPanel = this.createNodesPanel(nodesLoadProblem);
         VBox.setVgrow(nodesPanel, Priority.ALWAYS);
 
-        this.root = ComponentUtils.column(ComponentUtils.Spacing.L, this.createLauncherPanel(language, updateView),
+        this.root = ComponentUtils.column(Spacing.L, this.createLauncherPanel(language, updateView),
                                           new BeaconLinkPanel(texts, nodeRunner, nodesPanel).getRoot(), nodesPanel);
 
         this.pingResults = new HashMap<>();
@@ -238,7 +198,7 @@ public final class OptionsScreen {
     }
 
     private @NotNull VBox createLauncherPanel(@Nullable UiLanguage language, @NotNull UpdateView updateView) {
-        ComboBox<LanguageOption> choice = ComponentUtils.comboBox(LANGUAGE_WIDTH);
+        ComboBox<LanguageOption> choice = ComponentUtils.comboBox(ControlWidth.M);
         UiLanguage system = UiLanguage.select(null, Locale.getDefault());
         LanguageOption systemOption = new LanguageOption(null, this.texts.format("language.system", this.getLanguageName(system)));
         HBox row;
@@ -262,7 +222,7 @@ public final class OptionsScreen {
             }
         });
 
-        row = ComponentUtils.row(ComponentUtils.Spacing.XL, ComponentUtils.field(this.texts.get("settings.language"), choice), updateView.getRoot());
+        row = ComponentUtils.row(Spacing.XL, ComponentUtils.field(this.texts.get("settings.language"), choice), updateView.getRoot());
         row.setAlignment(Pos.BOTTOM_LEFT);
 
         return ComponentUtils.panel(this.texts.get("settings.launcher"), ComponentUtils.panelBody(row));
@@ -279,14 +239,14 @@ public final class OptionsScreen {
         if (nodesLoadProblem != null) {
             String problem = this.texts.describeNodeListProblem(nodesLoadProblem);
 
-            body.getChildren().addFirst(ComponentUtils.notice(ComponentUtils.Tone.DANGER, this.texts.format("nodes.load.failed", problem)));
+            body.getChildren().addFirst(ComponentUtils.notice(Tone.DANGER, this.texts.format("nodes.load.failed", problem)));
         }
 
         this.ping.setDisable(this.editor.getNodes().isEmpty());
         this.ping.setOnAction(event -> this.pingNodes());
-        panel = ComponentUtils.panel(this.texts.get("nodes.title"), body, this.nodeCount, this.ping);
-        panel.getChildren().add(ComponentUtils.panelFooter(this.createEditor()));
-        panel.setMaxHeight(Double.MAX_VALUE);
+        panel = ComponentUtils.panelWithFooter(this.texts.get("nodes.title"), body, ComponentUtils.panelFooter(this.createEditor()),
+                                               this.nodeCount, this.ping);
+        ComponentUtils.fillHeight(panel);
 
         return panel;
     }
@@ -294,17 +254,16 @@ public final class OptionsScreen {
     private @NotNull VBox createEditor() {
         VBox hostField = ComponentUtils.field(this.texts.get("nodes.host"), this.host);
         VBox portField = ComponentUtils.field(this.texts.get("nodes.port"), this.port);
-        Button add = ComponentUtils.button(this.texts.get("nodes.add"), ComponentUtils.ButtonRole.PRIMARY);
-        Button update = ComponentUtils.button(this.texts.get("nodes.update"), ComponentUtils.ButtonRole.SECONDARY);
-        Button remove = ComponentUtils.button(this.texts.get("nodes.remove"), ComponentUtils.ButtonRole.DANGER);
-        Button moveUp = ComponentUtils.button(this.texts.get("nodes.move.up"), ComponentUtils.ButtonRole.SECONDARY);
-        Button moveDown = ComponentUtils.button(this.texts.get("nodes.move.down"), ComponentUtils.ButtonRole.SECONDARY);
-        HBox fields = ComponentUtils.row(ComponentUtils.Spacing.S, hostField, portField);
-        HBox buttons = ComponentUtils.row(ComponentUtils.Spacing.S, add, update, remove, ComponentUtils.growingSpacer(), moveUp, moveDown);
-        VBox editorView = ComponentUtils.column(ComponentUtils.Spacing.S, fields, buttons, this.message);
+        Button add = ComponentUtils.button(this.texts.get("nodes.add"), ButtonRole.PRIMARY);
+        Button update = ComponentUtils.button(this.texts.get("nodes.update"), ButtonRole.SECONDARY);
+        Button remove = ComponentUtils.button(this.texts.get("nodes.remove"), ButtonRole.DANGER);
+        Button moveUp = ComponentUtils.button(this.texts.get("nodes.move.up"), ButtonRole.SECONDARY);
+        Button moveDown = ComponentUtils.button(this.texts.get("nodes.move.down"), ButtonRole.SECONDARY);
+        HBox fields = ComponentUtils.row(Spacing.S, hostField, portField);
+        HBox buttons = ComponentUtils.row(Spacing.S, add, update, remove, ComponentUtils.growingSpacer(), moveUp, moveDown);
+        VBox editorView = ComponentUtils.column(Spacing.S, fields, buttons, this.message);
 
-        this.port.setPrefWidth(PORT_WIDTH);
-        this.port.setMaxWidth(PORT_WIDTH);
+        ComponentUtils.setControlWidth(this.port, ControlWidth.S);
         this.message.setWrapText(true);
         this.message.setVisible(false);
         this.message.setManaged(false);
@@ -360,15 +319,32 @@ public final class OptionsScreen {
         this.actions.onPingNodes(nodes, this::showPingResults);
     }
 
-    private @NotNull ComponentUtils.Tone getPingTone(@Nullable NodePingResult result) {
+    /**
+     * Creates the list item of a node: its address and the result of the last ping.
+     */
+    private @NotNull ListItem createNodeItem(@NotNull ConfiguredNode node) {
+        NodePingResult result = this.pingResults.get(node);
+        Tone tone = this.getPingTone(result);
+        ListItem item = new ListItem(node.toString()).setMonospaced().setMarker(tone);
+
+        if (result != null) {
+            item.addCaption(this.texts.describeNodePing(result), getToneStyle(tone));
+        } else if (this.pinging) {
+            item.addCaption(this.texts.get("nodes.ping.running"));
+        }
+
+        return item;
+    }
+
+    private @NotNull Tone getPingTone(@Nullable NodePingResult result) {
         if (result == null) {
-            return this.pinging ? ComponentUtils.Tone.ACCENT : ComponentUtils.Tone.NEUTRAL;
+            return this.pinging ? Tone.ACCENT : Tone.NEUTRAL;
         }
 
         return switch (result.getStatus()) {
-            case REACHABLE -> ComponentUtils.Tone.SUCCESS;
-            case NOT_ANSWERING, UNRESOLVED -> ComponentUtils.Tone.WARNING;
-            case FAILED -> ComponentUtils.Tone.DANGER;
+            case REACHABLE -> Tone.SUCCESS;
+            case NOT_ANSWERING, UNRESOLVED -> Tone.WARNING;
+            case FAILED -> Tone.DANGER;
         };
     }
 

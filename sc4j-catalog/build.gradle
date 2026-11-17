@@ -1,0 +1,14 @@
+plugins {
+    id 'java-library'
+    // The local stand-in for GitHub of the catalog, launcher and runtime tests (ReleaseServerScenario).
+    id 'java-test-fixtures'
+    id 'org.fogofwarlabs.sc4j.java'
+}
+
+// The reader of what is published, shared by the launcher and the runtime: the GitHub release reader (repository names, the latest release
+// with its files, downloads kept only when their checksum matches), release versions, the check for a newer release, and the mod catalog.
+// It uses the JDK's HTTP client, the generic base and the manifest's localized texts only.
+dependencies {
+    api project(':sc4j-base')
+    api project(':sc4j-mod-manifest')
+}

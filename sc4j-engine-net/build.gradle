@@ -1,10 +1,14 @@
 plugins {
     id 'java-library'
+    // The Beacon.Link session and community part played by hand (engine.net.beaconlink.community: RecordingBeaconLink,
+    // RecordingCommunitySession) that the tests of the channel chat and of the community screens of the engine and the mods share.
+    id 'java-test-fixtures'
     id 'org.fogofwarlabs.sc4j.java'
 }
 
-// The engine network layer: datagram links and the lockstep transport over them, LAN room discovery, the network lobby and the Beacon.Link
-// interface that the runtime gives a mod (engine.net.beaconlink). No client and no mod API.
+// The engine network layer: datagram links and the lockstep transport over them, LAN room discovery, the network lobby, the Beacon.Link
+// interface that the runtime gives a mod (engine.net.beaconlink) and the channel chat over it (engine.net.beaconlink.community), which the
+// launcher uses too. No client and no mod API.
 dependencies {
     api project(':sc4j-engine-sim')
 

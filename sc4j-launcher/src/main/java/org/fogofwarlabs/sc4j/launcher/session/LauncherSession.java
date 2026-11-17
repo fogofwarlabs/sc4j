@@ -15,6 +15,9 @@ import org.fogofwarlabs.sc4j.engine.net.beaconlink.BeaconLinkSession;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkFailure;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.*;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChannelChat;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntry;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.fogofwarlabs.sc4j.manifest.version.EngineVersion;
 import org.fogofwarlabs.sc4j.manifest.version.ModVersion;
@@ -33,6 +36,13 @@ import java.util.function.Consumer;
  * Runs the Beacon.Link session of the logged-in account in the launcher: one connection of the account, beside the account's games and
  * other devices, that shows the account "in the launcher" (presence mod id {@value BeaconLink#LAUNCHER_MOD_ID}) to its friends.
  * <p>
+ * Its chat is the engine's channel chat ({@link ChannelChat}), which the Chat screen opens once: it joins the shared channel
+ * {@value ChannelChat#SHARED_CHANNEL}, keeps up to {@value CommunitySession#MAXIMUM_CHANNELS} channels and lists the channels of the launcher
+ * users.
+ * <p>
+ * The whispers are recorded once, from the community's whisper events: those the account menu and the Chat screen send, with their outcome,
+ * and those the account receives, whichever screen is open. The chat's own whisper entries are not kept; its notices after a whisper are.
+ * <p>
  * The session is the client the games use ({@link ClientBeaconLink}), without an embedded peer, since the launcher's node is the computer's
  * peer. It runs on a thread of its own, single-threaded as the client requires: the thread uses the account (a shared use of
  * {@link AccountLock}, so that the account cannot be deleted meanwhile), opens the session, then polls it, carries out the commands the
@@ -41,12 +51,16 @@ import java.util.function.Consumer;
  * that expires within seconds and unregisters, the learned nodes are merged into the shared peers file and the account is released.
  */
 public final class LauncherSession implements LauncherSessionView {
+    /**
+     * The most chat entries the session keeps: the chat's history for each channel it can be in.
+     */
+    public static final int MAXIMUM_CHAT_ENTRIES = ChannelChat.HISTORY * CommunitySession.MAXIMUM_CHANNELS;
+
     private static final @NotNull Logger LOGGER = Logger.of(LauncherSession.class);
     private static final @NotNull String THREAD_NAME = "sc4j-launcher-session";
     private static final long POLL_MILLIS = 20L;
     private static final int MAXIMUM_WHISPERS = 100;
     private static final @NotNull ModVersion DEVELOPMENT_VERSION = ModVersion.parse("0.0.0-development");
-    private static final @NotNull String TAG_SEPARATOR = "#";
     private static final @NotNull Comparator<@NotNull FriendView> FRIEND_ORDER =
             Comparator.comparing((FriendView friend) -> friend.getState() == FriendState.OFFLINE)
                       .thenComparing(FriendView::getTaggedName, String.CASE_INSENSITIVE_ORDER);
@@ -108,10 +122,22 @@ public final class LauncherSession implements LauncherSessionView {
          */
         @Override
         public void onWhisperResult(@NotNull Whisper whisper, @NotNull WhisperResult result) {
+            WhisperState state = result == WhisperResult.DELIVERED ? WhisperState.DELIVERED : WhisperState.NOT_DELIVERED;
+            boolean recorded = false;
+
             for (WhisperEntry entry : LauncherSession.this.whispers) {
                 if (entry.sent == whisper) {
-                    entry.state = result == WhisperResult.DELIVERED ? WhisperState.DELIVERED : WhisperState.NOT_DELIVERED;
+                    entry.state = state;
+                    recorded    = true;
                 }
+            }
+
+            // A whisper the chat sent ("/w", "/r") shows from its outcome on.
+            if (!recorded) {
+                FriendCode target = FriendCode.of(whisper.getOther().getKey());
+                String name = LauncherSession.this.names.getOrDefault(target, whisper.getTaggedOtherName());
+
+                LauncherSession.this.addWhisper(new WhisperEntry(target, name, whisper.getText(), whisper.getTimestampMillis(), whisper, state));
             }
         }
     }
@@ -188,6 +214,16 @@ public final class LauncherSession implements LauncherSessionView {
         };
     }
 
+    private static @Nullable ChatChannel findChannel(@NotNull ChannelChat chat, @NotNull String name) {
+        for (ChatChannel joined : chat.getChannels()) {
+            if (joined.getName().equals(name)) {
+                return joined;
+            }
+        }
+
+        return null;
+    }
+
     private static @NotNull FriendState toFriendState(@NotNull PlayerPresence presence) {
         return switch (presence.getStatus()) {
             case AVAILABLE -> BeaconLink.LAUNCHER_MOD_ID.equals(presence.getModId()) ? FriendState.IN_LAUNCHER : FriendState.ONLINE;
@@ -207,17 +243,25 @@ public final class LauncherSession implements LauncherSessionView {
 
     private final @NotNull Map<@NotNull FriendCode, @NotNull String> names;
     private final @NotNull List<@NotNull WhisperEntry> whispers;
+    private final @NotNull List<@NotNull ChatEntryView> chatEntries;
     private @Nullable BeaconLinkSession connection;
     private @Nullable CommunitySession community;
+    private @Nullable ChannelChat chat;
     private @NotNull SelfStatus status;
     private @NotNull String awayText;
     private @NotNull SelfView lastSelf;
     private @NotNull List<@NotNull FriendView> lastFriends;
     private @NotNull List<@NotNull WhisperView> lastWhispers;
+    private @NotNull List<@NotNull ChannelView> lastChannels;
+    private @NotNull List<@NotNull ChannelView> lastKnownChannels;
+    private @NotNull List<@NotNull ChatEntryView> lastChatEntries;
 
     private volatile @NotNull SelfView self;
     private volatile @NotNull List<@NotNull FriendView> friends;
     private volatile @NotNull List<@NotNull WhisperView> whisperViews;
+    private volatile @NotNull List<@NotNull ChannelView> channels;
+    private volatile @NotNull List<@NotNull ChannelView> knownChannels;
+    private volatile @NotNull List<@NotNull ChatEntryView> chatEntryViews;
     private volatile @Nullable Runnable listener;
     private volatile boolean closed;
 
@@ -229,21 +273,29 @@ public final class LauncherSession implements LauncherSessionView {
         this.commands   = new LinkedBlockingQueue<>();
         this.thread     = new Thread(this::run, THREAD_NAME);
 
-        this.names        = new HashMap<>();
-        this.whispers     = new ArrayList<>();
-        this.connection   = null;
-        this.community    = null;
-        this.status       = SelfStatus.ONLINE;
-        this.awayText     = "";
-        this.lastSelf     = new SelfView(SessionState.CONNECTING, SelfStatus.ONLINE, "", 0, null);
-        this.lastFriends  = List.of();
-        this.lastWhispers = List.of();
+        this.names             = new HashMap<>();
+        this.whispers          = new ArrayList<>();
+        this.chatEntries       = new ArrayList<>();
+        this.connection        = null;
+        this.community         = null;
+        this.chat              = null;
+        this.status            = SelfStatus.ONLINE;
+        this.awayText          = "";
+        this.lastSelf          = new SelfView(SessionState.CONNECTING, SelfStatus.ONLINE, "", 0, null);
+        this.lastFriends       = List.of();
+        this.lastWhispers      = List.of();
+        this.lastChannels      = List.of();
+        this.lastKnownChannels = List.of();
+        this.lastChatEntries   = List.of();
 
-        this.self         = this.lastSelf;
-        this.friends      = this.lastFriends;
-        this.whisperViews = this.lastWhispers;
-        this.listener     = null;
-        this.closed       = false;
+        this.self           = this.lastSelf;
+        this.friends        = this.lastFriends;
+        this.whisperViews   = this.lastWhispers;
+        this.channels       = this.lastChannels;
+        this.knownChannels  = this.lastKnownChannels;
+        this.chatEntryViews = this.lastChatEntries;
+        this.listener       = null;
+        this.closed         = false;
 
         this.thread.setDaemon(true);
     }
@@ -279,6 +331,33 @@ public final class LauncherSession implements LauncherSessionView {
     @Override
     public @NotNull List<@NotNull WhisperView> getWhispers() {
         return this.whisperViews;
+    }
+
+    /**
+     * @return the channels the account's chat is in, in the order it joined them, with their members; empty until {@link #openChat} and while
+     * the session runs no connection
+     */
+    @Override
+    public @NotNull List<@NotNull ChannelView> getChannels() {
+        return this.channels;
+    }
+
+    /**
+     * @return the channels the session knows of among the launcher users and the channels the chat is in, the most members first, without
+     * members; empty until {@link #openChat}
+     */
+    @Override
+    public @NotNull List<@NotNull ChannelView> getKnownChannels() {
+        return this.knownChannels;
+    }
+
+    /**
+     * @return the entries of the account's chat, the oldest first: the lines, notices and command answers of every channel it is in, without
+     * whispers ({@link #getWhispers()}); the oldest give way after {@value #MAXIMUM_CHAT_ENTRIES}
+     */
+    @Override
+    public @NotNull List<@NotNull ChatEntryView> getChatEntries() {
+        return this.chatEntryViews;
     }
 
     /**
@@ -373,6 +452,71 @@ public final class LauncherSession implements LauncherSessionView {
     }
 
     /**
+     * Opens the account's chat once: it joins the shared channel and keeps up to {@value CommunitySession#MAXIMUM_CHANNELS} channels; later
+     * calls do nothing. Does nothing while the session runs no connection.
+     *
+     * @param locale the locale of the chat's notices and command answers
+     */
+    @Override
+    public void openChat(@NotNull Locale locale) {
+        this.runOnCommunity(opened -> {
+            if (this.chat != null) {
+                return;
+            }
+
+            ChannelChat created = new ChannelChat(opened, locale, ChannelChat.SHARED_CHANNEL, true);
+
+            created.addLog(this::addChatEntry, false);
+            created.open(ChannelChat.SHARED_CHANNEL);
+
+            this.chat = created;
+        });
+    }
+
+    /**
+     * Joins a channel; the chat keeps the channels it is in. A refused name or the channel limit shows as an error entry.
+     *
+     * @param name the channel name
+     */
+    @Override
+    public void joinChannel(@NotNull String name) {
+        this.runOnChat(opened -> opened.join(name));
+    }
+
+    /**
+     * Leaves a channel the chat is in.
+     *
+     * @param channel the channel's name, as the chat joined it
+     */
+    @Override
+    public void leaveChannel(@NotNull String channel) {
+        this.runOnChat(opened -> {
+            ChatChannel joined = findChannel(opened, channel);
+
+            if (joined != null) {
+                opened.leave(joined);
+            }
+        });
+    }
+
+    /**
+     * Runs a line typed in a channel the chat is in: a slash command ({@code /help} lists them) or a line said in the channel.
+     *
+     * @param channel the channel's name, as the chat joined it
+     * @param text    the typed text
+     */
+    @Override
+    public void submitChat(@NotNull String channel, @NotNull String text) {
+        this.runOnChat(opened -> {
+            ChatChannel joined = findChannel(opened, channel);
+
+            if (joined != null) {
+                opened.submit(joined, text);
+            }
+        });
+    }
+
+    /**
      * Signs the account out on its other devices; this launcher stays logged in. Does nothing unless the session is
      * {@link SessionState#CONNECTED}.
      */
@@ -402,6 +546,32 @@ public final class LauncherSession implements LauncherSessionView {
                 LOGGER.warning("BEACON.LINK: the launcher session refused a command: {0}", exception.getMessage());
             }
         });
+    }
+
+    private void runOnChat(@NotNull Consumer<@NotNull ChannelChat> command) {
+        this.runOnCommunity(opened -> {
+            ChannelChat openedChat = this.chat;
+
+            if (openedChat != null) {
+                command.accept(openedChat);
+            }
+        });
+    }
+
+    private void addChatEntry(@NotNull ChatEntry entry) {
+        ChatChannel channel = entry.getChannel();
+        LinkPlayer player = entry.getPlayer();
+
+        if (entry.getKind() == ChatEntryKind.WHISPER) {
+            return;
+        }
+
+        if (this.chatEntries.size() >= MAXIMUM_CHAT_ENTRIES) {
+            this.chatEntries.removeFirst();
+        }
+
+        this.chatEntries.add(new ChatEntryView(entry.getKind(), entry.getPrefix(), entry.getText(), channel == null ? null : channel.getName(),
+                                               player == null ? null : FriendCode.of(player.getKey()), entry.getPlayerName()));
     }
 
     private void addWhisper(@NotNull WhisperEntry entry) {
@@ -438,6 +608,11 @@ public final class LauncherSession implements LauncherSessionView {
             Thread.currentThread().interrupt();
         } finally {
             BeaconLinkSession opened = this.connection;
+            ChannelChat openedChat = this.chat;
+
+            if (openedChat != null) {
+                openedChat.close();
+            }
 
             if (opened != null) {
                 opened.close();
@@ -503,6 +678,7 @@ public final class LauncherSession implements LauncherSessionView {
             opened.close();
             this.connection = null;
             this.community  = null;
+            this.chat       = null;
         }
     }
 
@@ -513,29 +689,40 @@ public final class LauncherSession implements LauncherSessionView {
         SelfView currentSelf = this.createSelf();
         List<FriendView> currentFriends = this.createFriends();
         List<WhisperView> currentWhispers = new ArrayList<>(this.whispers.size());
+        List<ChannelView> currentChannels = this.createChannels();
+        List<ChannelView> currentKnownChannels = this.createKnownChannels();
 
         for (WhisperEntry entry : this.whispers) {
             currentWhispers.add(entry.createView());
         }
 
-        if (currentSelf.equals(this.lastSelf) && currentFriends.equals(this.lastFriends) && currentWhispers.equals(this.lastWhispers)) {
+        if (currentSelf.equals(this.lastSelf) && currentFriends.equals(this.lastFriends) && currentWhispers.equals(this.lastWhispers) &&
+            currentChannels.equals(this.lastChannels) && currentKnownChannels.equals(this.lastKnownChannels) &&
+            this.chatEntries.equals(this.lastChatEntries)) {
             return;
         }
 
         List<WhisperView> publishedWhispers = List.copyOf(currentWhispers);
+        List<ChatEntryView> publishedChatEntries = List.copyOf(this.chatEntries);
 
-        this.lastSelf     = currentSelf;
-        this.lastFriends  = currentFriends;
-        this.lastWhispers = publishedWhispers;
+        this.lastSelf          = currentSelf;
+        this.lastFriends       = currentFriends;
+        this.lastWhispers      = publishedWhispers;
+        this.lastChannels      = currentChannels;
+        this.lastKnownChannels = currentKnownChannels;
+        this.lastChatEntries   = publishedChatEntries;
 
         this.publisher.execute(() -> {
             if (this.closed) {
                 return;
             }
 
-            this.self         = currentSelf;
-            this.friends      = currentFriends;
-            this.whisperViews = publishedWhispers;
+            this.self           = currentSelf;
+            this.friends        = currentFriends;
+            this.whisperViews   = publishedWhispers;
+            this.channels       = currentChannels;
+            this.knownChannels  = currentKnownChannels;
+            this.chatEntryViews = publishedChatEntries;
 
             Runnable changed = this.listener;
 
@@ -578,26 +765,75 @@ public final class LauncherSession implements LauncherSessionView {
         for (LinkPlayer player : openedCommunity.getFriends()) {
             FriendCode code = FriendCode.of(player.getKey());
             PlayerPresence presence = openedCommunity.getPresence(player);
-            boolean ignored = openedCommunity.isIgnored(player);
 
             if (presence == null) {
-                String name = this.names.getOrDefault(code, TAG_SEPARATOR + player.getTag());
+                String name = this.names.getOrDefault(code, player.getTagText());
 
-                created.add(new FriendView(code, name, FriendState.OFFLINE, null, "", 0, ignored));
+                created.add(new FriendView(code, name, FriendState.OFFLINE, null, "", 0, openedCommunity.isIgnored(player)));
 
                 continue;
             }
 
-            String modId = BeaconLink.LAUNCHER_MOD_ID.equals(presence.getModId()) ? null : presence.getModId();
-
-            this.names.put(code, presence.getTaggedName());
-            created.add(new FriendView(code, presence.getTaggedName(), toFriendState(presence), modId, presence.getAwayText(),
-                                       presence.getDeviceCount(), ignored));
+            created.add(this.createPlayerView(openedCommunity, presence));
         }
 
         created.sort(FRIEND_ORDER);
 
         return List.copyOf(created);
+    }
+
+    private @NotNull List<@NotNull ChannelView> createChannels() {
+        CommunitySession openedCommunity = this.community;
+        ChannelChat openedChat = this.chat;
+
+        if (openedCommunity == null || openedChat == null) {
+            return List.of();
+        }
+
+        List<ChannelView> created = new ArrayList<>();
+
+        for (ChatChannel joined : openedChat.getChannels()) {
+            List<FriendView> members = new ArrayList<>();
+
+            for (PlayerPresence member : openedChat.getMembers(joined)) {
+                PlayerPresence merged = openedCommunity.getPresence(member.getPlayer());
+
+                members.add(this.createPlayerView(openedCommunity, merged != null ? merged : member));
+            }
+
+            created.add(new ChannelView(joined.getName(), members.size(), members));
+        }
+
+        return List.copyOf(created);
+    }
+
+    private @NotNull List<@NotNull ChannelView> createKnownChannels() {
+        ChannelChat openedChat = this.chat;
+
+        if (openedChat == null) {
+            return List.of();
+        }
+
+        List<ChannelView> created = new ArrayList<>();
+
+        for (ChannelSummary summary : openedChat.listChannels()) {
+            created.add(new ChannelView(summary.getName(), summary.getMemberCount(), List.of()));
+        }
+
+        return List.copyOf(created);
+    }
+
+    /**
+     * Creates the view of a player whose presence the session holds and records the player's name.
+     */
+    private @NotNull FriendView createPlayerView(@NotNull CommunitySession openedCommunity, @NotNull PlayerPresence presence) {
+        FriendCode code = FriendCode.of(presence.getPlayer().getKey());
+        String modId = BeaconLink.LAUNCHER_MOD_ID.equals(presence.getModId()) ? null : presence.getModId();
+
+        this.names.put(code, presence.getTaggedName());
+
+        return new FriendView(code, presence.getTaggedName(), toFriendState(presence), modId, presence.getAwayText(), presence.getDeviceCount(),
+                              openedCommunity.isIgnored(presence.getPlayer()));
     }
 
 

@@ -16,19 +16,19 @@ import org.fogofwarlabs.sc4j.beaconlink.peer.account.Account;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.AccountStore;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.identity.IdentityKeyPair;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.identity.PlayerStamp;
+import org.fogofwarlabs.sc4j.catalog.ReleaseVersion;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseClient;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository;
+import org.fogofwarlabs.sc4j.catalog.test.ReleaseServerScenario;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
 import org.fogofwarlabs.sc4j.launcher.peer.LauncherNodeRunner;
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseClient;
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseRepository;
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseServerScenario;
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseVersion;
-import org.fogofwarlabs.sc4j.launcher.session.LauncherSession;
-import org.fogofwarlabs.sc4j.launcher.session.LauncherSessionScenario;
-import org.fogofwarlabs.sc4j.launcher.session.SessionState;
+import org.fogofwarlabs.sc4j.launcher.session.*;
 import org.fogofwarlabs.sc4j.launcher.settings.LauncherSettings;
 import org.fogofwarlabs.sc4j.launcher.settings.LauncherSettingsFile;
 import org.fogofwarlabs.sc4j.launcher.settings.WindowState;
+import org.fogofwarlabs.sc4j.launcher.ui.session.Conversations;
+import org.fogofwarlabs.sc4j.launcher.ui.session.RecordingLauncherSession;
 import org.fogofwarlabs.sc4j.launcher.update.LauncherRelease;
 import org.fogofwarlabs.sc4j.launcher.update.LauncherUpdater;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
@@ -48,6 +48,7 @@ import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -61,7 +62,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * the New account dialog when there is no account, else with the last used account selected); Log in opens the main view with the account
  * at the top right and no Accounts tab and starts the account's session, which connects to the node of the install's node list on
  * 127.0.0.1, and Log out from the account menu closes the session, frees the account and returns to the login step, at 100% and 200% in
- * English and Korean. Open mods folder hands the mods folder to the folder opener, and a mod's website link goes to the document opener.
+ * English and Korean. Whisper in the account menu's Friends shows the Chat screen with the friend's conversation selected and the input
+ * focused, from another screen and from the Chat screen. Open mods folder hands the mods folder to the folder opener, and a mod's website
+ * link goes to the document opener.
  * The Update dialog of a newer launcher version opens by itself once per run, once logged in, while no game runs and not for a skipped
  * version.
  */
@@ -86,10 +89,16 @@ final class LauncherWindowTest {
     private static final long RAYNOR_USE_MILLIS = Instant.parse("2026-11-10T18:30:00Z").toEpochMilli();
     private static final @NotNull String NAVIGATION_SELECTOR = ".nav-button";
     private static final @NotNull String ACCOUNT_SELECTOR = ".account-button";
-    private static final @NotNull String MENU_SELECTOR = ".account-menu";
+    private static final @NotNull String MENU_SELECTOR = ".menu-panel";
     private static final @NotNull String DIALOG_SELECTOR = ".modal-scrim";
     private static final @NotNull String SUCCESS_MARKER = "status-marker-success";
     private static final @NotNull String HYPERLINK_SELECTOR = ".hyperlink";
+    private static final @NotNull String LIST_SELECTOR = ".list-view";
+    private static final @NotNull String TEXT_FIELD_SELECTOR = ".text-field";
+    /**
+     * The place of the conversation list among the lists of the Chat screen, from left to right.
+     */
+    private static final int CONVERSATION_LIST = 1;
     private static final @NotNull String MOD_JAR_NAME = "example.jar";
     private static final @NotNull String UPDATE_REPOSITORY = "owner/sc4j";
     private static final @NotNull String MOD_WEBSITE = "https://example.org/mod";
@@ -157,6 +166,48 @@ final class LauncherWindowTest {
         return root.lookupAll(NAVIGATION_SELECTOR).stream().filter(LauncherFxScenario::isShown).map(node -> ((ToggleButton) node).getText()).toList();
     }
 
+    private static @NotNull FriendCode createCode(int fill) {
+        byte[] key = new byte[FriendCode.KEY_LENGTH];
+
+        Arrays.fill(key, (byte) fill);
+
+        return FriendCode.of(key);
+    }
+
+    /**
+     * Whispers from the account menu: opens Friends, selects the friend and presses Whisper.
+     */
+    private static void whisperFromFriends(@NotNull Stage stage, @NotNull LauncherTexts texts, int friend) {
+        Parent root = layRoot(stage);
+
+        ((Button) root.lookup(ACCOUNT_SELECTOR)).fire();
+        root = layRoot(stage);
+        LauncherFxScenario.findButton(root.lookup(MENU_SELECTOR), texts.get("session.menu.friends")).fire();
+        root = layRoot(stage);
+        ((ListView<?>) root.lookup(DIALOG_SELECTOR).lookup(LIST_SELECTOR)).getSelectionModel().select(friend);
+        root = layRoot(stage);
+        LauncherFxScenario.findButton(root.lookup(DIALOG_SELECTOR), texts.get("session.friends.whisper")).fire();
+    }
+
+    /**
+     * Checks that the Chat screen is shown with a player's conversation selected and the input focused.
+     */
+    private static void assertChatShowsWhispers(@NotNull Stage stage, @NotNull LauncherTexts texts, @NotNull String taggedName) {
+        Parent root = layRoot(stage);
+        List<Node> lists = List.copyOf(root.lookupAll(LIST_SELECTOR));
+
+        Assertions.assertNull(root.lookup(DIALOG_SELECTOR), "Whisper closes the Friends panel");
+        Assertions.assertTrue(root.lookupAll(NAVIGATION_SELECTOR).stream().map(node -> (ToggleButton) node)
+                                  .anyMatch(button -> button.isSelected() && button.getText().equals(texts.get("nav.chat"))),
+                              "the Chat tab is shown");
+        Assertions.assertTrue(lists.size() > CONVERSATION_LIST, "the Chat screen is shown");
+
+        ListView<?> conversations = (ListView<?>) lists.get(CONVERSATION_LIST);
+
+        Assertions.assertEquals(taggedName, ((Conversations.Conversation) conversations.getSelectionModel().getSelectedItem()).getTaggedName());
+        Assertions.assertSame(root.lookup(TEXT_FIELD_SELECTOR), stage.getScene().getFocusOwner(), "the input is focused");
+    }
+
     private static @NotNull Hyperlink findHyperlink(@NotNull Parent root, @NotNull String text) {
         for (Node node : root.lookupAll(HYPERLINK_SELECTOR)) {
             if (node instanceof Hyperlink link && link.getText().equals(text)) {
@@ -213,13 +264,13 @@ final class LauncherWindowTest {
             Assertions.assertNotNull(repository);
             Assertions.assertNotNull(olderSkipped);
             server.addCheckedRelease(UPDATE_REPOSITORY, "v1.2.0", Map.of("SC4J-1.2.0.zip", new byte[]{1}));
-            newer = updater.findUpdate(repository, "1.1.0");
+            newer = updater.findUpdate(repository, ReleaseVersion.parse("1.1.0"));
             Assertions.assertNotNull(newer);
             skipped = LauncherSettings.DEFAULT.withSkippedVersion(newer.getVersion());
 
             Assertions.assertTrue(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, false, false), "newer");
-            Assertions.assertFalse(LauncherWindow.isUpdateOffered(updater.findUpdate(repository, "1.2.0"), LauncherSettings.DEFAULT, true, false, false),
-                                   "same");
+            Assertions.assertFalse(LauncherWindow.isUpdateOffered(updater.findUpdate(repository, ReleaseVersion.parse("1.2.0")), LauncherSettings.DEFAULT,
+                                                                  true, false, false), "same");
             Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, skipped, true, false, false), "skipped");
             Assertions.assertTrue(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT.withSkippedVersion(olderSkipped), true, false, false),
                                   "a release after the skipped one");
@@ -364,8 +415,8 @@ final class LauncherWindowTest {
                 Parent root = layRoot(shown.get());
                 Button account = (Button) root.lookup(ACCOUNT_SELECTOR);
 
-                Assertions.assertEquals(List.of(texts.get("nav.mods"), texts.get("nav.run"), texts.get("nav.settings")), listVisibleNavigation(root),
-                                        "no Accounts tab");
+                Assertions.assertEquals(List.of(texts.get("nav.mods"), texts.get("nav.run"), texts.get("nav.chat"), texts.get("nav.settings")),
+                                        listVisibleNavigation(root), "no Accounts tab");
                 Assertions.assertTrue(LauncherFxScenario.isShown(account));
                 Assertions.assertEquals(raynor.getTaggedName(), account.getText());
                 LauncherFxScenario.saveSample(root, scale, "window-main-" + suffix);
@@ -442,5 +493,46 @@ final class LauncherWindowTest {
                 session.close();
             }
         }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
+    void whisper_from_friends_opens_the_chat_tab_on_the_friend_conversation(double scale, @NotNull String languageCode,
+                                                                            @TempDir @NotNull Path directory) throws Exception {
+        UiLanguage language = selectLanguage(languageCode);
+        LauncherTexts texts = LauncherTexts.of(language);
+        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+        InstallLayout install = InstallLayout.of(directory);
+        AccountStore store = AccountStore.of(install.getBeaconLinkDirectory());
+        RecordingLauncherSession session = new RecordingLauncherSession(createCode(1), new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "",
+                                                                                                    1, null));
+
+        store.create(raynorKey, raynorStamp, PlayerStamp.DEFAULT_DIFFICULTY, RAYNOR_USE_MILLIS);
+        session.setFriends(List.of(new FriendView(createCode(2), "Kerrigan#a1b2c3", FriendState.IN_LAUNCHER, null, "", 1, false),
+                                   new FriendView(createCode(3), "Zeratul#d4e5f6", FriendState.IN_LAUNCHER, null, "", 1, false)));
+        new LauncherSettingsFile(install.getLauncherSettingsFile()).write(LauncherSettings.DEFAULT.withLanguage(language));
+        LauncherFxScenario.run(() -> {
+            Stage stage = new Stage();
+            LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
+            }, folder -> {
+            }, new LauncherNodeRunner(install), account -> session);
+
+            window.fitDisplay(scale, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+            LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
+
+            // From the Mods screen: the Chat screen opens on Kerrigan's conversation.
+            whisperFromFriends(stage, texts, 0);
+            assertChatShowsWhispers(stage, texts, "Kerrigan#a1b2c3");
+
+            LauncherFxScenario.disableViewportCache(layRoot(stage));
+
+            LauncherFxScenario.saveSample(layRoot(stage), scale, "window-whisper-" + suffix);
+
+            // From the Chat screen: the screen shows Zeratul's conversation.
+            whisperFromFriends(stage, texts, 1);
+            assertChatShowsWhispers(stage, texts, "Zeratul#d4e5f6");
+
+            return null;
+        });
     }
 }

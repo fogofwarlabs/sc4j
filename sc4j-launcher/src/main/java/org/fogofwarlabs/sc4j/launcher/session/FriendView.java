@@ -6,9 +6,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Objects;
 
 /**
- * Holds one friend as the session last saw it: the friend's code, name and tag, the merged state of the friend's devices, the id of the mod
- * the shown state comes from, the friend's away text, the number of the friend's devices online and whether the account ignores the friend.
- * A view never changes; the session publishes a new one.
+ * Holds one friend, or one member of a chat channel, as the session last saw it: the player's code, name and tag, the merged state of the
+ * player's devices, the id of the mod the shown state comes from, the player's away text, the number of the player's devices online and
+ * whether the account ignores the player. A view never changes; the session publishes a new one.
  */
 public final class FriendView {
     private final @NotNull FriendCode code;

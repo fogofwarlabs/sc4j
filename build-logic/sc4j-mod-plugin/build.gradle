@@ -42,8 +42,9 @@ tasks.named('javadoc', Javadoc) {
     source = fileTree('src/main/java')
 }
 
-// The plugin carries its engine version, the engine API version of that engine (MAJOR.MINOR of the engine version, EngineVersion.CURRENT)
-// and the manifest format that the engine reads.
+// The plugin carries its engine version, the engine API version of that engine (MAJOR.MINOR of the engine version, EngineVersion.CURRENT),
+// the manifest format that the engine reads and the mod API: the engine modules that the runtime provides to every mod.
+def modApiModules = ['sc4j-engine', 'sc4j-catalog']
 def engineApiMatcher = version =~ /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-.+)?$/
 if (!engineApiMatcher.matches()) {
     throw new GradleException('The engine version ' + version + ' is not a semantic version MAJOR.MINOR.PATCH.')
@@ -56,10 +57,10 @@ if (!manifestFormatMatcher.find()) {
     throw new GradleException('ModManifestReader.FORMAT is not found in ' + manifestReaderSource + '.')
 }
 def engineResourceText = 'group=' + group + '\nversion=' + version + '\nengineApi=' + engineApiVersion + '\nmanifestFormat=' +
-                         manifestFormatMatcher.group(1) + '\n'
+                         manifestFormatMatcher.group(1) + '\nmodApi=' + modApiModules.join(',') + '\n'
 def engineResources = layout.buildDirectory.dir('generated/engine-resources')
 def writeEngineResources = tasks.register('writeEngineResources') {
-    description = 'Writes the engine version, the engine API version and the manifest format into the resources of the mod plugin.'
+    description = 'Writes the engine version, the engine API version, the manifest format and the mod API into the resources of the mod plugin.'
     inputs.property('engineResourceText', engineResourceText)
     outputs.dir(engineResources)
     doLast {

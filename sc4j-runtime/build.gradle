@@ -11,6 +11,9 @@ dependencies {
     implementation project(':sc4j-engine')
     // The Beacon.Link client behind the engine's Beacon.Link interface of the launch request; it opens nothing until a mod asks.
     implementation project(':sc4j-beaconlink')
+    // The catalog reader (releases and the mod catalog) that a mod may use; the runtime ships it once on the class path the mod class
+    // loaders see, so mod jars do not hold it.
+    runtimeOnly project(':sc4j-catalog')
 
     // The native libraries of the engine client (LWJGL, FFmpeg through JavaCPP) for lib/natives of the distribution.
     nativeLibraries project(path: ':sc4j-engine-client', configuration: 'nativeLibraries')

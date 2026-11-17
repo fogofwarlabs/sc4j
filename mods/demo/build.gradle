@@ -36,7 +36,7 @@ dependencies {
     // The demo's network games over Beacon.Link run with real nodes and clients on 127.0.0.1 behind emulated NATs.
     testImplementation testFixtures(project(':sc4j-beaconlink'))
     // The Beacon.Link tab on a session and community part played by hand (RecordingBeaconLink, RecordingCommunitySession).
-    testImplementation testFixtures(project(':sc4j-engine'))
+    testImplementation testFixtures(project(':sc4j-engine-net'))
 
     // The asset tools read the pack definitions with the engine's JSON reader. Apache Batik 1.19 (Apache License 2.0) is a
     // build-only dependency for the SVG export.

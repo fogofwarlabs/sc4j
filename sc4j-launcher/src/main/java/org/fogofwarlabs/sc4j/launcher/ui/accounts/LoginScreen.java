@@ -12,10 +12,9 @@ import org.fogofwarlabs.sc4j.beaconlink.peer.account.*;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.identity.IdentityKeyPair;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.identity.PlayerNameUtils;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.identity.PlayerStamp;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
-import org.fogofwarlabs.sc4j.launcher.ui.ComponentUtils;
-import org.fogofwarlabs.sc4j.launcher.ui.LauncherShell;
-import org.fogofwarlabs.sc4j.launcher.ui.ModalDialog;
+import org.fogofwarlabs.sc4j.launcher.ui.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -47,12 +46,10 @@ import java.util.function.Consumer;
  * were. Problems are shown in one line.
  */
 public final class LoginScreen {
-    private static final double LIST_WIDTH = 360;
     private static final double CONTENT_WIDTH = 960;
     private static final double CONTENT_HEIGHT = 520;
     private static final int DOUBLE_CLICK = 2;
     private static final @NotNull String FILE_NAME_SEPARATOR = "-";
-    private static final @NotNull String TAG_PREFIX = "#";
 
     /**
      * Receives what the login step asks of the window.
@@ -81,44 +78,6 @@ public final class LoginScreen {
         @Nullable Path chooseExportFile(@NotNull String fileName);
     }
 
-    /**
-     * Shows one account of the list.
-     */
-    private final class AccountCell extends ListCell<Account> {
-        /**
-         * Updates the item associated with this cell.
-         *
-         * @param account the new item for the cell
-         * @param empty   whether or not this cell represents data from the list
-         */
-        @Override
-        protected void updateItem(@Nullable Account account, boolean empty) {
-            super.updateItem(account, empty);
-
-            if (empty || account == null) {
-                this.setText(null);
-                this.setGraphic(null);
-
-                return;
-            }
-
-            LoginScreen screen = LoginScreen.this;
-            boolean inUse = screen.inUse.contains(account.getId());
-            VBox text = ComponentUtils.column(ComponentUtils.Spacing.XS, ComponentUtils.label(account.getTaggedName(), "list-title"),
-                                              ComponentUtils.label(screen.describeLastUse(account), "text-caption"));
-            HBox graphic = ComponentUtils.row(ComponentUtils.Spacing.M, ComponentUtils.statusMarker(inUse ? ComponentUtils.Tone.WARNING
-                                                                                                          : ComponentUtils.Tone.NEUTRAL),
-                                              text, ComponentUtils.growingSpacer());
-
-            if (inUse) {
-                graphic.getChildren().add(ComponentUtils.badge(screen.texts.get("accounts.in.use"), ComponentUtils.Tone.WARNING));
-            }
-
-            ComponentUtils.setCellGraphic(this, graphic);
-        }
-    }
-
-
     private final @NotNull AccountStore store;
     private final @NotNull LauncherTexts texts;
     private final @NotNull Actions actions;
@@ -144,8 +103,8 @@ public final class LoginScreen {
      * @param actions receives the login and the file questions
      */
     public LoginScreen(@NotNull AccountStore store, @NotNull LauncherTexts texts, @NotNull Actions actions) {
-        Button create = ComponentUtils.smallButton(texts.get("accounts.new"), ComponentUtils.ButtonRole.SECONDARY);
-        Button importButton = ComponentUtils.smallButton(texts.get("accounts.import"), ComponentUtils.ButtonRole.SECONDARY);
+        Button create = ComponentUtils.smallButton(texts.get("accounts.new"), ButtonRole.SECONDARY);
+        Button importButton = ComponentUtils.smallButton(texts.get("accounts.import"), ButtonRole.SECONDARY);
         VBox listPanel;
         VBox detailPanel;
         VBox detailColumn;
@@ -158,18 +117,18 @@ public final class LoginScreen {
         this.random     = new SecureRandom();
         this.dateFormat = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(texts.getLocale()).withZone(ZoneId.systemDefault());
 
-        this.list         = new ListView<>();
-        this.notices      = ComponentUtils.column(ComponentUtils.Spacing.S);
+        this.list         = ComponentUtils.listView(ListItemSize.REGULAR);
+        this.notices      = ComponentUtils.column(Spacing.S);
         this.detailBody   = ComponentUtils.panelBody();
-        this.exportButton = ComponentUtils.button(texts.get("accounts.export"), ComponentUtils.ButtonRole.SECONDARY);
-        this.deleteButton = ComponentUtils.button(texts.get("accounts.delete"), ComponentUtils.ButtonRole.DANGER);
-        this.logInButton  = ComponentUtils.button(texts.get("accounts.log.in"), ComponentUtils.ButtonRole.PRIMARY);
+        this.exportButton = ComponentUtils.button(texts.get("accounts.export"), ButtonRole.SECONDARY);
+        this.deleteButton = ComponentUtils.button(texts.get("accounts.delete"), ButtonRole.DANGER);
+        this.logInButton  = ComponentUtils.button(texts.get("accounts.log.in"), ButtonRole.PRIMARY);
         this.root         = new StackPane();
 
         this.inUse  = new HashSet<>();
         this.dialog = null;
 
-        this.list.setCellFactory(view -> new AccountCell());
+        this.list.setCellFactory(view -> new ListItemCell<>(this::createAccountItem));
         this.list.setPlaceholder(ComponentUtils.paragraph(texts.get("accounts.empty"), "text-caption"));
         this.list.getSelectionModel().selectedItemProperty().addListener((observable, previous, current) -> this.showDetail(current));
         this.list.setOnMouseClicked(event -> {
@@ -187,24 +146,22 @@ public final class LoginScreen {
         this.deleteButton.setOnAction(event -> this.withSelection(this::openDelete));
         this.logInButton.setOnAction(event -> this.withSelection(this::logIn));
 
-        listPanel = ComponentUtils.panel(texts.get("accounts.title"), ComponentUtils.flushPanelBody(this.list));
-        listPanel.getChildren().add(ComponentUtils.panelFooter(create, ComponentUtils.growingSpacer(), importButton));
-        listPanel.setPrefWidth(LIST_WIDTH);
-        listPanel.setMinWidth(LIST_WIDTH);
-        listPanel.setMaxHeight(Double.MAX_VALUE);
+        listPanel = ComponentUtils.panelWithFooter(texts.get("accounts.title"), ComponentUtils.flushPanelBody(this.list),
+                                                   ComponentUtils.panelFooter(create, ComponentUtils.growingSpacer(), importButton));
+        ComponentUtils.setColumnWidth(listPanel, ColumnWidth.WIDE);
 
-        detailPanel = ComponentUtils.panel(texts.get("accounts.detail"), this.detailBody);
-        detailPanel.getChildren().add(ComponentUtils.panelFooter(this.exportButton, this.deleteButton,
-                                                                 ComponentUtils.growingSpacer(), this.logInButton));
-        detailPanel.setMaxHeight(Double.MAX_VALUE);
+        detailPanel = ComponentUtils.panelWithFooter(texts.get("accounts.detail"), this.detailBody,
+                                                     ComponentUtils.panelFooter(this.exportButton, this.deleteButton, ComponentUtils.growingSpacer(),
+                                                                                this.logInButton));
+        ComponentUtils.fillHeight(detailPanel);
         VBox.setVgrow(detailPanel, Priority.ALWAYS);
 
-        detailColumn = ComponentUtils.column(ComponentUtils.Spacing.M, this.notices, detailPanel);
+        detailColumn = ComponentUtils.column(Spacing.M, this.notices, detailPanel);
         this.notices.setVisible(false);
         this.notices.setManaged(false);
         HBox.setHgrow(detailColumn, Priority.ALWAYS);
 
-        content = ComponentUtils.row(ComponentUtils.Spacing.L, listPanel, detailColumn);
+        content = ComponentUtils.row(Spacing.L, listPanel, detailColumn);
         content.setAlignment(Pos.TOP_LEFT);
         content.setMaxSize(CONTENT_WIDTH, CONTENT_HEIGHT);
         page = new StackPane(content);
@@ -237,8 +194,8 @@ public final class LoginScreen {
     public void openNewAccount() {
         ModalDialog shown = new ModalDialog(this.texts.get("accounts.new.title"));
         TextField name = new TextField();
-        Button cancel = ComponentUtils.button(this.texts.get("accounts.cancel"), ComponentUtils.ButtonRole.SECONDARY);
-        Button create = ComponentUtils.button(this.texts.get("accounts.create"), ComponentUtils.ButtonRole.PRIMARY);
+        Button cancel = ComponentUtils.button(this.texts.get("accounts.cancel"), ButtonRole.SECONDARY);
+        Button create = ComponentUtils.button(this.texts.get("accounts.create"), ButtonRole.PRIMARY);
         AtomicBoolean cancelled = new AtomicBoolean(false);
 
         shown.addContent(ComponentUtils.field(this.texts.get("accounts.name"), name),
@@ -288,7 +245,7 @@ public final class LoginScreen {
         try {
             contents = Files.size(file) > AccountBackup.MAXIMUM_LENGTH ? new byte[0] : Files.readAllBytes(file);
         } catch (IOException exception) {
-            this.showNotice(ComponentUtils.Tone.DANGER, this.texts.format("accounts.failed", exception.getMessage()));
+            this.showNotice(Tone.DANGER, this.texts.format("accounts.failed", exception.getMessage()));
 
             return;
         }
@@ -299,7 +256,7 @@ public final class LoginScreen {
             try {
                 plain = AccountBackup.read(contents, null);
             } catch (AccountException exception) {
-                this.showNotice(ComponentUtils.Tone.DANGER, this.texts.describeAccountProblem(exception.getProblem()));
+                this.showNotice(Tone.DANGER, this.texts.describeAccountProblem(exception.getProblem()));
 
                 return;
             }
@@ -315,14 +272,16 @@ public final class LoginScreen {
     private void openImport(byte @NotNull [] contents, @Nullable AccountBackup plain) {
         ModalDialog shown = new ModalDialog(this.texts.get("accounts.import.title"));
         PasswordField password = new PasswordField();
-        Button cancel = ComponentUtils.button(this.texts.get("accounts.cancel"), ComponentUtils.ButtonRole.SECONDARY);
-        Button importButton = ComponentUtils.button(this.texts.get("accounts.import"), ComponentUtils.ButtonRole.PRIMARY);
+        Button cancel = ComponentUtils.button(this.texts.get("accounts.cancel"), ButtonRole.SECONDARY);
+        Button importButton = ComponentUtils.button(this.texts.get("accounts.import"), ButtonRole.PRIMARY);
         AtomicBoolean cancelled = new AtomicBoolean(false);
 
         if (plain == null) {
             shown.addContent(ComponentUtils.field(this.texts.get("accounts.password"), password));
         } else {
-            shown.addContent(ComponentUtils.label(plain.getName() + TAG_PREFIX + plain.getKeyPair().getPublicKey().getTag(), "text-subtitle"));
+            LinkPlayer player = LinkPlayer.of(plain.getKeyPair().getPublicKey().getBytes());
+
+            shown.addContent(ComponentUtils.label(player.formatTaggedName(plain.getName()), "text-subtitle"));
         }
 
         shown.setButtons(cancel, importButton);
@@ -349,7 +308,7 @@ public final class LoginScreen {
                 Account imported = this.store.restore(backup, System.currentTimeMillis());
 
                 this.select(imported.getId());
-                this.showNotice(ComponentUtils.Tone.SUCCESS, this.texts.format("accounts.imported", imported.getTaggedName()));
+                this.showNotice(Tone.SUCCESS, this.texts.format("accounts.imported", imported.getTaggedName()));
                 this.closeDialog(shown);
             }, this::describe, () -> {
                 password.setDisable(false);
@@ -370,8 +329,8 @@ public final class LoginScreen {
         ModalDialog shown = new ModalDialog(this.texts.get("accounts.export.title"));
         PasswordField password = new PasswordField();
         PasswordField repeated = new PasswordField();
-        Button cancel = ComponentUtils.button(this.texts.get("accounts.cancel"), ComponentUtils.ButtonRole.SECONDARY);
-        Button export = ComponentUtils.button(this.texts.get("accounts.export"), ComponentUtils.ButtonRole.PRIMARY);
+        Button cancel = ComponentUtils.button(this.texts.get("accounts.cancel"), ButtonRole.SECONDARY);
+        Button export = ComponentUtils.button(this.texts.get("accounts.export"), ButtonRole.PRIMARY);
         AtomicBoolean cancelled = new AtomicBoolean(false);
 
         shown.addContent(ComponentUtils.label(account.getTaggedName(), "text-subtitle"),
@@ -411,7 +370,7 @@ public final class LoginScreen {
                 }
             }, backup -> {
                 AtomicFileUtils.write(file, backup);
-                this.showNotice(ComponentUtils.Tone.SUCCESS, this.texts.format("accounts.exported", file));
+                this.showNotice(Tone.SUCCESS, this.texts.format("accounts.exported", file));
                 this.closeDialog(shown);
             }, this::describe, () -> {
                 password.setDisable(false);
@@ -426,8 +385,8 @@ public final class LoginScreen {
 
     private void openDelete(@NotNull Account account) {
         ModalDialog shown = new ModalDialog(this.texts.get("accounts.delete.title"));
-        Button cancel = ComponentUtils.button(this.texts.get("accounts.cancel"), ComponentUtils.ButtonRole.SECONDARY);
-        Button delete = ComponentUtils.button(this.texts.get("accounts.delete"), ComponentUtils.ButtonRole.DANGER);
+        Button cancel = ComponentUtils.button(this.texts.get("accounts.cancel"), ButtonRole.SECONDARY);
+        Button delete = ComponentUtils.button(this.texts.get("accounts.delete"), ButtonRole.DANGER);
 
         shown.addContent(ComponentUtils.paragraph(this.texts.format("accounts.delete.text", account.getTaggedName()), "text-body"));
         shown.setButtons(cancel, delete);
@@ -491,7 +450,7 @@ public final class LoginScreen {
             }
         } catch (IOException exception) {
             accounts = List.of();
-            this.showNotice(ComponentUtils.Tone.DANGER, this.texts.format("accounts.failed", exception.getMessage()));
+            this.showNotice(Tone.DANGER, this.texts.format("accounts.failed", exception.getMessage()));
         }
 
         this.list.getSelectionModel().clearSelection();
@@ -524,19 +483,35 @@ public final class LoginScreen {
 
         boolean inUse = this.inUse.contains(account.getId());
         Label name = ComponentUtils.label(account.getName(), "text-display");
-        Label tag = ComponentUtils.label(TAG_PREFIX + account.getTag(), "text-title", "account-tag");
-        HBox heading = ComponentUtils.row(ComponentUtils.Spacing.XS, name, tag);
+        Label tag = ComponentUtils.label(LinkPlayer.of(account.getKey().getBytes()).getTagText(), "text-title", "text-muted");
+        HBox heading = ComponentUtils.row(Spacing.XS, name, tag);
 
         heading.setAlignment(Pos.BASELINE_LEFT);
         this.detailBody.getChildren().setAll(heading, ComponentUtils.label(this.describeLastUse(account), "text-caption"));
 
         if (inUse) {
-            this.detailBody.getChildren().add(ComponentUtils.notice(ComponentUtils.Tone.WARNING, this.texts.get("accounts.in.use.notice")));
+            this.detailBody.getChildren().add(ComponentUtils.notice(Tone.WARNING, this.texts.get("accounts.in.use.notice")));
         }
 
         this.exportButton.setDisable(false);
         this.deleteButton.setDisable(inUse);
         this.logInButton.setDisable(false);
+    }
+
+    /**
+     * Creates the list item of an account: a marker, amber with a badge while a running game uses the account, the name and tag, and the last
+     * use.
+     */
+    private @NotNull ListItem createAccountItem(@NotNull Account account) {
+        boolean used = this.inUse.contains(account.getId());
+        ListItem item = new ListItem(account.getTaggedName()).setMarker(used ? Tone.WARNING : Tone.NEUTRAL)
+                                                             .addCaption(this.describeLastUse(account));
+
+        if (used) {
+            item.setBadge(ComponentUtils.badge(this.texts.get("accounts.in.use"), Tone.WARNING));
+        }
+
+        return item;
     }
 
     private @NotNull String describeLastUse(@NotNull Account account) {
@@ -546,7 +521,7 @@ public final class LoginScreen {
                              : this.texts.format("accounts.last.used", this.dateFormat.format(Instant.ofEpochMilli(lastUsed)));
     }
 
-    private void showNotice(@NotNull ComponentUtils.Tone tone, @NotNull String text) {
+    private void showNotice(@NotNull Tone tone, @NotNull String text) {
         this.notices.getChildren().setAll(ComponentUtils.notice(tone, text));
         this.notices.setVisible(true);
         this.notices.setManaged(true);

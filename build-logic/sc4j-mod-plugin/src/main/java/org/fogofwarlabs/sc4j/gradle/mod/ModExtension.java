@@ -14,8 +14,9 @@ import org.jetbrains.annotations.NotNull;
  *     id 'org.fogofwarlabs.sc4j.mod' version '<engine version>'
  * }
  *}
- * The plugin compiles the source sets with the engine's Java version (a Java 25 toolchain) against the engine API of its own version
- * ({@code org.fogofwarlabs.sc4j:sc4j-engine}) and sets up these tasks of the group {@code sc4j}:
+ * The plugin compiles the source sets with the engine's Java version (a Java 25 toolchain) against the mod API of its own version, the engine
+ * modules that the runtime provides and the mod jar does not hold, in whichever project of the build owns each source set, and sets up these
+ * tasks of the group {@code sc4j}:
  * <ul>
  *     <li>{@code jar}: packs the classes and resources of the source sets into {@code build/libs/<id>.jar} without file times in a fixed
  *     order, with the licence files in {@code META-INF/}, and checks that its manifest {@code sc4j-mod.json} names the mod id, the

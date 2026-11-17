@@ -97,68 +97,6 @@ public final class org.fogofwarlabs.sc4j.engine.client.app.WindowClient implemen
   public static void run(org.fogofwarlabs.sc4j.engine.mod.ModLaunch, org.fogofwarlabs.sc4j.engine.mod.ModStorage, org.fogofwarlabs.sc4j.engine.client.host.WindowSettings, float, org.fogofwarlabs.sc4j.engine.client.app.FirstSceneFactory) throws org.fogofwarlabs.sc4j.engine.mod.ModException, java.io.IOException;
 }
 
-public final class org.fogofwarlabs.sc4j.engine.client.community.ChannelChat implements org.fogofwarlabs.sc4j.engine.net.beaconlink.community.CommunityListener {
-  public boolean addFriend(java.lang.String);
-  public boolean isAway();
-  public boolean isBlocked(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
-  public boolean isFriend(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence);
-  public boolean isSelf(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence);
-  public java.lang.String createWhisperStart(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
-  public java.lang.String describeMod(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence);
-  public java.lang.String describeStatus(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence);
-  public java.lang.String getInputPrefix();
-  public java.lang.String getStatusText(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence);
-  public java.lang.String getTaggedName(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
-  public java.lang.String takeWhisperStart(java.lang.String);
-  public java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.FoundRoom> listUnblockedRooms(java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.FoundRoom>);
-  public java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer> getFriends();
-  public java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChannelSummary> listChannels();
-  public java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence> getMembers();
-  public org.fogofwarlabs.sc4j.engine.client.community.ChannelChat(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.CommunitySession, java.util.Locale, java.lang.String);
-  public org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer getWhisperTarget();
-  public org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel getChannel();
-  public org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence findPlayer(java.lang.String);
-  public org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence findPresence(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
-  public static final int DEFAULT_CHANNEL_CAPACITY = 64;
-  public static final int HISTORY = 100;
-  public static final java.lang.String SHARED_CHANNEL = "SC4J";
-  public static java.lang.String findDefaultChannel(java.lang.String, java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChannelSummary>);
-  public void block(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
-  public void close();
-  public void join(java.lang.String);
-  public void onChatLine(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel, org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatLine);
-  public void onMembersChanged(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel);
-  public void onWhisper(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.Whisper);
-  public void onWhisperResult(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.Whisper, org.fogofwarlabs.sc4j.engine.net.beaconlink.community.WhisperResult);
-  public void open();
-  public void removeFriend(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
-  public void removeLog(java.util.function.Consumer<org.fogofwarlabs.sc4j.engine.client.community.ChatEntry>);
-  public void setAway(boolean);
-  public void setLog(java.util.function.Consumer<org.fogofwarlabs.sc4j.engine.client.community.ChatEntry>);
-  public void setWhisperTarget(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
-  public void showAvailable();
-  public void submit(java.lang.String);
-  public void unblock(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
-}
-
-public final class org.fogofwarlabs.sc4j.engine.client.community.ChatEntry {
-  public java.lang.String getPrefix();
-  public java.lang.String getText();
-  public java.lang.String toString();
-  public org.fogofwarlabs.sc4j.engine.client.community.ChatEntry(org.fogofwarlabs.sc4j.engine.client.community.ChatEntryKind, java.lang.String, java.lang.String);
-  public org.fogofwarlabs.sc4j.engine.client.community.ChatEntryKind getKind();
-}
-
-public final class org.fogofwarlabs.sc4j.engine.client.community.ChatEntryKind extends java.lang.Enum<org.fogofwarlabs.sc4j.engine.client.community.ChatEntryKind> {
-  public static final org.fogofwarlabs.sc4j.engine.client.community.ChatEntryKind EMOTE;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.ChatEntryKind ERROR;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.ChatEntryKind INFO;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.ChatEntryKind SAY;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.ChatEntryKind WHISPER;
-  public static org.fogofwarlabs.sc4j.engine.client.community.ChatEntryKind valueOf(java.lang.String);
-  public static org.fogofwarlabs.sc4j.engine.client.community.ChatEntryKind[] values();
-}
-
 public final class org.fogofwarlabs.sc4j.engine.client.community.ChatLogBox extends org.fogofwarlabs.sc4j.engine.client.dialog.Control {
   protected void drawControl(org.fogofwarlabs.sc4j.engine.client.render.Canvas, org.fogofwarlabs.sc4j.engine.client.dialog.DialogTheme, float, float);
   public boolean activate();
@@ -169,84 +107,6 @@ public final class org.fogofwarlabs.sc4j.engine.client.community.ChatLogBox exte
   public org.fogofwarlabs.sc4j.engine.client.community.ChatLogBox(org.fogofwarlabs.sc4j.engine.resource.dialog.DialogControl, int);
   public void addLine(java.lang.String, int);
   public void clear();
-}
-
-public final class org.fogofwarlabs.sc4j.engine.client.community.CommunityText extends java.lang.Enum<org.fogofwarlabs.sc4j.engine.client.community.CommunityText> {
-  public java.lang.String format(java.util.Locale, java.lang.Object...);
-  public java.lang.String get(java.util.Locale);
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText ANY;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText AWAY_OFF;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText AWAY_ON;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText BLOCK;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText BLOCKED;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText CHANNEL;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText CHANNEL_LEFT;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText CLOSED_GAMES;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText FRIENDS;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText FRIEND_ADDED;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText FRIEND_REMOVED;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText HELP_AWAY;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText HELP_EMOTE;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText HELP_FRIENDS;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText HELP_HELP;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText HELP_IGNORE;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText HELP_JOIN;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText HELP_LEAVE;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText HELP_REPLY;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText HELP_TITLE;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText HELP_UNIGNORE;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText HELP_WHISPER;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText HELP_WHO;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText HELP_WHOIS;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText HIDE;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText IGNORED;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText INPUT_CHANNEL;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText INVALID_NAME;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText IS_AWAY;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText IS_AWAY_TEXT;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText JOINED;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText LATENCY;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText LATENCY_FAIR;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText LATENCY_GOOD;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText LEFT;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText LIMIT;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText MAXIMUM_PLAYERS;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText NEEDS_ACCOUNT;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText NOT_ONLINE;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText NO_CHANNEL;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText NO_GAMES;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText NO_REPLY;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText OTHER_VERSION;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText OTHER_VERSIONS;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText SHOW;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText STATUS_AVAILABLE;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText STATUS_AWAY;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText STATUS_AWAY_TEXT;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText STATUS_IN_GAME;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText STATUS_IN_ROOM;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText STATUS_OFFLINE;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText TOO_FAST;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText TOO_LONG;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText UNBLOCK;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText UNBLOCKED;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText UNIGNORED;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText UNKNOWN;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText UNKNOWN_COMMAND;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText UNKNOWN_PLAYER;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText USAGE;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText USERS;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText USER_INFO;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText WHISPER_FROM;
-  public static final org.fogofwarlabs.sc4j.engine.client.community.CommunityText WHISPER_TO;
-  public static org.fogofwarlabs.sc4j.engine.client.community.CommunityText valueOf(java.lang.String);
-  public static org.fogofwarlabs.sc4j.engine.client.community.CommunityText[] values();
-}
-
-public final class org.fogofwarlabs.sc4j.engine.client.community.RecentMaps {
-  public java.util.List<java.lang.String> getMaps();
-  public static final int MAXIMUM_COUNT = 10;
-  public static org.fogofwarlabs.sc4j.engine.client.community.RecentMaps read(java.nio.file.Path);
-  public void add(java.lang.String);
 }
 
 public final class org.fogofwarlabs.sc4j.engine.client.community.RoomFilter {
@@ -297,6 +157,13 @@ public final class org.fogofwarlabs.sc4j.engine.client.community.TableRow {
   public java.util.List<java.lang.String> getCells();
   public org.fogofwarlabs.sc4j.engine.client.community.TableRow(java.util.List<java.lang.String>, int, org.fogofwarlabs.sc4j.engine.net.beaconlink.LatencyClass);
   public org.fogofwarlabs.sc4j.engine.net.beaconlink.LatencyClass getLatency();
+}
+
+public final class org.fogofwarlabs.sc4j.engine.client.lobby.RecentMaps {
+  public java.util.List<java.lang.String> getMaps();
+  public static final int MAXIMUM_COUNT = 10;
+  public static org.fogofwarlabs.sc4j.engine.client.lobby.RecentMaps read(java.nio.file.Path);
+  public void add(java.lang.String);
 }
 
 public interface org.fogofwarlabs.sc4j.engine.mod.HeadlessRunner {

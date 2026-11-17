@@ -1,9 +1,14 @@
 package org.fogofwarlabs.sc4j.launcher.install;
 
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseClient;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository;
+import org.fogofwarlabs.sc4j.catalog.mods.ModRelease;
+import org.fogofwarlabs.sc4j.catalog.test.ReleaseServerScenario;
 import org.fogofwarlabs.sc4j.launcher.catalog.IdConflictIssue;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModCatalog;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModEntry;
-import org.fogofwarlabs.sc4j.launcher.release.*;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.fogofwarlabs.sc4j.manifest.settings.InstallationRecords;
 import org.fogofwarlabs.sc4j.manifest.test.TestJarUtils;
@@ -72,7 +77,7 @@ final class ModInstallerTest {
             ModInstallResult result;
 
             server.addCheckedRelease(REPOSITORY, FIRST_TAG, Map.of(JAR, createJar(directory, MOD_ID, UNSUPPORTED_ENGINE)));
-            release    = installer.findRelease(requireRepository(), null);
+            release    = ModRelease.find(installer.getClient(), requireRepository(), null);
             downloaded = installer.download(release, share -> {
             });
             result     = installer.install(release, downloaded, ModCatalog.scan(install, InstallationRecords.NONE), null);
@@ -164,7 +169,7 @@ final class ModInstallerTest {
             ReleaseException exception;
 
             server.addRelease(REPOSITORY, FIRST_TAG, Map.of(JAR, createJar(directory, MOD_ID, EngineVersion.CURRENT.toString())));
-            exception = Assertions.assertThrows(ReleaseException.class, () -> installer.findRelease(requireRepository(), null));
+            exception = Assertions.assertThrows(ReleaseException.class, () -> ModRelease.find(installer.getClient(), requireRepository(), null));
 
             Assertions.assertEquals(ReleaseProblem.ASSET_MISSING, exception.getProblem());
         }
@@ -172,7 +177,7 @@ final class ModInstallerTest {
 
     private static @NotNull ModInstallResult installRelease(@NotNull ModInstaller installer, @NotNull InstallLayout install,
                                                             @Nullable ModEntry replaced) throws IOException {
-        ModRelease release = installer.findRelease(requireRepository(), replaced == null ? null : replaced.getJarName());
+        ModRelease release = ModRelease.find(installer.getClient(), requireRepository(), replaced == null ? null : replaced.getJarName());
         Path downloaded = installer.download(release, share -> {
         });
 

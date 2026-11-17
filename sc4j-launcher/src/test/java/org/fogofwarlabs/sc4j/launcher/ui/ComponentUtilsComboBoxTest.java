@@ -17,7 +17,6 @@ import org.junit.jupiter.params.provider.ValueSource;
  * Tests the drop-down list width of the combo boxes of {@link ComponentUtils}.
  */
 final class ComponentUtilsComboBoxTest {
-    private static final double WIDTH = 300;
     private static final double TOLERANCE = 0.5;
 
     @BeforeAll
@@ -31,7 +30,7 @@ final class ComponentUtilsComboBoxTest {
     @ValueSource(strings = {"a", "an item much longer than the combo box is wide, whose cell would widen the list"})
     void comboBox_should_open_a_list_as_wide_as_the_combo_box(@NotNull String item) throws Exception {
         double[] widths = LauncherFxScenario.run(() -> {
-            ComboBox<String> comboBox = ComponentUtils.comboBox(WIDTH);
+            ComboBox<String> comboBox = ComponentUtils.comboBox(ControlWidth.M);
             Stage stage = new Stage();
 
             comboBox.getItems().setAll("b", item);
@@ -48,7 +47,7 @@ final class ComponentUtilsComboBoxTest {
             return result;
         });
 
-        Assertions.assertEquals(WIDTH, widths[0], TOLERANCE);
+        Assertions.assertEquals(ControlWidth.M.getWidth(), widths[0], TOLERANCE);
         Assertions.assertEquals(widths[0], widths[1], TOLERANCE);
     }
 }

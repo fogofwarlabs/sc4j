@@ -10,6 +10,8 @@ import org.fogofwarlabs.sc4j.engine.mod.identity.ModIdentity;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkFailure;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkNodeState;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerStatus;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChannelChat;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.fogofwarlabs.sc4j.manifest.version.EngineVersion;
 import org.jetbrains.annotations.NotNull;
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -29,7 +32,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * friends added by friend code see each other in the launcher, with the status and away text each sets, and whisper both ways (an ignored
  * player's whispers are not shown); a game of the same account shows the account in a game on two devices and then back in the launcher,
  * never offline; sign out everywhere else ends the game while the launcher stays online; log out ends the connection, frees the account
- * and shows the friend offline; a session without nodes stays offline with its failure.
+ * and shows the friend offline; a session without nodes stays offline with its failure. The chats of both launchers meet in the shared
+ * channel, exchange lines and a whisper typed as a command, keep a second channel until they leave one, and list the channels of the
+ * launcher users.
  */
 final class LauncherSessionTest {
     private static final long TEST_SECONDS = 180L;
@@ -37,6 +42,7 @@ final class LauncherSessionTest {
     private static final @NotNull ModIdentity GAME = ClientScenario.createIdentity(EngineVersion.CURRENT, GAME_MOD_ID, "1.0.0");
     private static final @NotNull String AWAY_TEXT = "Back at 9";
     private static final @NotNull String ALICE_INSTALL = "alice";
+    private static final @NotNull String LADDER = "Ladder";
 
     /**
      * Runs a node and the launcher sessions of Alice and Bob, each account in its own install, logged in at the node.
@@ -112,6 +118,21 @@ final class LauncherSessionTest {
         FriendView friend = findFriend(session, code);
 
         return friend != null && friend.getState() == state && friend.getDeviceCount() == deviceCount;
+    }
+
+    private static boolean hasMembers(@NotNull LauncherSessionView session, @NotNull String channel, @NotNull FriendCode @NotNull ... members) {
+        return session.getChannels().stream().anyMatch(view -> view.getName().equals(channel) &&
+                                                               view.getMembers().stream().map(FriendView::getCode).toList()
+                                                                   .containsAll(List.of(members)));
+    }
+
+    private static boolean hasLine(@NotNull LauncherSessionView session, @NotNull String channel, @NotNull String author, @NotNull String text) {
+        return session.getChatEntries().stream().anyMatch(entry -> channel.equals(entry.getChannel()) && entry.getKind() == ChatEntryKind.SAY &&
+                                                                   entry.getPrefix().startsWith(author) && entry.getText().equals(text));
+    }
+
+    private static @NotNull List<@NotNull String> listChannels(@NotNull LauncherSessionView session) {
+        return session.getChannels().stream().map(ChannelView::getName).toList();
     }
 
     private static boolean hasWhisper(@NotNull LauncherSessionView session, @NotNull FriendCode other,
@@ -301,6 +322,56 @@ final class LauncherSessionTest {
             Assertions.assertEquals(AWAY_TEXT, session.getSelf().getAwayText());
         } finally {
             session.close();
+        }
+    }
+
+    @Test
+    @Timeout(TEST_SECONDS)
+    void launcher_chats_meet_in_the_shared_channel_and_exchange_lines_and_a_whisper(@TempDir @NotNull Path directory) throws IOException,
+                                                                                                                             InterruptedException {
+        try (Launchers launchers = new Launchers(directory)) {
+            LauncherSession alice = launchers.aliceSession;
+            LauncherSession bob = launchers.bobSession;
+            FriendCode aliceCode = launchers.getAliceCode();
+            FriendCode bobCode = launchers.getBobCode();
+            String aliceName = launchers.alice.getTaggedName();
+
+            LauncherSessionScenario.await(() -> isConnected(alice) && isConnected(bob), "both launchers connect");
+
+            Assertions.assertTrue(alice.getChannels().isEmpty(), "the launcher joins no channel before its chat opens");
+
+            alice.openChat(Locale.ENGLISH);
+            bob.openChat(Locale.ENGLISH);
+            bob.openChat(Locale.ENGLISH);
+            LauncherSessionScenario.await(() -> hasMembers(alice, ChannelChat.SHARED_CHANNEL, aliceCode, bobCode) &&
+                                                hasMembers(bob, ChannelChat.SHARED_CHANNEL, aliceCode, bobCode),
+                                          "both launchers see each other in the shared channel");
+
+            Assertions.assertEquals(List.of(ChannelChat.SHARED_CHANNEL), listChannels(bob), "a second open joins nothing more");
+
+            // A line said in the channel reaches both chats.
+            alice.submitChat(ChannelChat.SHARED_CHANNEL, "Hello channel");
+            LauncherSessionScenario.await(() -> hasLine(bob, ChannelChat.SHARED_CHANNEL, aliceName, "Hello channel") &&
+                                                hasLine(alice, ChannelChat.SHARED_CHANNEL, aliceName, "Hello channel"),
+                                          "Alice's line reaches both chats");
+
+            // A whisper typed as a command reaches Alice and shows in Bob's whispers, the ones of the account menu.
+            bob.submitChat(ChannelChat.SHARED_CHANNEL, "/w " + aliceName + " Psst");
+            LauncherSessionScenario.await(() -> hasWhisper(alice, bobCode, "Psst", WhisperState.RECEIVED) &&
+                                                hasWhisper(bob, aliceCode, "Psst", WhisperState.DELIVERED),
+                                          "Bob's whisper reaches Alice");
+            Assertions.assertTrue(bob.getChatEntries().stream().noneMatch(entry -> entry.getKind() == ChatEntryKind.WHISPER),
+                                  "the whisper shows in the whispers only");
+
+            // A second channel stays beside the shared one until the chat leaves one; Bob's channel list shows the channel Alice's presence
+            // names, her first one.
+            alice.joinChannel(LADDER);
+            LauncherSessionScenario.await(() -> listChannels(alice).equals(List.of(ChannelChat.SHARED_CHANNEL, LADDER)), "Alice joins Ladder");
+            alice.leaveChannel(ChannelChat.SHARED_CHANNEL);
+            LauncherSessionScenario.await(() -> listChannels(alice).equals(List.of(LADDER)), "Alice leaves the shared channel");
+            LauncherSessionScenario.await(() -> bob.getKnownChannels().stream().anyMatch(channel -> channel.getName().equals(LADDER) &&
+                                                                                                    channel.getMemberCount() == 1),
+                                          "Bob's channel list shows Ladder");
         }
     }
 }

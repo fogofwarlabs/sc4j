@@ -12,7 +12,7 @@
  *   4. Application chrome: backdrop, app bar, navigation, status bar.
  *   5. Surfaces: panel, panel header, sunken area, banner, notices, modal scrim.
  *   6. Controls: button, text input, combo box, check box, spinner, list view, tab pane, scroll bar, progress, tooltip,
- *      dialog, separator, hyperlink.
+ *      separator, hyperlink.
  *   7. Launcher specific parts: badges, status markers, form fields, log and code areas.
  *
  * State pseudo-classes added by the launcher (set with Node.pseudoClassStateChanged):
@@ -82,6 +82,8 @@
     -sc4j-steel-edge: linear-gradient(to bottom right, -sc4j-steel-300 0%, -sc4j-steel-500 14%, -sc4j-steel-700 45%, #141f2b 100%);
     -sc4j-panel-fill: linear-gradient(to bottom, #162230 0%, -sc4j-ink-850 45%, #0c141d 100%);
     -sc4j-header-fill: linear-gradient(to right, #13303d 0%, #111d29 45%, #0f1822 100%);
+    -sc4j-footer-fill: #0b131c;
+    -sc4j-danger-panel-fill: linear-gradient(to bottom, #2a0d10 0%, #170709 100%);
     -sc4j-input-edge: linear-gradient(to bottom, #0b1118 0%, #2b3d50 100%);
     -sc4j-input-fill: linear-gradient(to bottom, #020509 0%, #070d13 100%);
     -sc4j-button-edge: linear-gradient(to bottom right, #7d97b5 0%, #3a5069 40%, #1c2a38 100%);
@@ -183,6 +185,10 @@
     -fx-text-fill: -sc4j-accent;
 }
 
+.text-accent-strong {
+    -fx-text-fill: -sc4j-accent-strong;
+}
+
 .text-success {
     -fx-text-fill: -sc4j-success;
 }
@@ -272,6 +278,11 @@
     -fx-padding: 16;
 }
 
+/* Gap between the brand and the navigation: xl of the spacing scale. */
+.app-bar-gap {
+    -fx-min-width: 24;
+}
+
 .app-bar {
     -fx-background-color: -sc4j-steel-edge, linear-gradient(to bottom, #121d29 0%, #0a1119 100%);
     -fx-background-insets: 0, 0 0 1 0;
@@ -348,14 +359,16 @@
  * 5. Surfaces
  * =================================================================================================================== */
 
-/* Raised metal panel: steel edge, dark brushed fill, soft drop shadow. Children: .panel-header and .panel-body. */
+/* Raised metal panel: steel edge, dark brushed fill, soft drop shadow. Children: .panel-header, .panel-body and .panel-footer. */
 .panel {
     -fx-background-color: -sc4j-steel-edge, -sc4j-panel-fill;
     -fx-background-insets: 0, 1;
     -fx-effect: dropshadow(gaussian, #000000a0, 18, 0.15, 0, 4);
 }
 
+/* Every panel header has the height of a header with a small button, whether it holds controls or not. */
 .panel-header {
+    -fx-min-height: 46;
     -fx-background-color: -sc4j-header-fill;
     -fx-background-insets: 1 1 0 1;
     -fx-border-color: transparent transparent -sc4j-border -sc4j-accent;
@@ -384,7 +397,7 @@
 }
 
 .panel-footer {
-    -fx-background-color: -sc4j-border, #0b131c;
+    -fx-background-color: -sc4j-border, -sc4j-footer-fill;
     -fx-background-insets: 0 1 1 1, 1 1 1 1;
     -fx-padding: 10 16;
     -fx-spacing: 8;
@@ -399,9 +412,16 @@
     -fx-spacing: 8;
 }
 
+/* A list in a sunken frame inside a panel body. */
+.list-view.sunken {
+    -fx-background-color: -sc4j-input-edge, -sc4j-surface-sunken;
+    -fx-background-insets: 0, 1;
+    -fx-padding: 1;
+}
+
 /* Failure report and other blocking errors. */
 .panel-danger {
-    -fx-background-color: -sc4j-danger-edge, linear-gradient(to bottom, #2a0d10 0%, #170709 100%);
+    -fx-background-color: -sc4j-danger-edge, -sc4j-danger-panel-fill;
     -fx-background-insets: 0, 1;
     -fx-border-color: transparent transparent transparent -sc4j-danger;
     -fx-border-width: 0 0 0 4;
@@ -415,6 +435,9 @@
     -fx-background-color: -sc4j-steel-edge, -sc4j-void;
     -fx-background-insets: 0, 1;
     -fx-padding: 1;
+    -fx-min-height: 128;
+    -fx-pref-height: 128;
+    -fx-max-height: 128;
     -fx-effect: dropshadow(gaussian, #000000a0, 18, 0.15, 0, 4);
 }
 
@@ -471,9 +494,15 @@
     -fx-border-color: transparent transparent transparent -sc4j-danger;
 }
 
-/* Dims the launcher behind an in-scene dialog. */
+/* Dims the launcher behind an in-scene dialog; a dialog as tall as the launcher keeps a margin. */
 .modal-scrim {
     -fx-background-color: #000000b0;
+    -fx-padding: 16;
+}
+
+/* A dialog that grows to the height of the launcher keeps a wider margin above and below. */
+.modal-scrim.tall {
+    -fx-padding: 32 16;
 }
 
 /* ===================================================================================================================
@@ -879,7 +908,17 @@
     -fx-border-color: transparent transparent #38d6ff33 -sc4j-accent;
 }
 
-/* Main line of a rich list cell; add .text-mono for addresses and paths. */
+/* List item: marker or thumbnail, title over captions, badge at the right end. */
+.list-item {
+    -fx-spacing: 14;
+    -fx-alignment: center-left;
+}
+
+.list-item-text {
+    -fx-spacing: 4;
+}
+
+/* Main line of a list item; add .text-mono for addresses and paths. */
 .list-title {
     -fx-font-family: "Segoe UI Semibold";
     -fx-font-size: 14.5px;
@@ -889,6 +928,43 @@
 .list-title.text-mono {
     -fx-font-family: "Cascadia Mono";
     -fx-font-size: 13.5px;
+}
+
+/* Compact list item (.list-view.compact): the regular item with less padding, a smaller title and closer lines. */
+.list-view.compact .list-cell {
+    -fx-padding: 4 10 4 9;
+}
+
+.list-view.compact .list-cell .list-title {
+    -fx-font-size: 13.5px;
+}
+
+.list-view.compact .list-item {
+    -fx-spacing: 12;
+}
+
+.list-view.compact .list-item-text {
+    -fx-spacing: 0;
+}
+
+/* Log list: lines close together, never selected. */
+.list-view.log-list {
+    -fx-padding: 0 0 11 0;
+}
+
+.list-view.log-list .list-cell:first-row {
+    -fx-padding: 14 12 3 11;
+}
+
+.list-view.log-list .list-cell {
+    -fx-border-color: transparent;
+    -fx-padding: 3 12 3 11;
+}
+
+.list-view.log-list .list-cell:filled:hover,
+.list-view.log-list .list-cell:filled:selected {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
 }
 
 /* ---- Tab pane: chamfered tabs, selected tab in cyan. ---- */
@@ -1073,46 +1149,6 @@
     -fx-text-fill: -sc4j-danger-text;
 }
 
-/* ---- Dialog ---- */
-
-.dialog-pane {
-    -fx-background-color: -sc4j-steel-edge, -sc4j-panel-fill;
-    -fx-background-insets: 0, 1;
-    -fx-padding: 0;
-    -fx-effect: dropshadow(gaussian, #000000e0, 30, 0.25, 0, 8);
-}
-
-.dialog-pane > .header-panel,
-.dialog-pane .dialog-header {
-    -fx-background-color: -sc4j-header-fill;
-    -fx-background-insets: 1 1 0 1;
-    -fx-border-color: transparent transparent -sc4j-border -sc4j-accent;
-    -fx-border-width: 0 0 1 3;
-    -fx-border-insets: 1 0 0 1;
-    -fx-padding: 16 20;
-    -fx-spacing: 16;
-    -fx-alignment: center-left;
-}
-
-.dialog-pane > .header-panel .label {
-    -fx-font-family: "Segoe UI Semibold";
-    -fx-font-size: 18px;
-    -fx-text-fill: -sc4j-text-strong;
-}
-
-.dialog-pane > .content {
-    -fx-padding: 18 20;
-    -fx-spacing: 12;
-}
-
-.dialog-pane > .content.label {
-    -fx-text-fill: -sc4j-text;
-}
-
-.dialog-pane > .button-bar > .container {
-    -fx-padding: 0 20 18 20;
-}
-
 /* ---- Separator ---- */
 
 .separator:horizontal .line {
@@ -1263,37 +1299,28 @@
     -fx-max-height: 9;
 }
 
-/* Summary next to the Run button when a setting fails validation. */
-.run-blocker {
-    -fx-text-fill: -sc4j-danger;
-    -fx-font-size: 12px;
-}
-
 /* The logged-in account at the right end of the app bar; its graphic is the status marker of the account's state. */
 .button.account-button {
     -fx-graphic-text-gap: 8;
 }
 
-/* The name of the selected account on the login step; the tag follows it in the muted colour. */
-.account-tag {
-    -fx-text-fill: -sc4j-text-muted;
-}
-
-/* ---- Account menu: a panel under the app bar with flat entries. The layer under it closes it on a click outside. ---- */
+/* ---- Menu: a panel of flat entries under a header, under the app bar or at the pointer. The layer under it closes it on a click
+ * outside. ---- */
 
 .menu-layer {
     -fx-background-color: transparent;
 }
 
-.account-menu {
+.menu-panel {
     -fx-padding: 6 1;
+    -fx-pref-width: 280;
 }
 
-.account-menu-header {
+.menu-header {
     -fx-padding: 8 16 10 16;
 }
 
-.account-menu > .separator {
+.menu-panel > .separator {
     -fx-padding: 4 0;
 }
 
@@ -1321,15 +1348,6 @@
 .button.menu-item:armed {
     -fx-background-color: #38d6ff33;
     -fx-text-fill: -sc4j-accent-strong;
-}
-
-/* The friends in the Friends dialog and the conversations and whispers in the Whispers dialog, in a sunken frame. */
-.list-view.friend-list,
-.list-view.conversation-list,
-.list-view.whisper-list {
-    -fx-background-color: -sc4j-input-edge, -sc4j-surface-sunken;
-    -fx-background-insets: 0, 1;
-    -fx-padding: 1;
 }
 
 /* ---- Key/value metadata grid. ---- */

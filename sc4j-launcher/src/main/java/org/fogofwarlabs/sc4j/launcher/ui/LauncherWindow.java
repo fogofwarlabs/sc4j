@@ -15,6 +15,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
+import org.fogofwarlabs.sc4j.base.exception.Exceptions;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.Account;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.AccountBackup;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.AccountStore;
@@ -22,15 +23,20 @@ import org.fogofwarlabs.sc4j.beaconlink.protocol.file.ConfiguredNode;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.file.NodeListFile;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.file.NodeListProblem;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.file.NodeListReading;
+import org.fogofwarlabs.sc4j.catalog.ReleaseVersion;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseClient;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository;
+import org.fogofwarlabs.sc4j.catalog.mods.ModIndex;
+import org.fogofwarlabs.sc4j.catalog.mods.ModRelease;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModCatalog;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModEntry;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModStatus;
 import org.fogofwarlabs.sc4j.launcher.form.SettingsForm;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
-import org.fogofwarlabs.sc4j.launcher.install.ModIndex;
 import org.fogofwarlabs.sc4j.launcher.install.ModInstaller;
-import org.fogofwarlabs.sc4j.launcher.install.ModRelease;
 import org.fogofwarlabs.sc4j.launcher.launch.RuntimeCommandLine;
 import org.fogofwarlabs.sc4j.launcher.launch.RuntimeListener;
 import org.fogofwarlabs.sc4j.launcher.launch.RuntimeProcess;
@@ -38,10 +44,7 @@ import org.fogofwarlabs.sc4j.launcher.launch.RuntimeRun;
 import org.fogofwarlabs.sc4j.launcher.nodes.NodePingResult;
 import org.fogofwarlabs.sc4j.launcher.nodes.NodePinger;
 import org.fogofwarlabs.sc4j.launcher.peer.LauncherNodeRunner;
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseClient;
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseException;
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseProblem;
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseRepository;
+import org.fogofwarlabs.sc4j.launcher.session.FriendCode;
 import org.fogofwarlabs.sc4j.launcher.session.LauncherSessionView;
 import org.fogofwarlabs.sc4j.launcher.settings.LauncherSettings;
 import org.fogofwarlabs.sc4j.launcher.settings.LauncherSettingsFile;
@@ -54,6 +57,8 @@ import org.fogofwarlabs.sc4j.launcher.ui.options.OptionsScreen;
 import org.fogofwarlabs.sc4j.launcher.ui.options.UpdateView;
 import org.fogofwarlabs.sc4j.launcher.ui.run.RunScreen;
 import org.fogofwarlabs.sc4j.launcher.ui.session.AccountMenu;
+import org.fogofwarlabs.sc4j.launcher.ui.session.ChatScreen;
+import org.fogofwarlabs.sc4j.launcher.ui.session.Conversations;
 import org.fogofwarlabs.sc4j.launcher.update.LauncherRelease;
 import org.fogofwarlabs.sc4j.launcher.update.LauncherUpdater;
 import org.fogofwarlabs.sc4j.manifest.ModManifest;
@@ -85,8 +90,9 @@ import java.util.function.Function;
  * <p>
  * The launcher starts on the login step, with the most recently used account selected; without any account it opens the New account dialog
  * there. Logging in opens the account's session ({@link LauncherSessionView}) and the Mods screen; the account and its menu are at the
- * right end of the app bar. Log out, from that menu, closes the session and returns to the login step; closing the window closes the session
- * too. A running game keeps running after either.
+ * right end of the app bar, and the Chat screen shows the session's channels and whispers; Whisper in the menu's Friends opens the friend's
+ * conversation there. Log out, from that menu, closes the session and returns to the login step; closing the window closes the session too.
+ * A running game keeps running after either.
  * <p>
  * While the runtime runs, the window is minimized; it comes back when the runtime ends and shows the run's report. Closing
  * the launcher does not stop a running runtime.
@@ -271,12 +277,13 @@ public final class LauncherWindow {
     private @NotNull ModCatalog catalog;
     private @Nullable Account account;
     private @Nullable LauncherSessionView session;
+    private @Nullable Conversations conversations;
 
     private @Nullable LauncherRelease launcherUpdate;
     private boolean updateOffered;
     private boolean updateChecking;
     private @Nullable String updateStatus;
-    private @NotNull ComponentUtils.Tone updateStatusTone;
+    private @NotNull Tone updateStatusTone;
     private @Nullable String updateFailure;
     private @NotNull Map<@NotNull String, @NotNull ModRelease> modUpdates;
 
@@ -288,6 +295,7 @@ public final class LauncherWindow {
     private @NotNull LauncherShell.Section section;
     private @Nullable UpdateView updateView;
     private @Nullable RunScreen runScreen;
+    private @Nullable ChatScreen chatScreen;
     private @Nullable RuntimeRun run;
     private @Nullable String selectedJar;
 
@@ -323,7 +331,7 @@ public final class LauncherWindow {
         this.modInstaller    = new ModInstaller(install, releaseClient);
         this.modIndex        = new ModIndex(releaseClient, ModIndex.DEFAULT_ADDRESS);
         this.scene           = new Scene(new StackPane(), DEFAULT_WIDTH, DEFAULT_HEIGHT);
-        this.notices         = ComponentUtils.column(ComponentUtils.Spacing.M);
+        this.notices         = ComponentUtils.column(Spacing.M);
         this.running         = new SimpleBooleanProperty(false);
 
         this.imageScale = ThemeUtils.getImageScale();
@@ -336,12 +344,13 @@ public final class LauncherWindow {
         this.catalog         = this.scanCatalog();
         this.account         = null;
         this.session         = null;
+        this.conversations   = null;
 
         this.launcherUpdate   = null;
         this.updateOffered    = false;
         this.updateChecking   = false;
         this.updateStatus     = null;
-        this.updateStatusTone = ComponentUtils.Tone.NEUTRAL;
+        this.updateStatusTone = Tone.NEUTRAL;
         this.updateFailure    = null;
         this.modUpdates       = new LinkedHashMap<>();
 
@@ -353,6 +362,7 @@ public final class LauncherWindow {
         this.section     = LauncherShell.Section.MODS;
         this.updateView  = null;
         this.runScreen   = null;
+        this.chatScreen  = null;
         this.run         = null;
         this.selectedJar = this.settings.getLastMod();
 
@@ -409,7 +419,7 @@ public final class LauncherWindow {
         this.launcherUpdater.cleanUp();
         this.updateNotices();
 
-        if (LauncherUpdater.isAutomaticCheckAllowed(this.version)) {
+        if (LauncherUpdater.isAutomaticCheckAllowed(ReleaseVersion.parse(this.version))) {
             this.checkLauncherUpdate(this.settings.getUpdateRepository(), false);
         }
 
@@ -562,16 +572,22 @@ public final class LauncherWindow {
     private void logIn(@NotNull Account loggedIn) {
         LauncherSessionView opened = this.openSession.apply(loggedIn);
 
-        this.account     = loggedIn;
-        this.session     = opened;
-        this.accountMenu = this.createAccountMenu(loggedIn, opened);
-        this.section     = LauncherShell.Section.MODS;
+        this.account       = loggedIn;
+        this.session       = opened;
+        this.conversations = new Conversations(opened);
+        this.accountMenu   = this.createAccountMenu(loggedIn, opened);
+        this.section       = LauncherShell.Section.MODS;
 
         opened.setOnChanged(() -> {
-            AccountMenu shown = this.accountMenu;
+            AccountMenu shownMenu = this.accountMenu;
+            ChatScreen shownChat = this.chatScreen;
 
-            if (shown != null) {
-                shown.update();
+            if (shownMenu != null) {
+                shownMenu.update();
+            }
+
+            if (shownChat != null) {
+                shownChat.update();
             }
         });
         this.showSection(LauncherShell.Section.MODS);
@@ -590,9 +606,11 @@ public final class LauncherWindow {
     private void closeSession() {
         LauncherSessionView closed = this.session;
 
-        this.accountMenu = null;
-        this.session     = null;
-        this.account     = null;
+        this.accountMenu   = null;
+        this.chatScreen    = null;
+        this.conversations = null;
+        this.session       = null;
+        this.account       = null;
 
         if (closed != null) {
             closed.setOnChanged(null);
@@ -601,7 +619,7 @@ public final class LauncherWindow {
     }
 
     private @NotNull AccountMenu createAccountMenu(@NotNull Account loggedIn, @NotNull LauncherSessionView opened) {
-        AccountMenu created = new AccountMenu(this.shell, this.texts, loggedIn.getTaggedName(), opened, this::findModName, new AccountMenu.Actions() {
+        AccountMenu.Actions actions = new AccountMenu.Actions() {
             /**
              * Called when the user logs out.
              */
@@ -619,7 +637,19 @@ public final class LauncherWindow {
             public void onCopy(@NotNull String text) {
                 LauncherWindow.this.copy(text);
             }
-        });
+
+            /**
+             * Called when the user whispers to a friend.
+             *
+             * @param player     the friend's friend code
+             * @param taggedName the friend's name and tag
+             */
+            @Override
+            public void onWhisper(@NotNull FriendCode player, @NotNull String taggedName) {
+                LauncherWindow.this.showWhispers(player, taggedName);
+            }
+        };
+        AccountMenu created = new AccountMenu(this.shell, this.texts, loggedIn.getTaggedName(), opened, this::findModName, actions);
 
         created.update();
 
@@ -639,6 +669,21 @@ public final class LauncherWindow {
         }
 
         return modId;
+    }
+
+    /**
+     * Shows a player's whisper conversation on the Chat screen, which it shows first if another screen is shown.
+     */
+    private void showWhispers(@NotNull FriendCode player, @NotNull String taggedName) {
+        if (this.section != LauncherShell.Section.CHAT || this.chatScreen == null) {
+            this.showSection(LauncherShell.Section.CHAT);
+        }
+
+        ChatScreen shown = this.chatScreen;
+
+        if (shown != null) {
+            shown.showWhispers(player, taggedName);
+        }
     }
 
     private void openAccountMenu() {
@@ -805,7 +850,7 @@ public final class LauncherWindow {
 
         if (repository == null) {
             this.updateStatus     = this.texts.format("update.failed", this.texts.describeReleaseProblem(ReleaseProblem.INVALID_REPOSITORY));
-            this.updateStatusTone = ComponentUtils.Tone.DANGER;
+            this.updateStatusTone = Tone.DANGER;
             this.showUpdateStatus();
 
             return;
@@ -821,7 +866,7 @@ public final class LauncherWindow {
 
         Thread thread = new Thread(() -> {
             try {
-                LauncherRelease found = this.launcherUpdater.findUpdate(repository, this.version);
+                LauncherRelease found = this.launcherUpdater.findUpdate(repository, ReleaseVersion.parse(this.version));
 
                 Platform.runLater(() -> this.finishLauncherUpdateCheck(found, null, asked));
             } catch (ReleaseException exception) {
@@ -839,10 +884,10 @@ public final class LauncherWindow {
         if (failure == null) {
             this.launcherUpdate   = found;
             this.updateStatus     = found == null && asked ? this.texts.get("update.current") : null;
-            this.updateStatusTone = ComponentUtils.Tone.SUCCESS;
+            this.updateStatusTone = Tone.SUCCESS;
         } else if (asked) {
             this.updateStatus     = this.texts.format("update.failed", this.texts.describeReleaseProblem(failure.getProblem()));
-            this.updateStatusTone = ComponentUtils.Tone.DANGER;
+            this.updateStatusTone = Tone.DANGER;
         }
 
         this.showUpdateStatus();
@@ -872,7 +917,7 @@ public final class LauncherWindow {
         if (this.updateChecking) {
             shown.showChecking();
         } else if (available != null) {
-            shown.showStatus(this.texts.format("update.available", available.getVersion()), ComponentUtils.Tone.ACCENT, true);
+            shown.showStatus(this.texts.format("update.available", available.getVersion()), Tone.ACCENT, true);
         } else {
             shown.showStatus(this.updateStatus, this.updateStatusTone, false);
         }
@@ -965,6 +1010,7 @@ public final class LauncherWindow {
         Node content = switch (shown) {
             case MODS -> this.modsScreen.getRoot();
             case RUN -> this.createRunScreen().getRoot();
+            case CHAT -> this.createChatScreen().getRoot();
             case SETTINGS -> this.createOptionsScreen().getRoot();
         };
 
@@ -972,6 +1018,10 @@ public final class LauncherWindow {
 
         if (shown != LauncherShell.Section.RUN) {
             this.runScreen = null;
+        }
+
+        if (shown != LauncherShell.Section.CHAT) {
+            this.chatScreen = null;
         }
 
         if (shown != LauncherShell.Section.SETTINGS) {
@@ -985,7 +1035,7 @@ public final class LauncherWindow {
      * Puts the launcher's notices above a view's content ({@link #updateNotices}).
      */
     private @NotNull Node addNotices(@NotNull Node content) {
-        VBox column = ComponentUtils.column(ComponentUtils.Spacing.M, this.notices, content);
+        VBox column = ComponentUtils.column(Spacing.M, this.notices, content);
 
         VBox.setVgrow(content, Priority.ALWAYS);
         this.updateNotices();
@@ -1003,22 +1053,22 @@ public final class LauncherWindow {
         LauncherRelease available = this.launcherUpdate;
 
         if (this.settingsProblem != null) {
-            shown.add(ComponentUtils.notice(ComponentUtils.Tone.WARNING, this.texts.format("notice.settings", this.settingsProblem)));
+            shown.add(ComponentUtils.notice(Tone.WARNING, this.texts.format("notice.settings", this.settingsProblem)));
         }
 
         if (this.updateFailure != null) {
-            shown.add(ComponentUtils.notice(ComponentUtils.Tone.DANGER, this.texts.format("notice.update.failed", this.updateFailure)));
+            shown.add(ComponentUtils.notice(Tone.DANGER, this.texts.format("notice.update.failed", this.updateFailure)));
         }
 
         if (available != null && loggedIn && !this.settings.isSkipped(available.getVersion())) {
-            Button update = ComponentUtils.smallButton(this.texts.get("update.start"), ComponentUtils.ButtonRole.PRIMARY);
+            Button update = ComponentUtils.smallButton(this.texts.get("update.start"), ButtonRole.PRIMARY);
 
             update.setOnAction(event -> this.openLauncherUpdate());
-            shown.add(ComponentUtils.notice(ComponentUtils.Tone.ACCENT, this.texts.format("update.available", available.getVersion()), update));
+            shown.add(ComponentUtils.notice(Tone.ACCENT, this.texts.format("update.available", available.getVersion()), update));
         }
 
         if (this.catalogProblem != null && loggedIn && this.section == LauncherShell.Section.MODS) {
-            shown.add(ComponentUtils.notice(ComponentUtils.Tone.DANGER, this.texts.format("notice.catalog", this.catalogProblem)));
+            shown.add(ComponentUtils.notice(Tone.DANGER, this.texts.format("notice.catalog", this.catalogProblem)));
         }
 
         this.notices.getChildren().setAll(shown);
@@ -1074,6 +1124,27 @@ public final class LauncherWindow {
         });
 
         this.runScreen = screen;
+
+        return screen;
+    }
+
+    /**
+     * Creates the Chat screen of the logged-in account and opens its chat.
+     */
+    private @NotNull ChatScreen createChatScreen() {
+        Account loggedIn = this.account;
+        LauncherSessionView opened = this.session;
+        Conversations openedConversations = this.conversations;
+
+        if (loggedIn == null || opened == null || openedConversations == null) {
+            throw Exceptions.newIllegalStateException("The Chat screen needs a logged-in account.");
+        }
+
+        ChatScreen screen = new ChatScreen(this.shell, this.texts, loggedIn.getTaggedName(), opened, openedConversations, this::findModName,
+                                           this::copy);
+
+        this.chatScreen = screen;
+        screen.update();
 
         return screen;
     }
@@ -1151,7 +1222,7 @@ public final class LauncherWindow {
             }
         }
 
-        new AboutDialog(this.stage, this.texts, this.version, this.imageScale, mods, this.showDocument).showAndWait();
+        new AboutDialog(this.shell, this.texts, this.version, this.imageScale, mods, this.showDocument).open();
     }
 
     private void selectLastMod() {

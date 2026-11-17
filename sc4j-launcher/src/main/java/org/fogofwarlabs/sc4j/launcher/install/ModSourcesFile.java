@@ -4,7 +4,7 @@ import org.fogofwarlabs.sc4j.base.exception.Exceptions;
 import org.fogofwarlabs.sc4j.base.io.AtomicFileUtils;
 import org.fogofwarlabs.sc4j.base.json.JsonReader;
 import org.fogofwarlabs.sc4j.base.json.JsonWriterUtils;
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseRepository;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
