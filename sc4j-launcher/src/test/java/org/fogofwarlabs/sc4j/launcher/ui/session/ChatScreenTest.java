@@ -35,7 +35,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * conversations with their unread whispers, the channels, conversations and members in compact rows, the shown channel's log and members,
  * lines and whispers sent from the input, leaving and joining a channel, a channel the chat joins shown at once, a whisper conversation
  * opened from elsewhere shown with the input focused and kept while the chat joins the shared channel, the player menu on a member and on a
- * name in the log with its commands, and the notice of a session without a connection. Each view is saved as a sample picture.
+ * name in the log with its commands, the input footer with the same room around its row and between the input and Send, and the notice of a
+ * session without a connection. Each view is saved as a sample picture.
  */
 final class ChatScreenTest {
     private static final double SCENE_WIDTH = 1280;
@@ -49,6 +50,8 @@ final class ChatScreenTest {
     private static final @NotNull String DIALOG = ".modal-scrim";
     private static final @NotNull String MENU_SELECTOR = ".menu-panel";
     private static final @NotNull String NAME_SELECTOR = ".text-heading";
+    private static final @NotNull String INPUT_FOOTER_SELECTOR = ".input-footer";
+    private static final @NotNull String INPUT_ROW_SELECTOR = ".input-row";
     /**
      * The lists of the screen by their place from left to right.
      */
@@ -126,6 +129,26 @@ final class ChatScreenTest {
         Assertions.assertNotNull(found, selector);
 
         return type.cast(found);
+    }
+
+    /**
+     * Checks that the input footer has the same room above, below, left and right of its input row and between the input and Send.
+     */
+    private static void assertInputFooterEven(@NotNull Parent root, @NotNull LauncherTexts texts) {
+        Node footer = lookup(root, INPUT_FOOTER_SELECTOR, Node.class);
+        Node row = lookup(root, INPUT_ROW_SELECTOR, Node.class);
+        Bounds footerBounds = footer.localToScene(footer.getLayoutBounds());
+        Bounds rowBounds = row.localToScene(row.getLayoutBounds());
+        Bounds input = getInput(root).localToScene(getInput(root).getLayoutBounds());
+        Button send = LauncherFxScenario.findButton(root, texts.get("session.whispers.send"));
+        Bounds sendBounds = send.localToScene(send.getLayoutBounds());
+        double room = rowBounds.getMinY() - footerBounds.getMinY();
+
+        Assertions.assertTrue(room > 0, "the footer has room around its row");
+        Assertions.assertEquals(room, footerBounds.getMaxY() - rowBounds.getMaxY(), TOLERANCE, "room below the row");
+        Assertions.assertEquals(room, rowBounds.getMinX() - footerBounds.getMinX(), TOLERANCE, "room left of the row");
+        Assertions.assertEquals(room, footerBounds.getMaxX() - rowBounds.getMaxX(), TOLERANCE, "room right of the row");
+        Assertions.assertEquals(room, sendBounds.getMinX() - input.getMaxX(), TOLERANCE, "gap between the input and Send");
     }
 
     private static @NotNull ListView<?> getList(@NotNull LauncherShell shell, int list) {
@@ -265,9 +288,9 @@ final class ChatScreenTest {
             LauncherShell shell = createShell(texts, language, scale, directory, session, new ArrayList<>());
             Parent root = shell.getRoot();
 
-            // The first update opens the chat in the display language and shows the first channel, read; the other channel and the whisper
+            // The screen only shows the chat: it gives no command; the first channel is shown, read, and the other channel and the whisper
             // conversation count their unread lines.
-            Assertions.assertEquals(List.of("open chat " + language.getCode()), session.getCommands());
+            Assertions.assertTrue(session.getCommands().isEmpty(), "showing the chat starts nothing");
             Assertions.assertEquals(List.of(SHARED, LADDER + " 2"), listRows(shell, CHANNEL_LIST));
             Assertions.assertEquals(List.of(KERRIGAN.getTaggedName() + " 1"), listRows(shell, CONVERSATION_LIST));
             Assertions.assertEquals(List.of(RAYNOR.getTaggedName(), KERRIGAN.getTaggedName(), ZERATUL.getTaggedName()),
@@ -286,6 +309,10 @@ final class ChatScreenTest {
             Assertions.assertEquals(COMPACT_CELL_PADDING, ((ListCell<?>) findCell(shell, MEMBER_LIST, ZERATUL)).getPadding().getTop(),
                                     TOLERANCE);
             LauncherFxScenario.saveSample(root, scale, "chat-" + suffix);
+
+            // The input row's footer: the same room on every side of the row and between the input and Send.
+            assertInputFooterEven(root, texts);
+            LauncherFxScenario.saveSample(lookup(root, INPUT_FOOTER_SELECTOR, Parent.class), scale, "chat-footer-" + suffix);
 
             // A line typed in the channel goes to the session for that channel.
             type(shell, "hello");
@@ -499,7 +526,7 @@ final class ChatScreenTest {
 
     @ParameterizedTest
     @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void chat_screen_says_why_the_session_is_offline_and_opens_no_chat(double scale, @NotNull String languageCode,
+    void chat_screen_says_why_the_session_is_offline(double scale, @NotNull String languageCode,
                                                                        @TempDir @NotNull Path directory) throws Exception {
         UiLanguage language = selectLanguage(languageCode);
         LauncherTexts texts = LauncherTexts.of(language);
@@ -513,7 +540,7 @@ final class ChatScreenTest {
             Assertions.assertTrue(showsText(shell.getRoot(), texts.get("session.not.connected")));
             Assertions.assertTrue(showsText(shell.getRoot(), texts.get("session.failure.signed_out")));
             Assertions.assertTrue(find(shell.getRoot(), ListView.class).isEmpty());
-            Assertions.assertTrue(session.getCommands().isEmpty(), "no chat without a connection");
+            Assertions.assertTrue(session.getCommands().isEmpty());
             LauncherFxScenario.saveSample(shell.getRoot(), scale, "chat-offline-" + suffix);
 
             return null;

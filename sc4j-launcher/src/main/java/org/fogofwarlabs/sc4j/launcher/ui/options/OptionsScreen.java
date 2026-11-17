@@ -2,6 +2,7 @@ package org.fogofwarlabs.sc4j.launcher.ui.options;
 
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -22,19 +23,15 @@ import java.util.*;
 import java.util.function.Consumer;
 
 /**
- * Shows the launcher's Settings screen: the UI language (the system language or an explicit choice) and the update ({@link UpdateView}),
- * the Beacon.Link panel
- * ({@link BeaconLinkPanel}: the node setting and the launcher node's status; keys are automatic and not shown) and, behind its Seeds button,
- * the seed list editor (the node list). The editor lists the seeds in the order the client contacts them and has the host and port fields
+ * Shows the launcher's Settings screen in two columns of equal width. The left column holds the launcher panel, a form of one field per row:
+ * the UI language (the system language or an explicit choice), the chat sound switch and the update ({@link UpdateView}). The right column
+ * holds the Beacon.Link panel ({@link BeaconLinkPanel}: the node setting and the launcher node's status; keys are automatic and not shown)
+ * and, under it behind its Seeds button, the seed list editor (the node list). The editor lists the seeds in the order the client contacts them and has the host and port fields
  * under the list: Add, Update and Remove change entries, Move up and Move down change the order. Field problems are shown with their
  * reasons; every change is saved at once through {@link Actions#onNodesChanged(List)}. Ping checks every listed seed and shows each result
  * in the seed's row: the round-trip delay, the node version and the address the node observed, or why it did not answer.
  */
 public final class OptionsScreen {
-    /**
-     * The width of a port field.
-     */
-
     private static final @NotNull String LANGUAGE_NAME_KEY_PREFIX = "language.";
     private static final @NotNull String MESSAGE_SEPARATOR = " ";
 
@@ -48,6 +45,13 @@ public final class OptionsScreen {
          * @param language the chosen language, or {@code null} to follow the operating system
          */
         void onLanguageChanged(@Nullable UiLanguage language);
+
+        /**
+         * Called when the user mutes the chat notification sound or turns it on again.
+         *
+         * @param muted whether the chat notification sound is muted
+         */
+        void onChatSoundMutedChanged(boolean muted);
 
         /**
          * Called when the user changes the node list; the launcher saves it.
@@ -121,7 +125,7 @@ public final class OptionsScreen {
     private final @NotNull Label message;
     private final @NotNull Label nodeCount;
     private final @NotNull Button ping;
-    private final @NotNull VBox root;
+    private final @NotNull GridPane root;
 
     private final @NotNull Map<@NotNull ConfiguredNode, @NotNull NodePingResult> pingResults;
     private boolean pinging;
@@ -132,16 +136,20 @@ public final class OptionsScreen {
      * @param texts            the launcher texts of the display language
      * @param language         the language chosen in the launcher settings, or {@code null} when the launcher follows the
      *                         operating system
+     * @param chatSoundMuted   whether the launcher settings mute the chat notification sound
      * @param updateView       the update part of the launcher panel
      * @param nodes            the saved node list, or the shipped seed list while the user has saved none
      * @param nodesLoadProblem why that list could not be read, or {@code null}
      * @param nodeRunner       the launcher's Beacon.Link node
      * @param actions          receives the changes
      */
-    public OptionsScreen(@NotNull LauncherTexts texts, @Nullable UiLanguage language, @NotNull UpdateView updateView,
+    public OptionsScreen(@NotNull LauncherTexts texts, @Nullable UiLanguage language, boolean chatSoundMuted,
+                         @NotNull UpdateView updateView,
                          @NotNull List<@NotNull ConfiguredNode> nodes, @Nullable NodeListProblem nodesLoadProblem, @NotNull LauncherNodeRunner nodeRunner,
                          @NotNull Actions actions) {
         VBox nodesPanel;
+        VBox launcherColumn;
+        VBox beaconLinkColumn;
 
         this.texts     = texts;
         this.actions   = actions;
@@ -167,8 +175,9 @@ public final class OptionsScreen {
         nodesPanel = this.createNodesPanel(nodesLoadProblem);
         VBox.setVgrow(nodesPanel, Priority.ALWAYS);
 
-        this.root = ComponentUtils.createColumn(Spacing.L, this.createLauncherPanel(language, updateView),
-                                                new BeaconLinkPanel(texts, nodeRunner, nodesPanel).getRoot(), nodesPanel);
+        launcherColumn = ComponentUtils.createColumn(Spacing.L, this.createLauncherPanel(language, chatSoundMuted, updateView));
+        beaconLinkColumn = ComponentUtils.createColumn(Spacing.L, new BeaconLinkPanel(texts, nodeRunner, nodesPanel).getRoot(), nodesPanel);
+        this.root = ComponentUtils.createEqualColumns(Spacing.L, launcherColumn, beaconLinkColumn);
 
         this.pingResults = new HashMap<>();
         this.pinging     = false;
@@ -177,7 +186,7 @@ public final class OptionsScreen {
     /**
      * @return the screen's root node
      */
-    public @NotNull VBox getRoot() {
+    public @NotNull GridPane getRoot() {
         return this.root;
     }
 
@@ -197,11 +206,12 @@ public final class OptionsScreen {
         this.nodeList.refresh();
     }
 
-    private @NotNull VBox createLauncherPanel(@Nullable UiLanguage language, @NotNull UpdateView updateView) {
+    private @NotNull VBox createLauncherPanel(@Nullable UiLanguage language, boolean chatSoundMuted, @NotNull UpdateView updateView) {
         ComboBox<LanguageOption> choice = ComponentUtils.createComboBox(ControlWidth.M);
+        CheckBox mute = new CheckBox(this.texts.get("settings.chat.sound.mute"));
         UiLanguage system = UiLanguage.select(null, Locale.getDefault());
         LanguageOption systemOption = new LanguageOption(null, this.texts.format("language.system", this.getLanguageName(system)));
-        HBox row;
+        VBox form;
 
         choice.getItems().add(systemOption);
         choice.setValue(systemOption);
@@ -222,10 +232,13 @@ public final class OptionsScreen {
             }
         });
 
-        row = ComponentUtils.createRow(Spacing.XL, ComponentUtils.createField(this.texts.get("settings.language"), choice), updateView.getRoot());
-        row.setAlignment(Pos.BOTTOM_LEFT);
+        mute.setSelected(chatSoundMuted);
+        mute.selectedProperty().addListener((observable, previous, current) -> this.actions.onChatSoundMutedChanged(current));
 
-        return ComponentUtils.createPanel(this.texts.get("settings.launcher"), ComponentUtils.createPanelBody(row));
+        form = ComponentUtils.createForm(ComponentUtils.createField(this.texts.get("settings.language"), choice),
+                                         ComponentUtils.createField(this.texts.get("settings.sound"), mute), updateView.getRoot());
+
+        return ComponentUtils.createPanel(this.texts.get("settings.launcher"), ComponentUtils.createPanelBody(form));
     }
 
     private @NotNull String getLanguageName(@NotNull UiLanguage language) {

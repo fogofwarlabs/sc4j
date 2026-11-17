@@ -9,8 +9,8 @@ import java.util.*;
 
 /**
  * Keeps the logged-in account's conversations for the Chat screen: one whisper conversation per player whispered with, the newest first, and
- * what the user has read of each whisper conversation and of each channel. Showing a conversation reads it. It lives as long as the account
- * stays logged in.
+ * what the user has read of each whisper conversation and of each channel. Showing a conversation reads it. The unread counts of the Chat
+ * screen and the dot of its navigation entry ({@link #hasUnread()}) both come from here. It lives as long as the account stays logged in.
  */
 public final class Conversations {
     /**
@@ -72,6 +72,20 @@ public final class Conversations {
         }
     }
 
+    /**
+     * Tells whether an entry is a line another player said or emoted in a channel.
+     *
+     * @param entry the entry
+     * @param self  the account's own friend code
+     * @return {@code true} if the entry is another player's line in a channel, {@code false} otherwise
+     */
+    static boolean isOtherLine(@NotNull ChatEntryView entry, @NotNull FriendCode self) {
+        FriendCode author = entry.getPlayer();
+
+        return entry.getChannel() != null && (entry.getKind() == ChatEntryKind.SAY || entry.getKind() == ChatEntryKind.EMOTE) && author != null &&
+               !author.equals(self);
+    }
+
     private static @Nullable WhisperView findNewestIncoming(@NotNull List<@NotNull WhisperView> whispers) {
         for (int index = whispers.size() - 1; index >= 0; index--) {
             if (whispers.get(index).isIncoming()) {
@@ -86,6 +100,7 @@ public final class Conversations {
     private final @NotNull LauncherSessionView session;
     private final @NotNull Map<@NotNull FriendCode, @NotNull WhisperView> lastReadWhispers;
     private final @NotNull Map<@NotNull String, @NotNull ChatEntryView> lastReadLines;
+    private @Nullable Runnable readListener;
 
     /**
      * Creates a {@link Conversations} instance with nothing read.
@@ -96,6 +111,16 @@ public final class Conversations {
         this.session          = session;
         this.lastReadWhispers = new HashMap<>();
         this.lastReadLines    = new HashMap<>();
+        this.readListener     = null;
+    }
+
+    /**
+     * Sets the listener called after what the user has read of a conversation changed.
+     *
+     * @param listener the listener, or {@code null} for none
+     */
+    public void setOnRead(@Nullable Runnable listener) {
+        this.readListener = listener;
     }
 
     /**
@@ -174,8 +199,8 @@ public final class Conversations {
     public void read(@NotNull FriendCode player) {
         WhisperView newest = findNewestIncoming(this.listWhispers(player));
 
-        if (newest != null) {
-            this.lastReadWhispers.put(player, newest);
+        if (newest != null && !newest.equals(this.lastReadWhispers.put(player, newest))) {
+            this.notifyRead();
         }
     }
 
@@ -191,7 +216,7 @@ public final class Conversations {
         int unread = 0;
 
         for (int index = read == null ? 0 : entries.lastIndexOf(read) + 1; index < entries.size(); index++) {
-            if (this.isOtherLine(entries.get(index), channel)) {
+            if (channel.equals(entries.get(index).getChannel()) && isOtherLine(entries.get(index), this.session.getFriendCode())) {
                 unread++;
             }
         }
@@ -209,7 +234,9 @@ public final class Conversations {
 
         for (int index = entries.size() - 1; index >= 0; index--) {
             if (channel.equals(entries.get(index).getChannel())) {
-                this.lastReadLines.put(channel, entries.get(index));
+                if (this.lastReadLines.put(channel, entries.get(index)) != entries.get(index)) {
+                    this.notifyRead();
+                }
 
                 return;
             }
@@ -217,12 +244,31 @@ public final class Conversations {
     }
 
     /**
-     * Tells whether an entry is a line another player said or emoted in a channel.
+     * Tells whether any channel the chat is in has unread lines or any whisper conversation unread whispers.
+     *
+     * @return {@code true} if something is unread, {@code false} otherwise
      */
-    private boolean isOtherLine(@NotNull ChatEntryView entry, @NotNull String channel) {
-        FriendCode author = entry.getPlayer();
+    public boolean hasUnread() {
+        for (ChannelView channel : this.session.getChannels()) {
+            if (this.countUnreadLines(channel.getName()) > 0) {
+                return true;
+            }
+        }
 
-        return channel.equals(entry.getChannel()) && (entry.getKind() == ChatEntryKind.SAY || entry.getKind() == ChatEntryKind.EMOTE) &&
-               author != null && !author.equals(this.session.getFriendCode());
+        for (Conversation conversation : this.list(null)) {
+            if (this.countUnread(conversation.getCode()) > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void notifyRead() {
+        Runnable listener = this.readListener;
+
+        if (listener != null) {
+            listener.run();
+        }
     }
 }

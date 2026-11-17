@@ -13,7 +13,7 @@
  *   5. Surfaces: panel, panel header, sunken area, banner, notices, modal scrim.
  *   6. Controls: button, text input, combo box, check box, spinner, list view, tab pane, scroll bar, progress, tooltip,
  *      separator, hyperlink.
- *   7. Launcher specific parts: badges, status markers, form fields, log and code areas.
+ *   7. Launcher specific parts: badges, dot badges, status markers, form fields, log and code areas.
  *
  * State pseudo-classes added by the launcher (set with Node.pseudoClassStateChanged):
  *   :invalid   on a text field, combo box, spinner or check box whose value fails declarative validation.
@@ -404,6 +404,16 @@
     -fx-alignment: center-left;
 }
 
+/* Footer of a text input and its action (a chat line and Send): the same room on every side of the input row and between the input and
+   the action. */
+.panel-footer.input-footer {
+    -fx-padding: 10;
+}
+
+.input-footer .input-row {
+    -fx-spacing: 10;
+}
+
 /* Sunken area inside a panel (metadata blocks, code). */
 .panel-sunken {
     -fx-background-color: -sc4j-input-edge, -sc4j-surface-sunken;
@@ -516,7 +526,7 @@
  * insets and the 1 px edge is the border, drawn inside along the cuts; the padding is one less where the border is.
  */
 
-/* ---- Button: secondary is the default look; add .primary or .danger. Chamfered top-left and bottom-right. ---- */
+/* ---- Button: secondary is the default look; add .primary, .danger or .text-only. Chamfered top-left and bottom-right. ---- */
 
 .button,
 .toggle-button {
@@ -618,6 +628,29 @@
 .button.danger:armed {
     -fx-background-color: #1c0608;
     -fx-border-color: -sc4j-danger;
+}
+
+/* Text only: an action in the background beside a stronger one (Quit beside Minimize). No border and no background; hover and focus
+   brighten and underline the text. */
+.button.text-only,
+.button.text-only:hover,
+.button.text-only:focused,
+.button.text-only:armed {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -sc4j-text-muted;
+    -fx-min-width: 0;
+    -fx-effect: null;
+}
+
+.button.text-only:hover,
+.button.text-only:focused {
+    -fx-text-fill: -sc4j-text-strong;
+    -fx-underline: true;
+}
+
+.button.text-only:armed {
+    -fx-text-fill: -sc4j-accent-strong;
 }
 
 /* Size modifiers. */
@@ -1224,6 +1257,21 @@
     -fx-background-color: #2a0b0d;
     -fx-border-color: -sc4j-danger;
     -fx-text-fill: -sc4j-danger;
+}
+
+/* ---- Dot badge: a small dot over the top right corner of the text of a navigation entry or button that marks something new there.
+ *      The dot takes no room; its bottom left corner is placed on the text's corner and the translation sets its distance from it. ---- */
+
+.dot-badge {
+    -fx-background-color: -sc4j-danger;
+    -fx-background-radius: 3;
+    -fx-min-width: 6;
+    -fx-min-height: 6;
+    -fx-max-width: 6;
+    -fx-max-height: 6;
+    -fx-translate-x: 1;
+    -fx-translate-y: 1;
+    -fx-effect: dropshadow(gaussian, #ff5a5299, 5, 0.3, 0, 0);
 }
 
 /* ---- Status marker: a small diamond, the cell shape of the logo grid. ---- */

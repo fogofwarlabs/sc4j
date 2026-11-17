@@ -8,8 +8,8 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Holds the launcher's own settings, {@code userdata/launcher.json}: the UI language chosen on the Settings screen, the mod selected last,
- * the window state, the update repository and the launcher version the player chose to skip. Instances are immutable; each {@code with}
- * method creates a changed copy.
+ * the window state, the update repository, the launcher version the player chose to skip and whether the chat sound is muted. Instances are
+ * immutable; each {@code with} method creates a changed copy.
  */
 public final class LauncherSettings {
     /**
@@ -18,16 +18,17 @@ public final class LauncherSettings {
     public static final @NotNull String DEFAULT_UPDATE_REPOSITORY = ReleaseCheck.DEFAULT_REPOSITORY.toString();
 
     /**
-     * The settings before anything is saved: the system language, no last mod, the default window, the default update repository and no
-     * skipped version.
+     * The settings before anything is saved: the system language, no last mod, the default window, the default update repository, no
+     * skipped version and the chat sound on.
      */
-    public static final @NotNull LauncherSettings DEFAULT = new LauncherSettings(null, null, null, null, null);
+    public static final @NotNull LauncherSettings DEFAULT = new LauncherSettings(null, null, null, null, null, false);
 
     private final @Nullable UiLanguage language;
     private final @Nullable String lastMod;
     private final @Nullable WindowState window;
     private final @Nullable String updateRepository;
     private final @Nullable String skippedVersion;
+    private final boolean chatSoundMuted;
 
     /**
      * Creates a {@link LauncherSettings} instance.
@@ -37,14 +38,16 @@ public final class LauncherSettings {
      * @param window           the window state, or {@code null} for the default window
      * @param updateRepository the update repository {@code owner/name}, or {@code null} for {@link #DEFAULT_UPDATE_REPOSITORY}
      * @param skippedVersion   the launcher version the player chose to skip, such as {@code 1.2.0}, or {@code null}
+     * @param chatSoundMuted   whether the chat notification sound is muted
      */
     public LauncherSettings(@Nullable UiLanguage language, @Nullable String lastMod, @Nullable WindowState window, @Nullable String updateRepository,
-                            @Nullable String skippedVersion) {
+                            @Nullable String skippedVersion, boolean chatSoundMuted) {
         this.language         = language;
         this.lastMod          = lastMod;
         this.window           = window;
         this.updateRepository = updateRepository;
         this.skippedVersion   = skippedVersion;
+        this.chatSoundMuted   = chatSoundMuted;
     }
 
     /**
@@ -90,6 +93,13 @@ public final class LauncherSettings {
     }
 
     /**
+     * @return {@code true} if the chat notification sound is muted, {@code false} otherwise
+     */
+    public boolean isChatSoundMuted() {
+        return this.chatSoundMuted;
+    }
+
+    /**
      * Tells whether the player chose to skip a launcher version.
      *
      * @param version the version
@@ -106,7 +116,7 @@ public final class LauncherSettings {
      * @return the created {@link LauncherSettings} instance
      */
     public @NotNull LauncherSettings withLanguage(@Nullable UiLanguage language) {
-        return new LauncherSettings(language, this.lastMod, this.window, this.updateRepository, this.skippedVersion);
+        return new LauncherSettings(language, this.lastMod, this.window, this.updateRepository, this.skippedVersion, this.chatSoundMuted);
     }
 
     /**
@@ -116,7 +126,7 @@ public final class LauncherSettings {
      * @return the created {@link LauncherSettings} instance
      */
     public @NotNull LauncherSettings withLastMod(@Nullable String lastMod) {
-        return new LauncherSettings(this.language, lastMod, this.window, this.updateRepository, this.skippedVersion);
+        return new LauncherSettings(this.language, lastMod, this.window, this.updateRepository, this.skippedVersion, this.chatSoundMuted);
     }
 
     /**
@@ -126,7 +136,7 @@ public final class LauncherSettings {
      * @return the created {@link LauncherSettings} instance
      */
     public @NotNull LauncherSettings withWindow(@Nullable WindowState window) {
-        return new LauncherSettings(this.language, this.lastMod, window, this.updateRepository, this.skippedVersion);
+        return new LauncherSettings(this.language, this.lastMod, window, this.updateRepository, this.skippedVersion, this.chatSoundMuted);
     }
 
     /**
@@ -138,7 +148,7 @@ public final class LauncherSettings {
     public @NotNull LauncherSettings withUpdateRepository(@Nullable String updateRepository) {
         String savedRepository = DEFAULT_UPDATE_REPOSITORY.equals(updateRepository) ? null : updateRepository;
 
-        return new LauncherSettings(this.language, this.lastMod, this.window, savedRepository, this.skippedVersion);
+        return new LauncherSettings(this.language, this.lastMod, this.window, savedRepository, this.skippedVersion, this.chatSoundMuted);
     }
 
     /**
@@ -150,6 +160,16 @@ public final class LauncherSettings {
     public @NotNull LauncherSettings withSkippedVersion(@Nullable ReleaseVersion skippedVersion) {
         String savedVersion = skippedVersion == null ? null : skippedVersion.toString();
 
-        return new LauncherSettings(this.language, this.lastMod, this.window, this.updateRepository, savedVersion);
+        return new LauncherSettings(this.language, this.lastMod, this.window, this.updateRepository, savedVersion, this.chatSoundMuted);
+    }
+
+    /**
+     * Creates a copy with the chat notification sound muted or on.
+     *
+     * @param chatSoundMuted whether the chat notification sound is muted
+     * @return the created {@link LauncherSettings} instance
+     */
+    public @NotNull LauncherSettings withChatSoundMuted(boolean chatSoundMuted) {
+        return new LauncherSettings(this.language, this.lastMod, this.window, this.updateRepository, this.skippedVersion, chatSoundMuted);
     }
 }

@@ -57,6 +57,7 @@ import org.fogofwarlabs.sc4j.launcher.ui.options.OptionsScreen;
 import org.fogofwarlabs.sc4j.launcher.ui.options.UpdateView;
 import org.fogofwarlabs.sc4j.launcher.ui.run.RunScreen;
 import org.fogofwarlabs.sc4j.launcher.ui.session.AccountMenu;
+import org.fogofwarlabs.sc4j.launcher.ui.session.ChatAlerts;
 import org.fogofwarlabs.sc4j.launcher.ui.session.ChatScreen;
 import org.fogofwarlabs.sc4j.launcher.ui.session.Conversations;
 import org.fogofwarlabs.sc4j.launcher.update.LauncherRelease;
@@ -78,6 +79,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -89,10 +91,13 @@ import java.util.function.Function;
  * and opens its socket only for the ping.
  * <p>
  * The launcher starts on the login step, with the most recently used account selected; without any account it opens the New account dialog
- * there. Logging in opens the account's session ({@link LauncherSessionView}) and the Mods screen; the account and its menu are at the
- * right end of the app bar, and the Chat screen shows the session's channels and whispers; Whisper in the menu's Friends opens the friend's
- * conversation there. Log out, from that menu, closes the session and returns to the login step; closing the window closes the session too.
- * A running game keeps running after either.
+ * there. Logging in opens the account's session ({@link LauncherSessionView}), whose chat runs from then on whichever screen is shown, and
+ * the Mods screen; the account and its menu are at the right end of the app bar, and the Chat screen shows the session's channels and
+ * whispers; Whisper in the menu's Friends opens the friend's conversation there. The Chat entry of the navigation shows a dot while a line or
+ * a whisper is unread ({@link Conversations#hasUnread()}), and a line or whisper that arrives in a conversation the user is not looking at
+ * plays the chat sound unless the launcher settings mute it ({@link ChatAlerts}). Log out, from that menu, closes the session and returns to
+ * the login step. Closing the window asks first: Minimize, the default, minimizes the window and keeps the session and its chat running; Quit
+ * closes the session and the launcher; Cancel keeps the window. A running game keeps running after a log out or a quit.
  * <p>
  * While the runtime runs, the window is minimized; it comes back when the runtime ends and shows the run's report. Closing
  * the launcher does not stop a running runtime.
@@ -256,6 +261,7 @@ public final class LauncherWindow {
     private final @NotNull Consumer<@NotNull Path> openFolder;
     private final @NotNull LauncherNodeRunner nodeRunner;
     private final @NotNull Function<@NotNull Account, @NotNull LauncherSessionView> openSession;
+    private final @NotNull Runnable playChatSound;
     private final @NotNull LauncherSettingsFile settingsFile;
     private final @NotNull NodeListFile nodesFile;
     private final @NotNull NodeListFile seedsFile;
@@ -278,6 +284,7 @@ public final class LauncherWindow {
     private @Nullable Account account;
     private @Nullable LauncherSessionView session;
     private @Nullable Conversations conversations;
+    private @Nullable ChatAlerts chatAlerts;
 
     private @Nullable LauncherRelease launcherUpdate;
     private boolean updateOffered;
@@ -296,6 +303,7 @@ public final class LauncherWindow {
     private @Nullable UpdateView updateView;
     private @Nullable RunScreen runScreen;
     private @Nullable ChatScreen chatScreen;
+    private @Nullable ModalDialog closeDialog;
     private @Nullable RuntimeRun run;
     private @Nullable String selectedJar;
 
@@ -303,17 +311,19 @@ public final class LauncherWindow {
      * Creates a {@link LauncherWindow} instance, reads the install's launcher settings, node list, mods and accounts, and lays out the login
      * step in the window's scene.
      *
-     * @param stage        the primary stage
-     * @param install      the install
-     * @param version      the launcher version
-     * @param showDocument opens a web address in the system browser
-     * @param openFolder   opens a folder in the system file manager
-     * @param nodeRunner   the launcher's Beacon.Link node, shown and set up on the Settings screen
-     * @param openSession  opens the session of the account the user logs in to
+     * @param stage         the primary stage
+     * @param install       the install
+     * @param version       the launcher version
+     * @param showDocument  opens a web address in the system browser
+     * @param openFolder    opens a folder in the system file manager
+     * @param nodeRunner    the launcher's Beacon.Link node, shown and set up on the Settings screen
+     * @param openSession   opens the session of the account the user logs in to
+     * @param playChatSound plays the chat notification sound
      */
     public LauncherWindow(@NotNull Stage stage, @NotNull InstallLayout install, @NotNull String version,
                           @NotNull Consumer<@NotNull String> showDocument, @NotNull Consumer<@NotNull Path> openFolder,
-                          @NotNull LauncherNodeRunner nodeRunner, @NotNull Function<@NotNull Account, @NotNull LauncherSessionView> openSession) {
+                          @NotNull LauncherNodeRunner nodeRunner, @NotNull Function<@NotNull Account, @NotNull LauncherSessionView> openSession,
+                          @NotNull Runnable playChatSound) {
         ReleaseClient releaseClient = new ReleaseClient(ReleaseClient.GITHUB_API);
 
         this.stage           = stage;
@@ -323,6 +333,7 @@ public final class LauncherWindow {
         this.openFolder      = openFolder;
         this.nodeRunner      = nodeRunner;
         this.openSession     = openSession;
+        this.playChatSound   = playChatSound;
         this.settingsFile    = new LauncherSettingsFile(install.getLauncherSettingsFile());
         this.nodesFile       = new NodeListFile(install.getNodesFile());
         this.seedsFile       = new NodeListFile(install.getSeedsFile());
@@ -345,6 +356,7 @@ public final class LauncherWindow {
         this.account         = null;
         this.session         = null;
         this.conversations   = null;
+        this.chatAlerts      = null;
 
         this.launcherUpdate   = null;
         this.updateOffered    = false;
@@ -363,10 +375,15 @@ public final class LauncherWindow {
         this.updateView  = null;
         this.runScreen   = null;
         this.chatScreen  = null;
+        this.closeDialog = null;
         this.run         = null;
         this.selectedJar = this.settings.getLastMod();
 
         this.stage.setScene(this.scene);
+        this.stage.setOnCloseRequest(event -> {
+            event.consume();
+            this.openCloseDialog();
+        });
         this.installViews();
     }
 
@@ -398,10 +415,6 @@ public final class LauncherWindow {
             this.stage.setMaximized(placed.isMaximized());
         }
 
-        this.stage.setOnCloseRequest(event -> {
-            this.saveWindowState();
-            this.closeSession();
-        });
         this.stage.show();
 
         Screen.getScreens().addListener((Observable changed) -> this.onDisplayChanged());
@@ -571,28 +584,56 @@ public final class LauncherWindow {
      */
     private void logIn(@NotNull Account loggedIn) {
         LauncherSessionView opened = this.openSession.apply(loggedIn);
+        Conversations openedConversations = new Conversations(opened);
 
         this.account       = loggedIn;
         this.session       = opened;
-        this.conversations = new Conversations(opened);
+        this.conversations = openedConversations;
+        this.chatAlerts    = new ChatAlerts(opened);
         this.accountMenu   = this.createAccountMenu(loggedIn, opened);
         this.section       = LauncherShell.Section.MODS;
 
-        opened.setOnChanged(() -> {
-            AccountMenu shownMenu = this.accountMenu;
-            ChatScreen shownChat = this.chatScreen;
-
-            if (shownMenu != null) {
-                shownMenu.update();
-            }
-
-            if (shownChat != null) {
-                shownChat.update();
-            }
-        });
+        openedConversations.setOnRead(this::updateChatDot);
+        opened.setOnChanged(this::onSessionChanged);
+        opened.openChat(this.texts.getLocale());
         this.showSection(LauncherShell.Section.MODS);
         this.selectLastMod();
         this.offerLauncherUpdate();
+    }
+
+    /**
+     * Shows the session's new views: in the account menu, on the Chat screen and in the dot of the Chat entry, and plays the chat sound for
+     * what arrived where the user is not looking ({@link ChatAlerts}).
+     */
+    private void onSessionChanged() {
+        AccountMenu shownMenu = this.accountMenu;
+        ChatScreen shownChat = this.chatScreen;
+        ChatAlerts alerts = this.chatAlerts;
+        boolean looking = shownChat != null && this.section == LauncherShell.Section.CHAT && this.stage.isFocused();
+
+        if (alerts != null && alerts.decide(looking ? shownChat.getShownChannel() : null, looking ? shownChat.getShownPlayer() : null,
+                                            this.settings.isChatSoundMuted(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime()))) {
+            this.playChatSound.run();
+        }
+
+        if (shownMenu != null) {
+            shownMenu.update();
+        }
+
+        if (shownChat != null) {
+            shownChat.update();
+        }
+
+        this.updateChatDot();
+    }
+
+    /**
+     * Shows the dot of the Chat entry while a line or a whisper is unread.
+     */
+    private void updateChatDot() {
+        Conversations openedConversations = this.conversations;
+
+        this.shell.setNavigationDotShown(LauncherShell.Section.CHAT, openedConversations != null && openedConversations.hasUnread());
     }
 
     /**
@@ -609,6 +650,7 @@ public final class LauncherWindow {
         this.accountMenu   = null;
         this.chatScreen    = null;
         this.conversations = null;
+        this.chatAlerts    = null;
         this.session       = null;
         this.account       = null;
 
@@ -942,13 +984,55 @@ public final class LauncherWindow {
     }
 
     /**
-     * Closes the launcher for the updater: saves the window state, closes the session and ends the application.
+     * Closes the launcher for the updater: quits ({@link #quit}) and ends the application.
      */
     private void closeForUpdate() {
+        this.quit();
+        Platform.exit();
+    }
+
+    /**
+     * Quits the launcher: saves the window state, closes the session and closes the window.
+     */
+    private void quit() {
         this.saveWindowState();
         this.closeSession();
         this.stage.close();
-        Platform.exit();
+    }
+
+    /**
+     * Opens the dialog of a close request over the window, brought back from the task bar: Minimize, the default action, minimizes the
+     * window and keeps the session and its chat running; Quit quits ({@link #quit}); Cancel or Escape keeps the window. A request while the
+     * dialog is shown does nothing.
+     */
+    private void openCloseDialog() {
+        ModalDialog shown = this.closeDialog;
+
+        if (shown != null && shown.getRoot().getScene() != null) {
+            return;
+        }
+
+        ModalDialog dialog = new ModalDialog(this.texts.get("close.title"));
+        Button minimize = ComponentUtils.createButton(this.texts.get("close.minimize"), ButtonRole.PRIMARY);
+        Button quit = ComponentUtils.createButton(this.texts.get("close.quit"), ButtonRole.TEXT_ONLY);
+        Button cancel = ComponentUtils.createButton(this.texts.get("close.cancel"), ButtonRole.SECONDARY);
+
+        dialog.addContent(ComponentUtils.createParagraph(this.texts.get("close.text")));
+        dialog.setButtons(List.of(quit), cancel, minimize);
+        minimize.setOnAction(event -> {
+            this.shell.closeDialog(dialog);
+            this.stage.setIconified(true);
+        });
+        quit.setOnAction(event -> {
+            this.shell.closeDialog(dialog);
+            this.quit();
+        });
+        cancel.setOnAction(event -> this.shell.closeDialog(dialog));
+
+        this.closeDialog = dialog;
+        this.stage.setIconified(false);
+        this.shell.showDialog(dialog);
+        minimize.requestFocus();
     }
 
     private void rebuildViews() {
@@ -1029,6 +1113,7 @@ public final class LauncherWindow {
         }
 
         this.shell.show(shown, this.addNotices(content));
+        this.updateChatDot();
     }
 
     /**
@@ -1162,6 +1247,17 @@ public final class LauncherWindow {
             }
 
             /**
+             * Called when the user mutes the chat notification sound or turns it on again.
+             *
+             * @param muted whether the chat notification sound is muted
+             */
+            @Override
+            public void onChatSoundMutedChanged(boolean muted) {
+                LauncherWindow.this.settings = LauncherWindow.this.settings.withChatSoundMuted(muted);
+                LauncherWindow.this.saveSettings();
+            }
+
+            /**
              * Called when the user changes the node list; the launcher saves it.
              *
              * @param changed the new node list
@@ -1208,7 +1304,8 @@ public final class LauncherWindow {
         this.updateView = shownUpdate;
         this.showUpdateStatus();
 
-        return new OptionsScreen(this.texts, this.settings.getLanguage(), shownUpdate, this.nodes, this.nodesProblem, this.nodeRunner, actions);
+        return new OptionsScreen(this.texts, this.settings.getLanguage(), this.settings.isChatSoundMuted(), shownUpdate,
+                                 this.nodes, this.nodesProblem, this.nodeRunner, actions);
     }
 
     private void showAbout() {

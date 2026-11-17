@@ -27,12 +27,13 @@ import java.util.Map;
  *   "lastMod": "my-mod.jar",
  *   "window": {"x": 120, "y": 80, "width": 1280, "height": 800, "maximized": false},
  *   "updateRepository": "owner/name",
- *   "skippedVersion": "1.2.0"
+ *   "skippedVersion": "1.2.0",
+ *   "chatSoundMuted": true
  * }
  *}
  * Every field but {@code format} is optional: without {@code language} the launcher follows the operating system's language, without
- * {@code updateRepository} it updates from {@link LauncherSettings#DEFAULT_UPDATE_REPOSITORY}, and without {@code skippedVersion} it skips
- * no version.
+ * {@code updateRepository} it updates from {@link LauncherSettings#DEFAULT_UPDATE_REPOSITORY}, without {@code skippedVersion} it skips
+ * no version, and without {@code chatSoundMuted} the chat sound is on.
  */
 public final class LauncherSettingsFile {
     /**
@@ -51,6 +52,7 @@ public final class LauncherSettingsFile {
     private static final @NotNull String MAXIMIZED_FIELD = "maximized";
     private static final @NotNull String UPDATE_REPOSITORY_FIELD = "updateRepository";
     private static final @NotNull String SKIPPED_VERSION_FIELD = "skippedVersion";
+    private static final @NotNull String CHAT_SOUND_MUTED_FIELD = "chatSoundMuted";
 
     private static @Nullable UiLanguage readLanguage(@NotNull Path path, @Nullable Object value) throws IOException {
         if (value == null) {
@@ -140,8 +142,15 @@ public final class LauncherSettingsFile {
             throw Exceptions.newIOException("Invalid launcher settings file {0}: skippedVersion must be a version", this.path);
         }
 
+        Object chatSoundMuted = object.get(CHAT_SOUND_MUTED_FIELD);
+
+        if (chatSoundMuted != null && !(chatSoundMuted instanceof Boolean)) {
+            throw Exceptions.newIOException("Invalid launcher settings file {0}: chatSoundMuted must be true or false", this.path);
+        }
+
         return new LauncherSettings(readLanguage(this.path, object.get(LANGUAGE_FIELD)), (String) lastMod,
-                                    readWindow(this.path, object.get(WINDOW_FIELD)), (String) updateRepository, (String) skippedVersion);
+                                    readWindow(this.path, object.get(WINDOW_FIELD)), (String) updateRepository, (String) skippedVersion,
+                                    Boolean.TRUE.equals(chatSoundMuted));
     }
 
     /**
@@ -182,6 +191,10 @@ public final class LauncherSettingsFile {
 
         if (settings.getSkippedVersion() != null) {
             object.put(SKIPPED_VERSION_FIELD, settings.getSkippedVersion());
+        }
+
+        if (settings.isChatSoundMuted()) {
+            object.put(CHAT_SOUND_MUTED_FIELD, true);
         }
 
         AtomicFileUtils.write(this.path, JsonWriterUtils.write(object).getBytes(StandardCharsets.UTF_8));

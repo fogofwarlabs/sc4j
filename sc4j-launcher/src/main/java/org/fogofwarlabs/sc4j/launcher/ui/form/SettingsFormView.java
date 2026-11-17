@@ -79,9 +79,7 @@ public final class SettingsFormView {
         this.texts        = texts;
         this.fieldViews   = new ArrayList<>();
         this.invalidCount = new ReadOnlyIntegerWrapper();
-        this.root         = new VBox();
-
-        this.root.getStyleClass().add("form");
+        this.root         = ComponentUtils.createForm();
 
         if (form.getFields().isEmpty()) {
             this.root.getChildren().add(ComponentUtils.createParagraph(texts.get("form.empty"), "text-caption"));

@@ -32,6 +32,7 @@ public final class ComponentUtils {
     private static final @NotNull String VIRTUAL_FLOW_SELECTOR = ".virtual-flow";
     private static final @NotNull Duration FULL_TEXT_DELAY = Duration.millis(400);
     private static final double CUT_TOLERANCE = 0.5;
+    private static final double FULL_PERCENT = 100;
     private static final @NotNull PseudoClass FIRST_ROW = PseudoClass.getPseudoClass("first-row");
 
     /**
@@ -99,6 +100,7 @@ public final class ComponentUtils {
         switch (role) {
             case PRIMARY -> button.getStyleClass().add("primary");
             case DANGER -> button.getStyleClass().add("danger");
+            case TEXT_ONLY -> button.getStyleClass().add("text-only");
             case SECONDARY -> {
                 // The default button look is the secondary look.
             }
@@ -150,6 +152,30 @@ public final class ComponentUtils {
         badge.setMinWidth(Region.USE_PREF_SIZE);
 
         return badge;
+    }
+
+    /**
+     * Puts a dot badge on a navigation entry or a button: a small dot in the danger colour over the top right corner of its text, which marks
+     * something new there. The dot stays hidden until {@link #setDotBadgeShown} shows it; shown or hidden, it takes no room, so the text keeps
+     * its place.
+     *
+     * @param labeled the navigation entry or button, which has no graphic of its own
+     */
+    public static void addDotBadge(@NotNull Labeled labeled) {
+        labeled.setGraphic(new DotBadge(labeled));
+        labeled.setContentDisplay(ContentDisplay.CENTER);
+    }
+
+    /**
+     * Shows or hides the dot badge of a navigation entry or a button ({@link #addDotBadge}).
+     *
+     * @param labeled the navigation entry or button
+     * @param shown   whether the dot is shown
+     */
+    public static void setDotBadgeShown(@NotNull Labeled labeled, boolean shown) {
+        if (labeled.getGraphic() instanceof DotBadge badge) {
+            badge.setDotShown(shown);
+        }
     }
 
     /**
@@ -205,6 +231,20 @@ public final class ComponentUtils {
     }
 
     /**
+     * Creates a form: its fields ({@link #createField}) stacked in a column, one field per row.
+     *
+     * @param fields the fields
+     * @return the created form
+     */
+    public static @NotNull VBox createForm(@NotNull Node @NotNull ... fields) {
+        VBox form = new VBox(fields);
+
+        form.getStyleClass().add("form");
+
+        return form;
+    }
+
+    /**
      * Creates a row with the stylesheet's spacing, its children centred vertically.
      *
      * @param spacing  the spacing between the children
@@ -248,6 +288,33 @@ public final class ComponentUtils {
         column.getStyleClass().add(spacing.getStyleClass());
 
         return column;
+    }
+
+    /**
+     * Creates a row of columns of equal width that share the row's width and take its full height, such as the two columns of a screen.
+     *
+     * @param spacing the spacing between the columns
+     * @param columns the columns
+     * @return the created row
+     */
+    public static @NotNull GridPane createEqualColumns(@NotNull Spacing spacing, @NotNull Region @NotNull ... columns) {
+        GridPane grid = new GridPane();
+        RowConstraints row = new RowConstraints();
+
+        grid.getStyleClass().add(spacing.getStyleClass());
+        row.setVgrow(Priority.ALWAYS);
+        grid.getRowConstraints().add(row);
+
+        for (int index = 0; index < columns.length; index++) {
+            ColumnConstraints column = new ColumnConstraints();
+
+            column.setPercentWidth(FULL_PERCENT / columns.length);
+            grid.getColumnConstraints().add(column);
+            grid.add(columns[index], index, 0);
+            fillHeight(columns[index]);
+        }
+
+        return grid;
     }
 
     /**
@@ -493,6 +560,30 @@ public final class ComponentUtils {
         HBox footer = new HBox(children);
 
         footer.getStyleClass().add("panel-footer");
+
+        return footer;
+    }
+
+    /**
+     * Creates the footer strip of a panel that holds a text input and its action, such as a chat line and Send: the room around the input row
+     * is the same on every side and equals the gap between the input and the action. The input takes the free width.
+     *
+     * @param input  the input, such as a text field
+     * @param action the action
+     * @param below  the nodes under the input row, such as the input's message
+     * @return the created footer
+     */
+    public static @NotNull HBox createInputFooter(@NotNull Region input, @NotNull Button action, @NotNull Node @NotNull ... below) {
+        HBox row = new HBox(input, action);
+        VBox column = createColumn(Spacing.XS, row);
+        HBox footer = createPanelFooter(column);
+
+        row.getStyleClass().add("input-row");
+        row.setAlignment(Pos.CENTER_LEFT);
+        column.getChildren().addAll(below);
+        footer.getStyleClass().add("input-footer");
+        HBox.setHgrow(input, Priority.ALWAYS);
+        HBox.setHgrow(column, Priority.ALWAYS);
 
         return footer;
     }

@@ -10,7 +10,7 @@ import java.util.Locale;
 
 /**
  * Plays the session of the account menu and the Chat screen by hand: it shows the friends, whispers, channels and chat entries a test sets
- * while it is connected, and records the commands it is given; a new status shows at once.
+ * while it is connected, and records the commands it is given and whether it was closed; a new status shows at once.
  */
 public final class RecordingLauncherSession implements LauncherSessionView {
     private final @NotNull FriendCode friendCode;
@@ -23,6 +23,7 @@ public final class RecordingLauncherSession implements LauncherSessionView {
     private @NotNull List<@NotNull ChannelView> knownChannels;
     private @NotNull List<@NotNull ChatEntryView> chatEntries;
     private @Nullable Runnable listener;
+    private boolean closed;
 
     /**
      * Creates a {@link RecordingLauncherSession} instance without friends, whispers or channels.
@@ -41,6 +42,14 @@ public final class RecordingLauncherSession implements LauncherSessionView {
         this.knownChannels = List.of();
         this.chatEntries   = List.of();
         this.listener      = null;
+        this.closed        = false;
+    }
+
+    /**
+     * @return {@code true} if the session was closed, {@code false} otherwise
+     */
+    public boolean isClosed() {
+        return this.closed;
     }
 
     /**
@@ -180,6 +189,7 @@ public final class RecordingLauncherSession implements LauncherSessionView {
     @Override
     public void close() {
         this.listener = null;
+        this.closed   = true;
     }
 
     private boolean isConnected() {

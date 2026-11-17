@@ -19,9 +19,10 @@ import java.util.function.Consumer;
 
 /**
  * Builds the frame shared by every launcher view: the grid backdrop under the fog vignette, the app bar, the content area and the status bar.
- * On the login step the app bar holds the brand and About only; once logged in it also holds the navigation and, at its right end, the
- * account with its status, which opens the account menu. The menu opens below the app bar over the whole window, a context menu at the
- * pointer; either closes on a click outside it or Escape. Dialogs open over the whole content area.
+ * On the login step the app bar holds the brand and About only; once logged in it also holds the navigation, where an entry shows a dot while
+ * its screen has something new, and, at its right end, the account with its status, which opens the account menu. The menu opens below the app
+ * bar over the whole window, a context menu at the pointer; either closes on a click outside it or Escape. Dialogs open over the whole content
+ * area.
  */
 public final class LauncherShell {
     /**
@@ -182,6 +183,16 @@ public final class LauncherShell {
     }
 
     /**
+     * Shows or hides the dot badge of a navigation entry, which marks something new on its screen.
+     *
+     * @param section the entry's section
+     * @param shown   whether the dot is shown
+     */
+    public void setNavigationDotShown(@NotNull Section section, boolean shown) {
+        ComponentUtils.setDotBadgeShown(this.navigationButtons.get(section), shown);
+    }
+
+    /**
      * Sets the status bar texts.
      *
      * @param catalogText the summary of the mod list
@@ -305,6 +316,7 @@ public final class LauncherShell {
             ToggleButton button = new ToggleButton(texts.get(section.getTextKey()));
 
             button.getStyleClass().add("nav-button");
+            ComponentUtils.addDotBadge(button);
             button.setToggleGroup(group);
             // A toggle button would deselect itself on a second click; navigation keeps the current screen selected instead.
             button.setOnAction(event -> navigate.accept(section));

@@ -26,8 +26,8 @@ import java.util.function.Function;
 /**
  * Shows the Chat screen of the logged-in account in three columns: on the left the channels the chat is in, at most
  * {@value CommunitySession#MAXIMUM_CHANNELS}, with Join, and the whisper conversations ({@link Conversations}), each with its unread count; in
- * the middle the shown conversation's log and the input; on the right the shown channel's members. Showing the screen opens the chat, which
- * joins the shared channel the first time; a channel the chat joins is shown unless a whisper conversation is shown.
+ * the middle the shown conversation's log and the input; on the right the shown channel's members. The screen only shows the chat, which the
+ * session runs while the account is logged in; a channel the chat joins is shown unless a whisper conversation is shown.
  * <p>
  * A channel's input says lines and runs slash commands ({@code /help} lists them); a whisper conversation's input whispers to its player. A
  * right click on a member, or on a name in the log, opens the player's menu with Whisper, Add or Remove friend, Ignore or Unignore, Copy name
@@ -149,12 +149,11 @@ public final class ChatScreen {
     private @Nullable String shownChannel;
     private @Nullable Conversation shownConversation;
     private @NotNull List<?> shownSource;
-    private boolean chatOpened;
     private boolean listed;
     private boolean updating;
 
     /**
-     * Creates a {@link ChatScreen} instance; {@link #update()} opens the chat and shows the session's latest views.
+     * Creates a {@link ChatScreen} instance; {@link #update()} shows the session's latest views.
      *
      * @param shell         the shell that shows the screen's menus and dialogs
      * @param texts         the launcher texts of the display language
@@ -193,7 +192,6 @@ public final class ChatScreen {
         this.shownChannel      = null;
         this.shownConversation = null;
         this.shownSource       = List.of();
-        this.chatOpened        = false;
         this.listed            = false;
         this.updating          = false;
 
@@ -210,9 +208,24 @@ public final class ChatScreen {
     }
 
     /**
+     * @return the name of the channel the screen shows, or {@code null} while it shows a whisper conversation or nothing
+     */
+    public @Nullable String getShownChannel() {
+        return this.shownChannel;
+    }
+
+    /**
+     * @return the friend code of the player whose whisper conversation the screen shows, or {@code null} while it shows a channel or nothing
+     */
+    public @Nullable FriendCode getShownPlayer() {
+        Conversation conversation = this.shownConversation;
+
+        return conversation == null ? null : conversation.getCode();
+    }
+
+    /**
      * Shows the session's latest views: the channels, the conversations, the shown conversation's log and the shown channel's members, or
-     * why the session has no connection. The first update with a connection opens the account's chat, which joins the shared channel the
-     * first time.
+     * why the session has no connection.
      */
     public void update() {
         SelfView self = this.session.getSelf();
@@ -225,11 +238,6 @@ public final class ChatScreen {
             this.root.getChildren().setAll(ComponentUtils.createPanel(ComponentUtils.createPanelBody(ComponentUtils.createNotice(Tone.NEUTRAL, text))));
 
             return;
-        }
-
-        if (!this.chatOpened) {
-            this.chatOpened = true;
-            this.session.openChat(this.texts.getLocale());
         }
 
         if (this.root.getChildren().size() != 1 || this.root.getChildren().getFirst() != this.columns) {
@@ -288,12 +296,9 @@ public final class ChatScreen {
     }
 
     private @NotNull VBox createLog() {
-        VBox inputColumn = ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createRow(Spacing.S, this.input, this.send),
-                                                       this.inputMessage);
-        VBox panel = ComponentUtils.createPanelWithFooter(this.logTitle, ComponentUtils.createFlushPanelBody(this.log), ComponentUtils.createPanelFooter(inputColumn),
-                                                          this.leave);
+        VBox panel = ComponentUtils.createPanelWithFooter(this.logTitle, ComponentUtils.createFlushPanelBody(this.log),
+                                                          ComponentUtils.createInputFooter(this.input, this.send, this.inputMessage), this.leave);
 
-        HBox.setHgrow(inputColumn, Priority.ALWAYS);
         HBox.setHgrow(panel, Priority.ALWAYS);
         ComponentUtils.fillHeight(panel);
 
@@ -310,7 +315,6 @@ public final class ChatScreen {
         this.input.setPromptText(this.texts.get("session.whispers.message"));
         this.input.textProperty().addListener((observable, previous, current) -> this.showInputMessage(null));
         this.input.setOnAction(event -> this.submit());
-        HBox.setHgrow(this.input, Priority.ALWAYS);
         this.send.setOnAction(event -> this.submit());
         this.inputMessage.setWrapText(true);
         this.showInputMessage(null);

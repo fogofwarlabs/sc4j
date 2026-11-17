@@ -1,6 +1,8 @@
 package org.fogofwarlabs.sc4j.launcher.ui;
 
 import javafx.application.Platform;
+import javafx.geometry.Bounds;
+import javafx.geometry.Insets;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -43,7 +45,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Tests the launcher window's content at display scales of 100%, 150% and 200%: the layout keeps its logical size, every image is decoded at
  * its logical size times the scale (so it stays sharp), and the window renders at the scale; each rendering is saved as a sample picture.
  * Before the login the app bar shows neither the navigation nor an account; after it, it lists Mods, Run log, Chat and Settings (no Accounts tab)
- * and ends with the account button with its status, which opens the account menu, at 100% and 200% in English and Korean. In a window of the
+ * and ends with the account button with its status, which opens the account menu, at 100% and 200% in English and Korean; every entry's
+ * text is centred in the entry, and the Chat entry shows its dot over the text's top right corner without moving or widening the entries.
+ * In a window of the
  * launcher's minimum size, a screen taller than the space between the app bar and the status bar scrolls and leaves both bars in the window; a
  * shorter screen fills that space. The Mods screen's mod list keeps the regular list item.
  */
@@ -80,6 +84,8 @@ final class LauncherShellTest {
     private static final @NotNull String TAGGED_NAME = "Raynor#60bf07";
     private static final @NotNull String APP_BAR_SELECTOR = ".app-bar";
     private static final @NotNull String NAVIGATION_SELECTOR = ".nav-button";
+    private static final @NotNull String DOT_BADGE_SELECTOR = ".dot-badge";
+    private static final @NotNull String TEXT_SELECTOR = ".text";
     private static final @NotNull String ACCOUNT_SELECTOR = ".account-button";
     private static final @NotNull String STATUS_BAR_SELECTOR = ".status-bar";
     private static final double MINIMUM_SCENE_WIDTH = 1100;
@@ -143,6 +149,37 @@ final class LauncherShellTest {
         Assertions.assertEquals(bar.getWidth() - bar.getPadding().getRight(), account.getBoundsInParent().getMaxX(), TOLERANCE);
     }
 
+    /**
+     * Checks that a navigation entry's text is centred in the entry and that the entry is as wide as its text and padding, so its dot badge
+     * takes no room.
+     */
+    private static void assertTextCentred(@NotNull ToggleButton button) {
+        Bounds text = button.lookup(TEXT_SELECTOR).getBoundsInParent();
+        Insets insets = button.getInsets();
+
+        Assertions.assertEquals(insets.getLeft() + (button.getWidth() - insets.getLeft() - insets.getRight()) / 2, text.getCenterX(), TOLERANCE,
+                                button.getText() + " is centred horizontally");
+        Assertions.assertEquals(insets.getTop() + (button.getHeight() - insets.getTop() - insets.getBottom()) / 2, text.getCenterY(), TOLERANCE,
+                                button.getText() + " is centred vertically");
+        Assertions.assertEquals(text.getWidth() + insets.getLeft() + insets.getRight(), button.getWidth(), TOLERANCE,
+                                button.getText() + " has no room for the dot");
+    }
+
+    /**
+     * Checks that the shown dot of a navigation entry touches or covers the top right corner of the entry's text.
+     */
+    private static void assertDotOnTextCorner(@NotNull ToggleButton button) {
+        Node textNode = button.lookup(TEXT_SELECTOR);
+        Region dotNode = (Region) button.lookup(DOT_BADGE_SELECTOR);
+        Bounds text = textNode.localToScene(textNode.getLayoutBounds());
+        Bounds dot = dotNode.localToScene(dotNode.getLayoutBounds());
+        double outsideX = Math.max(0, Math.max(dot.getMinX() - text.getMaxX(), text.getMaxX() - dot.getMaxX()));
+        double outsideY = Math.max(0, Math.max(dot.getMinY() - text.getMinY(), text.getMinY() - dot.getMaxY()));
+
+        Assertions.assertTrue(dotNode.getWidth() > 0 && dotNode.getHeight() > 0, "the dot has its size");
+        Assertions.assertTrue(outsideX <= TOLERANCE && outsideY <= TOLERANCE, () -> "the dot " + dot + " touches the text corner of " + text);
+    }
+
     @ParameterizedTest
     @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
     void app_bar_has_no_accounts_tab_and_its_account_button_opens_the_account_menu(double scale, @NotNull String languageCode,
@@ -191,7 +228,33 @@ final class LauncherShellTest {
             Assertions.assertSame(account, LauncherFxScenario.findButton(bar, TAGGED_NAME));
             Assertions.assertNotNull(account.getGraphic(), "the account shows its status");
             assertAtRightEnd(bar, account);
+
+            for (Node button : bar.lookupAll(NAVIGATION_SELECTOR)) {
+                assertTextCentred((ToggleButton) button);
+            }
+
             LauncherFxScenario.saveSample(bar, scale, "top-bar-account-" + suffix);
+
+            // The dot of the Chat entry: shown on that entry only, and the entries keep their place.
+            List<Double> places = bar.lookupAll(NAVIGATION_SELECTOR).stream().map(Node::getLayoutX).toList();
+
+            shell.setNavigationDotShown(LauncherShell.Section.CHAT, true);
+            shell.getRoot().applyCss();
+            shell.getRoot().layout();
+
+            for (Node button : bar.lookupAll(NAVIGATION_SELECTOR)) {
+                boolean chat = ((ToggleButton) button).getText().equals(texts.get("nav.chat"));
+
+                Assertions.assertEquals(chat, button.lookup(DOT_BADGE_SELECTOR).isVisible(), ((ToggleButton) button).getText());
+                assertTextCentred((ToggleButton) button);
+
+                if (chat) {
+                    assertDotOnTextCorner((ToggleButton) button);
+                }
+            }
+
+            Assertions.assertEquals(places, bar.lookupAll(NAVIGATION_SELECTOR).stream().map(Node::getLayoutX).toList(), "the entries do not move");
+            LauncherFxScenario.saveSample(bar, scale, "top-bar-chat-dot-" + suffix);
             account.fire();
 
             return null;

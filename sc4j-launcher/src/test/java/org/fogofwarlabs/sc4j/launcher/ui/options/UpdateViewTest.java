@@ -6,7 +6,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.GridPane;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.file.ConfiguredNode;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
@@ -31,7 +31,8 @@ import java.util.function.Consumer;
 
 /**
  * Tests the update part of the Settings screen offscreen: Check now passes the typed source and waits for its result, Update is shown only
- * while a newer version is available, and the version and the check result are centred on the source field.
+ * while a newer version is available, the version and the check result are centred on the source field, and the source field and its
+ * label start in line with the language box and its label above them.
  */
 final class UpdateViewTest {
     private static final @NotNull String VERSION = "1.1.0";
@@ -46,6 +47,10 @@ final class UpdateViewTest {
     private static final class NoActions implements OptionsScreen.Actions {
         @Override
         public void onLanguageChanged(@Nullable UiLanguage language) {
+        }
+
+        @Override
+        public void onChatSoundMutedChanged(boolean muted) {
         }
 
         @Override
@@ -96,9 +101,9 @@ final class UpdateViewTest {
                 public void onUpdate() {
                 }
             });
-            OptionsScreen screen = new OptionsScreen(texts, null, view, List.of(), null, new LauncherNodeRunner(InstallLayout.of(directory)),
+            OptionsScreen screen = new OptionsScreen(texts, null, false, view, List.of(), null, new LauncherNodeRunner(InstallLayout.of(directory)),
                                                      new NoActions());
-            VBox root = screen.getRoot();
+            GridPane root = screen.getRoot();
             Button check = LauncherFxScenario.findButton(view.getRoot(), texts.get("update.check"));
             Button update;
 
@@ -142,9 +147,9 @@ final class UpdateViewTest {
                 public void onUpdate() {
                 }
             });
-            OptionsScreen screen = new OptionsScreen(texts, null, view, List.of(), null, new LauncherNodeRunner(InstallLayout.of(directory)),
+            OptionsScreen screen = new OptionsScreen(texts, null, false, view, List.of(), null, new LauncherNodeRunner(InstallLayout.of(directory)),
                                                      new NoActions());
-            VBox root = screen.getRoot();
+            GridPane root = screen.getRoot();
 
             ThemeUtils.apply(new Scene(root, SCENE_WIDTH, SCENE_HEIGHT), language);
             view.showStatus(texts.get("update.current"), Tone.SUCCESS, false);
@@ -161,10 +166,10 @@ final class UpdateViewTest {
             Assertions.assertInstanceOf(TextField.class, view.getRoot().lookup(".text-field"));
             Assertions.assertEquals(source.getCenterY(), check.getCenterY(), CENTER_TOLERANCE, "Check now is centred on the source field");
             Assertions.assertEquals(source.getCenterY(), stateCenter, CENTER_TOLERANCE, "the version and the result are centred on the source field");
-            Assertions.assertEquals(getSceneBounds(root.lookup(".combo-box")).getMinY(), source.getMinY(), CENTER_TOLERANCE,
+            Assertions.assertEquals(getSceneBounds(root.lookup(".combo-box")).getMinX(), source.getMinX(), CENTER_TOLERANCE,
                                     "the source field lines up with the language box");
-            Assertions.assertEquals(getSceneBounds(findLabel(root, texts.get("settings.language"))).getMinY(),
-                                    getSceneBounds(findLabel(view.getRoot(), texts.get("update.source"))).getMinY(), CENTER_TOLERANCE,
+            Assertions.assertEquals(getSceneBounds(findLabel(root, texts.get("settings.language"))).getMinX(),
+                                    getSceneBounds(findLabel(view.getRoot(), texts.get("update.source"))).getMinX(), CENTER_TOLERANCE,
                                     "the source label lines up with the language label");
 
             return null;
