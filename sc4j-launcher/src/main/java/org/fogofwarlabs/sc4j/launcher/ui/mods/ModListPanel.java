@@ -63,7 +63,7 @@ public final class ModListPanel {
         install.setOnAction(event -> onInstall.run());
 
         this.root = ComponentUtils.createPanelWithFooter(texts.get("mods.title"), ComponentUtils.createFlushPanelBody(this.list),
-                                                   ComponentUtils.createPanelFooter(openFolder, ComponentUtils.createGrowingSpacer(), refresh, install));
+                                                         ComponentUtils.createPanelFooter(openFolder, ComponentUtils.createGrowingSpacer(), refresh, install));
         ComponentUtils.setColumnWidth(this.root, ColumnWidth.WIDE);
     }
 

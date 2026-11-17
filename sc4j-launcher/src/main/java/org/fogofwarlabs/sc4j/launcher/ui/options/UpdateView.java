@@ -63,13 +63,13 @@ public final class UpdateView {
         this.update.setOnAction(event -> actions.onUpdate());
 
         state = ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createLabel(texts.format("update.version", version), "text-caption"),
-                                      this.status);
+                                            this.status);
         // The status lines take the row's height instead of setting it.
         state.setMinHeight(0);
         state.setPrefHeight(0);
         state.setAlignment(Pos.CENTER_LEFT);
         this.root = ComponentUtils.createField(texts.get("update.source"),
-                                         ComponentUtils.createRow(Spacing.M, this.source, this.check, state, this.update));
+                                               ComponentUtils.createRow(Spacing.M, this.source, this.check, state, this.update));
 
         this.showStatus(null, Tone.NEUTRAL, false);
     }

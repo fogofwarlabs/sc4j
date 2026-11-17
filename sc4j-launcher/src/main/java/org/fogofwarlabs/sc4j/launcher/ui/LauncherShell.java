@@ -329,9 +329,9 @@ public final class LauncherShell {
     private @NotNull HBox createStatusBar(@NotNull LauncherTexts texts, @NotNull InstallLayout install, double imageScale) {
         double logoSize = IconSize.S.getSize();
         HBox publisher = ComponentUtils.createRow(Spacing.XS,
-                                            ComponentUtils.createImageView(ThemeUtils.loadImage(ThemeUtils.FOG_OF_WAR_LABS_LOGO, logoSize, imageScale),
-                                                                     logoSize),
-                                            ComponentUtils.createLabel(PUBLISHER_NAME));
+                                                  ComponentUtils.createImageView(ThemeUtils.loadImage(ThemeUtils.FOG_OF_WAR_LABS_LOGO, logoSize, imageScale),
+                                                                                 logoSize),
+                                                  ComponentUtils.createLabel(PUBLISHER_NAME));
         HBox bar = new HBox(ComponentUtils.createLabel(texts.format("status.install", install.getRoot())), this.catalogStatus, this.nodeStatus,
                             ComponentUtils.createGrowingSpacer(), publisher);
 

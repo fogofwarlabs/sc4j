@@ -121,8 +121,8 @@ final class BeaconLinkPanel {
         status   = ComponentUtils.createColumn(Spacing.XS, this.state, this.reachability, this.addresses, this.peers);
 
         this.root = ComponentUtils.createPanel(texts.get("beaconlink.title"),
-                                         ComponentUtils.createPanelBody(settings, this.message, status),
-                                         this.advancedToggle);
+                                               ComponentUtils.createPanelBody(settings, this.message, status),
+                                               this.advancedToggle);
 
         this.refresh = new Timeline(new KeyFrame(REFRESH_INTERVAL, event -> this.showStatus()));
 

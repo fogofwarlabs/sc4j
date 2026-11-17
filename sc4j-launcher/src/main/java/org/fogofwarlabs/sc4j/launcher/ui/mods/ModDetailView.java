@@ -160,15 +160,15 @@ public final class ModDetailView {
         ModManifest manifest = this.requireManifest();
         Image bannerImage = this.art.getBanner(this.entry);
         VBox heading = ComponentUtils.createColumn(Spacing.XS,
-                                             ComponentUtils.createLabel(this.texts.localize(manifest.getName()), "text-display"),
-                                             ComponentUtils.createLabel(this.texts.format("detail.version.line", manifest.getVersion(),
-                                                                                    String.join(", ", manifest.getAuthors())),
-                                                                  "text-subtitle", "text-muted"));
+                                                   ComponentUtils.createLabel(this.texts.localize(manifest.getName()), "text-display"),
+                                                   ComponentUtils.createLabel(this.texts.format("detail.version.line", manifest.getVersion(),
+                                                                                                String.join(", ", manifest.getAuthors())),
+                                                                              "text-subtitle", "text-muted"));
         HBox caption = ComponentUtils.createRow(Spacing.L,
-                                          ComponentUtils.createThumbnail(this.art.getIcon(this.entry, BANNER_ICON_SIZE), BANNER_ICON_SIZE, BANNER_ICON_SIZE),
-                                          heading,
-                                          ComponentUtils.createGrowingSpacer(),
-                                          ModStatusUtils.createBadge(this.entry.getStatus(), this.texts));
+                                                ComponentUtils.createThumbnail(this.art.getIcon(this.entry, BANNER_ICON_SIZE), BANNER_ICON_SIZE, BANNER_ICON_SIZE),
+                                                heading,
+                                                ComponentUtils.createGrowingSpacer(),
+                                                ModStatusUtils.createBadge(this.entry.getStatus(), this.texts));
         StackPane banner = new StackPane();
 
         heading.getStyleClass().add("banner-heading");
@@ -231,14 +231,14 @@ public final class ModDetailView {
 
             for (String screenshot : manifest.getImages().getScreenshots()) {
                 screenshots.getChildren().add(ComponentUtils.createThumbnail(this.art.getImage(this.entry, screenshot, SCREENSHOT_WIDTH, SCREENSHOT_HEIGHT),
-                                                                       SCREENSHOT_WIDTH, SCREENSHOT_HEIGHT));
+                                                                             SCREENSHOT_WIDTH, SCREENSHOT_HEIGHT));
             }
 
             body.getChildren().addAll(ComponentUtils.createLabel(this.texts.get("detail.screenshots"), "text-heading"), screenshots);
         }
 
         panel = ComponentUtils.createPanelWithFooter(this.texts.get("detail.about"), body,
-                                               ComponentUtils.createPanelFooter(ComponentUtils.createGrowingSpacer(), this.createRemoveButton()));
+                                                     ComponentUtils.createPanelFooter(ComponentUtils.createGrowingSpacer(), this.createRemoveButton()));
         ComponentUtils.fillHeight(panel);
 
         return panel;
@@ -283,7 +283,7 @@ public final class ModDetailView {
         blocker.visibleProperty().bind(formView.invalidCountProperty().greaterThan(0));
 
         panel = ComponentUtils.createPanelWithFooter(this.texts.get("detail.settings"), body,
-                                               ComponentUtils.createPanelFooter(blocker, ComponentUtils.createGrowingSpacer(), reset, run));
+                                                     ComponentUtils.createPanelFooter(blocker, ComponentUtils.createGrowingSpacer(), reset, run));
         ComponentUtils.fillHeight(panel);
 
         return panel;
@@ -292,12 +292,12 @@ public final class ModDetailView {
     private @NotNull Region createUnusableView() {
         ModManifest manifest = this.entry.getManifest();
         VBox identityText = ComponentUtils.createColumn(Spacing.XS,
-                                                  ComponentUtils.createLabel(ModArt.getName(this.entry, this.texts), "text-title"),
-                                                  ComponentUtils.createLabel(this.entry.getJar().toString(), "text-mono", "text-muted"));
+                                                        ComponentUtils.createLabel(ModArt.getName(this.entry, this.texts), "text-title"),
+                                                        ComponentUtils.createLabel(this.entry.getJar().toString(), "text-mono", "text-muted"));
         HBox badgeRow = ComponentUtils.createRow(Spacing.S, ModStatusUtils.createBadge(this.entry.getStatus(), this.texts));
         HBox identity = ComponentUtils.createRow(Spacing.L,
-                                           ComponentUtils.createThumbnail(this.art.getIcon(this.entry, ICON_SIZE), ICON_SIZE, ICON_SIZE),
-                                           identityText);
+                                                 ComponentUtils.createThumbnail(this.art.getIcon(this.entry, ICON_SIZE), ICON_SIZE, ICON_SIZE),
+                                                 identityText);
         VBox report = ComponentUtils.createDangerPanel(ComponentUtils.createLabel(this.texts.get("detail.error.title"), "text-subtitle", "text-danger"));
         List<String> details = new ArrayList<>();
         Button copy = ComponentUtils.createButton(this.texts.get("detail.copy.problems"), ButtonRole.SECONDARY);
@@ -316,7 +316,7 @@ public final class ModDetailView {
 
         for (ModIssue issue : this.entry.getIssues()) {
             Node reason = ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createParagraph(issue.describe(this.texts)),
-                                                ComponentUtils.createParagraph(issue.describeDetail(), "text-caption", "text-mono"));
+                                                      ComponentUtils.createParagraph(issue.describeDetail(), "text-caption", "text-mono"));
             Node marker = ComponentUtils.createStatusMarker(ModStatusUtils.getTone(issue.getStatus()));
 
             report.getChildren().add(ComponentUtils.createRow(Spacing.S, marker, reason));
@@ -334,7 +334,7 @@ public final class ModDetailView {
 
         body.getChildren().add(report);
         panel = ComponentUtils.createPanelWithFooter(this.texts.get("detail.title"), body,
-                                               ComponentUtils.createPanelFooter(copy, this.createRemoveButton(), ComponentUtils.createGrowingSpacer(), run));
+                                                     ComponentUtils.createPanelFooter(copy, this.createRemoveButton(), ComponentUtils.createGrowingSpacer(), run));
         HBox.setHgrow(panel, Priority.ALWAYS);
         ComponentUtils.fillHeight(panel);
 

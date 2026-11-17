@@ -71,8 +71,8 @@ public final class LauncherUpdateDialog {
         Label title = ComponentUtils.createLabel(texts.get("update.offer"), "text-title");
         Label versions = ComponentUtils.createLabel(texts.format("update.versions", runningVersion, release.getVersion()), "text-subtitle");
         HBox header = ComponentUtils.createRow(Spacing.L,
-                                         ComponentUtils.createImageView(ThemeUtils.loadImage(ThemeUtils.SC4J_LOGO, logoSize, imageScale), logoSize),
-                                         ComponentUtils.createColumn(Spacing.XS, title, versions));
+                                               ComponentUtils.createImageView(ThemeUtils.loadImage(ThemeUtils.SC4J_LOGO, logoSize, imageScale), logoSize),
+                                               ComponentUtils.createColumn(Spacing.XS, title, versions));
         GridPane facts = ComponentUtils.createMetaGrid();
         Instant publishedAt = release.getPublishedAt();
         long size = release.getPackageFile().getSize();
@@ -112,7 +112,7 @@ public final class LauncherUpdateDialog {
 
             VBox.setVgrow(notesArea, Priority.ALWAYS);
             this.dialog.addGrowingContent(ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createLabel(texts.get("update.notes"), "text-heading"),
-                                                                notesArea));
+                                                                      notesArea));
         }
 
         this.dialog.addContent(this.note);

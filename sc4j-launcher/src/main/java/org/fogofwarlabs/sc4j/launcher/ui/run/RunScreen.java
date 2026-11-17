@@ -195,7 +195,7 @@ public final class RunScreen {
         VBox heading = ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createLabel(shown.getModName(), "text-title"), caption);
 
         return ComponentUtils.createPanel(ComponentUtils.createPanelBody(ComponentUtils.createRow(Spacing.L, heading, badge,
-                                                                                ComponentUtils.createGrowingSpacer(), openLog, copy, action)));
+                                                                                                  ComponentUtils.createGrowingSpacer(), openLog, copy, action)));
     }
 
     private @NotNull List<@NotNull Region> createReport(@NotNull RuntimeRun shown) {
@@ -204,7 +204,7 @@ public final class RunScreen {
 
         if (startFailure != null) {
             HBox headline = ComponentUtils.createRow(Spacing.S, ComponentUtils.createStatusMarker(Tone.DANGER),
-                                               ComponentUtils.createLabel(this.texts.get("run.start.failed"), "text-subtitle", "text-danger"));
+                                                     ComponentUtils.createLabel(this.texts.get("run.start.failed"), "text-subtitle", "text-danger"));
 
             return List.of(ComponentUtils.createDangerPanel(headline, ComponentUtils.createParagraph(startFailure, "text-caption")));
         }
@@ -219,7 +219,7 @@ public final class RunScreen {
 
         VBox excerpt = new VBox();
         HBox headline = ComponentUtils.createRow(Spacing.S, ComponentUtils.createStatusMarker(Tone.DANGER),
-                                           ComponentUtils.createLabel(report.getHeadline(this.texts), "text-subtitle", "text-danger"));
+                                                 ComponentUtils.createLabel(report.getHeadline(this.texts), "text-subtitle", "text-danger"));
         VBox failure = ComponentUtils.createDangerPanel(headline, ComponentUtils.createParagraph(report.getExplanation(this.texts), "text-body"), excerpt);
 
         excerpt.getStyleClass().add("log-excerpt");

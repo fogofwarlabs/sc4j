@@ -147,12 +147,12 @@ public final class LoginScreen {
         this.logInButton.setOnAction(event -> this.withSelection(this::logIn));
 
         listPanel = ComponentUtils.createPanelWithFooter(texts.get("accounts.title"), ComponentUtils.createFlushPanelBody(this.list),
-                                                   ComponentUtils.createPanelFooter(create, ComponentUtils.createGrowingSpacer(), importButton));
+                                                         ComponentUtils.createPanelFooter(create, ComponentUtils.createGrowingSpacer(), importButton));
         ComponentUtils.setColumnWidth(listPanel, ColumnWidth.WIDE);
 
         detailPanel = ComponentUtils.createPanelWithFooter(texts.get("accounts.detail"), this.detailBody,
-                                                     ComponentUtils.createPanelFooter(this.exportButton, this.deleteButton, ComponentUtils.createGrowingSpacer(),
-                                                                                this.logInButton));
+                                                           ComponentUtils.createPanelFooter(this.exportButton, this.deleteButton, ComponentUtils.createGrowingSpacer(),
+                                                                                            this.logInButton));
         ComponentUtils.fillHeight(detailPanel);
         VBox.setVgrow(detailPanel, Priority.ALWAYS);
 

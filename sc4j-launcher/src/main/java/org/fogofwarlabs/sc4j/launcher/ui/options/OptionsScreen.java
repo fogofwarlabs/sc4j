@@ -168,7 +168,7 @@ public final class OptionsScreen {
         VBox.setVgrow(nodesPanel, Priority.ALWAYS);
 
         this.root = ComponentUtils.createColumn(Spacing.L, this.createLauncherPanel(language, updateView),
-                                          new BeaconLinkPanel(texts, nodeRunner, nodesPanel).getRoot(), nodesPanel);
+                                                new BeaconLinkPanel(texts, nodeRunner, nodesPanel).getRoot(), nodesPanel);
 
         this.pingResults = new HashMap<>();
         this.pinging     = false;
@@ -245,7 +245,7 @@ public final class OptionsScreen {
         this.ping.setDisable(this.editor.getNodes().isEmpty());
         this.ping.setOnAction(event -> this.pingNodes());
         panel = ComponentUtils.createPanelWithFooter(this.texts.get("nodes.title"), body, ComponentUtils.createPanelFooter(this.createEditor()),
-                                               this.nodeCount, this.ping);
+                                                     this.nodeCount, this.ping);
         ComponentUtils.fillHeight(panel);
 
         return panel;

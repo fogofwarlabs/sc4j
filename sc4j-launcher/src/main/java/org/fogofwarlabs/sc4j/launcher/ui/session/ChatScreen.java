@@ -289,9 +289,9 @@ public final class ChatScreen {
 
     private @NotNull VBox createLog() {
         VBox inputColumn = ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createRow(Spacing.S, this.input, this.send),
-                                                 this.inputMessage);
+                                                       this.inputMessage);
         VBox panel = ComponentUtils.createPanelWithFooter(this.logTitle, ComponentUtils.createFlushPanelBody(this.log), ComponentUtils.createPanelFooter(inputColumn),
-                                                    this.leave);
+                                                          this.leave);
 
         HBox.setHgrow(inputColumn, Priority.ALWAYS);
         HBox.setHgrow(panel, Priority.ALWAYS);
@@ -557,7 +557,7 @@ public final class ChatScreen {
         if (full) {
             joinButton.setDisable(true);
             dialog.addContent(ComponentUtils.createNotice(Tone.WARNING,
-                                                    this.texts.format("chat.join.full", CommunitySession.MAXIMUM_CHANNELS)));
+                                                          this.texts.format("chat.join.full", CommunitySession.MAXIMUM_CHANNELS)));
         } else {
             joinButton.disableProperty().bind(name.textProperty().isEmpty());
         }
@@ -599,7 +599,7 @@ public final class ChatScreen {
         Button copy = ComponentUtils.createMenuButton(this.texts.get("chat.menu.copy.name"));
         Button statusButton = ComponentUtils.createMenuButton(this.texts.get("chat.menu.status"));
         VBox menu = ComponentUtils.createMenuPanel(this.createPlayerItem(code, playerName).createNode(), new Separator(), whisper, friendButton, ignore,
-                                             copy, statusButton);
+                                                   copy, statusButton);
 
         whisper.setDisable(self);
         whisper.setOnAction(action -> {

@@ -417,7 +417,7 @@ public final class ComponentUtils {
      * @return the created panel
      */
     public static @NotNull VBox createPanelWithFooter(@NotNull String title, @NotNull Node body, @NotNull HBox footer,
-                                                @NotNull Node @NotNull ... headerTrailing) {
+                                                      @NotNull Node @NotNull ... headerTrailing) {
         return createPanelWithFooter(createLabel(title), body, footer, headerTrailing);
     }
 
@@ -432,7 +432,7 @@ public final class ComponentUtils {
      * @return the created panel
      */
     public static @NotNull VBox createPanelWithFooter(@NotNull Label title, @NotNull Node body, @NotNull HBox footer,
-                                                @NotNull Node @NotNull ... headerTrailing) {
+                                                      @NotNull Node @NotNull ... headerTrailing) {
         VBox panel = createPanel(title, body, headerTrailing);
 
         panel.getChildren().add(footer);

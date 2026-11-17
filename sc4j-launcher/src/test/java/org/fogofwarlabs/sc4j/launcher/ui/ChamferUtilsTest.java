@@ -184,11 +184,11 @@ final class ChamferUtilsTest {
 
         LauncherFxScenario.run(() -> {
             HBox narrow = ComponentUtils.createRow(Spacing.S,
-                                             ComponentUtils.createButton(texts.get("session.save"), ButtonRole.PRIMARY),
-                                             ComponentUtils.createButton(texts.get("session.cancel"), ButtonRole.SECONDARY),
-                                             ComponentUtils.createSmallButton(texts.get("app.about"), ButtonRole.DANGER),
-                                             ComponentUtils.createBadge(texts.get("run.state.running"), Tone.ACCENT),
-                                             ComponentUtils.createBadge(texts.get("run.state.ended"), Tone.SUCCESS));
+                                                   ComponentUtils.createButton(texts.get("session.save"), ButtonRole.PRIMARY),
+                                                   ComponentUtils.createButton(texts.get("session.cancel"), ButtonRole.SECONDARY),
+                                                   ComponentUtils.createSmallButton(texts.get("app.about"), ButtonRole.DANGER),
+                                                   ComponentUtils.createBadge(texts.get("run.state.running"), Tone.ACCENT),
+                                                   ComponentUtils.createBadge(texts.get("run.state.ended"), Tone.SUCCESS));
             Button wide = ComponentUtils.createButton(texts.get("session.save"), ButtonRole.SECONDARY);
             TabPane tabs = new TabPane(new Tab(texts.get("run.tab.log")), new Tab(texts.get("run.tab.command")), new Tab(texts.get("run.tab.settings")));
             VBox sample = ComponentUtils.createColumn(Spacing.M, narrow, wide, tabs);

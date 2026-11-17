@@ -75,25 +75,25 @@ public final class AboutDialog {
         Label versionLabel = ComponentUtils.createLabel(texts.format("about.version", version, EngineVersion.CURRENT), "text-subtitle");
         Label titleLabel = ComponentUtils.createLabel(texts.get("about.heading"), "text-title");
         HBox header = ComponentUtils.createRow(Spacing.L,
-                                         ComponentUtils.createImageView(ThemeUtils.loadImage(ThemeUtils.SC4J_LOGO, logoSize, imageScale), logoSize),
-                                         ComponentUtils.createColumn(Spacing.XS, titleLabel, versionLabel));
+                                               ComponentUtils.createImageView(ThemeUtils.loadImage(ThemeUtils.SC4J_LOGO, logoSize, imageScale), logoSize),
+                                               ComponentUtils.createColumn(Spacing.XS, titleLabel, versionLabel));
         Image publisherLogo = ThemeUtils.loadImage(ThemeUtils.FOG_OF_WAR_LABS_LOGO, IconSize.M.getSize(), imageScale);
         HBox publisher = ComponentUtils.createRow(Spacing.M,
-                                            ComponentUtils.createImageView(publisherLogo, IconSize.M.getSize()),
-                                            ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createLabel(PUBLISHER_NAME, "text-subtitle"),
-                                                                  website));
+                                                  ComponentUtils.createImageView(publisherLogo, IconSize.M.getSize()),
+                                                  ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createLabel(PUBLISHER_NAME, "text-subtitle"),
+                                                                              website));
         VBox privacy = ComponentUtils.createColumn(Spacing.XS,
-                                             ComponentUtils.createLabel(texts.get("about.privacy.title"), "text-heading"),
-                                             ComponentUtils.createParagraph(texts.get("about.privacy.address"), "text-caption"),
-                                             ComponentUtils.createParagraph(texts.get("about.privacy.shared"), "text-caption"),
-                                             ComponentUtils.createParagraph(texts.get("about.privacy.files"), "text-caption"));
+                                                   ComponentUtils.createLabel(texts.get("about.privacy.title"), "text-heading"),
+                                                   ComponentUtils.createParagraph(texts.get("about.privacy.address"), "text-caption"),
+                                                   ComponentUtils.createParagraph(texts.get("about.privacy.shared"), "text-caption"),
+                                                   ComponentUtils.createParagraph(texts.get("about.privacy.files"), "text-caption"));
         VBox content = ComponentUtils.createColumn(Spacing.M,
-                                             publisher,
-                                             new Separator(),
-                                             ComponentUtils.createParagraph(texts.get("about.license"), "text-caption"),
-                                             ComponentUtils.createParagraph(texts.get("about.fonts"), "text-caption"),
-                                             new Separator(),
-                                             privacy);
+                                                   publisher,
+                                                   new Separator(),
+                                                   ComponentUtils.createParagraph(texts.get("about.license"), "text-caption"),
+                                                   ComponentUtils.createParagraph(texts.get("about.fonts"), "text-caption"),
+                                                   new Separator(),
+                                                   privacy);
         VBox modNotices = createModNotices(texts, mods);
         ScrollPane scroll = new ScrollPane(content);
         Button close = ComponentUtils.createButton(texts.get("about.close"), ButtonRole.SECONDARY);
