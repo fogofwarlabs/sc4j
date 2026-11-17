@@ -932,7 +932,7 @@
 
 /* Compact list item (.list-view.compact): the regular item with less padding, a smaller title and closer lines. */
 .list-view.compact .list-cell {
-    -fx-padding: 4 10 4 9;
+    -fx-padding: 6 10 6 9;
 }
 
 .list-view.compact .list-cell .list-title {

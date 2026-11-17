@@ -57,7 +57,7 @@ final class ChatScreenTest {
     private static final int LOG = 2;
     private static final int MEMBER_LIST = 3;
     private static final @NotNull String COMPACT_LIST_STYLE_CLASS = "compact";
-    private static final double COMPACT_CELL_PADDING = 4;
+    private static final double COMPACT_CELL_PADDING = 6;
     private static final double TOLERANCE = 0.5;
     private static final @NotNull FriendView RAYNOR = createPlayer(1, "Raynor#60bf07", FriendState.IN_LAUNCHER, null, "");
     private static final @NotNull FriendView KERRIGAN = createPlayer(2, "Kerrigan#a1b2c3", FriendState.IN_GAME, GAME_MOD_ID, "");

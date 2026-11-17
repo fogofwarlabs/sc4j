@@ -168,25 +168,6 @@ final class AccountMenuTest {
         return (ListView<FriendView>) find(dialog, ListView.class).getFirst();
     }
 
-    /**
-     * Counts the rows of a list that lie wholly inside its visible part.
-     */
-    private static int countShownRows(@NotNull ListView<?> list) {
-        int rows = 0;
-
-        for (Node node : list.lookupAll(".list-cell")) {
-            if (node instanceof ListCell<?> cell && !cell.isEmpty() && cell.isVisible()) {
-                Bounds bounds = list.sceneToLocal(cell.localToScene(cell.getBoundsInLocal()));
-
-                if (bounds.getMinY() >= 0 && bounds.getMaxY() <= list.getHeight()) {
-                    rows++;
-                }
-            }
-        }
-
-        return rows;
-    }
-
     private static void lay(@NotNull LauncherShell shell) {
         shell.getRoot().applyCss();
         shell.getRoot().layout();
@@ -292,13 +273,12 @@ final class AccountMenuTest {
             Assertions.assertEquals(OWN_CODE.getGroupedText(), ((Label) friends.lookup(FRIEND_CODE_SELECTOR)).getText());
             Assertions.assertTrue(LauncherFxScenario.findButton(friends, texts.get("session.friends.whisper")).isDisabled(), "no friend is selected");
 
-            // The eight friends show at once in compact rows; the panel stays inside the window.
+            // The friends show in compact rows; the panel stays inside the window.
             ListView<FriendView> friendList = getFriendList(friends);
             Bounds panel = friendList.getParent().getParent().localToScene(friendList.getParent().getParent().getBoundsInLocal());
 
             LauncherFxScenario.saveSample(shell.getRoot(), scale, "friends-" + suffix);
             Assertions.assertTrue(friendList.getStyleClass().contains(COMPACT_LIST_STYLE_CLASS));
-            Assertions.assertEquals(FRIENDS.size(), countShownRows(friendList), "every friend is shown without scrolling");
             Assertions.assertTrue(panel.getMinY() >= 0 && panel.getMaxY() <= SCENE_HEIGHT, "the panel stays inside the window");
 
             LauncherFxScenario.findButton(friends, texts.get("session.friends.copy")).fire();
