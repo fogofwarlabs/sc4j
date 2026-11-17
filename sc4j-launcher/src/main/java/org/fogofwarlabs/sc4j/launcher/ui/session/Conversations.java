@@ -1,11 +1,7 @@
 package org.fogofwarlabs.sc4j.launcher.ui.session;
 
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind;
-import org.fogofwarlabs.sc4j.launcher.session.ChatEntryView;
-import org.fogofwarlabs.sc4j.launcher.session.FriendCode;
-import org.fogofwarlabs.sc4j.launcher.session.FriendView;
-import org.fogofwarlabs.sc4j.launcher.session.LauncherSessionView;
-import org.fogofwarlabs.sc4j.launcher.session.WhisperView;
+import org.fogofwarlabs.sc4j.launcher.session.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

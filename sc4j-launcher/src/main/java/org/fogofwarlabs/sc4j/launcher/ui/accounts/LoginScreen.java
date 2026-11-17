@@ -14,16 +14,7 @@ import org.fogofwarlabs.sc4j.beaconlink.protocol.identity.PlayerNameUtils;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.identity.PlayerStamp;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
-import org.fogofwarlabs.sc4j.launcher.ui.ButtonRole;
-import org.fogofwarlabs.sc4j.launcher.ui.ColumnWidth;
-import org.fogofwarlabs.sc4j.launcher.ui.ComponentUtils;
-import org.fogofwarlabs.sc4j.launcher.ui.LauncherShell;
-import org.fogofwarlabs.sc4j.launcher.ui.ListItem;
-import org.fogofwarlabs.sc4j.launcher.ui.ListItemCell;
-import org.fogofwarlabs.sc4j.launcher.ui.ListItemSize;
-import org.fogofwarlabs.sc4j.launcher.ui.ModalDialog;
-import org.fogofwarlabs.sc4j.launcher.ui.Spacing;
-import org.fogofwarlabs.sc4j.launcher.ui.Tone;
+import org.fogofwarlabs.sc4j.launcher.ui.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -514,7 +505,7 @@ public final class LoginScreen {
     private @NotNull ListItem createAccountItem(@NotNull Account account) {
         boolean used = this.inUse.contains(account.getId());
         ListItem item = new ListItem(account.getTaggedName()).setMarker(used ? Tone.WARNING : Tone.NEUTRAL)
-                                                            .addCaption(this.describeLastUse(account));
+                                                             .addCaption(this.describeLastUse(account));
 
         if (used) {
             item.setBadge(ComponentUtils.badge(this.texts.get("accounts.in.use"), Tone.WARNING));

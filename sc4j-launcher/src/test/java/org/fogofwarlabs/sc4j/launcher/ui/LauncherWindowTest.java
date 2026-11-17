@@ -505,7 +505,7 @@ final class LauncherWindowTest {
         InstallLayout install = InstallLayout.of(directory);
         AccountStore store = AccountStore.of(install.getBeaconLinkDirectory());
         RecordingLauncherSession session = new RecordingLauncherSession(createCode(1), new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "",
-                                                                                                       1, null));
+                                                                                                    1, null));
 
         store.create(raynorKey, raynorStamp, PlayerStamp.DEFAULT_DIFFICULTY, RAYNOR_USE_MILLIS);
         session.setFriends(List.of(new FriendView(createCode(2), "Kerrigan#a1b2c3", FriendState.IN_LAUNCHER, null, "", 1, false),

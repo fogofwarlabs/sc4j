@@ -1,11 +1,7 @@
 package org.fogofwarlabs.sc4j.catalog;
 
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
-import org.fogofwarlabs.sc4j.catalog.github.Release;
-import org.fogofwarlabs.sc4j.catalog.github.ReleaseClient;
-import org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
-import org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem;
-import org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository;
+import org.fogofwarlabs.sc4j.catalog.github.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

@@ -1,6 +1,9 @@
 package org.fogofwarlabs.sc4j.launcher.install;
 
-import org.fogofwarlabs.sc4j.catalog.github.*;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseClient;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository;
 import org.fogofwarlabs.sc4j.catalog.mods.ModRelease;
 import org.fogofwarlabs.sc4j.catalog.test.ReleaseServerScenario;
 import org.fogofwarlabs.sc4j.launcher.catalog.IdConflictIssue;

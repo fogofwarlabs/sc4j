@@ -6,11 +6,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
-import org.fogofwarlabs.sc4j.launcher.ui.ButtonRole;
-import org.fogofwarlabs.sc4j.launcher.ui.ComponentUtils;
-import org.fogofwarlabs.sc4j.launcher.ui.ControlWidth;
-import org.fogofwarlabs.sc4j.launcher.ui.Spacing;
-import org.fogofwarlabs.sc4j.launcher.ui.Tone;
+import org.fogofwarlabs.sc4j.launcher.ui.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -66,8 +62,8 @@ public final class UpdateView {
         this.check.setOnAction(event -> actions.onCheck(this.source.getText()));
         this.update.setOnAction(event -> actions.onUpdate());
 
-        state     = ComponentUtils.column(Spacing.XS, ComponentUtils.label(texts.format("update.version", version), "text-caption"),
-                                          this.status);
+        state = ComponentUtils.column(Spacing.XS, ComponentUtils.label(texts.format("update.version", version), "text-caption"),
+                                      this.status);
         // The status lines take the row's height instead of setting it.
         state.setMinHeight(0);
         state.setPrefHeight(0);

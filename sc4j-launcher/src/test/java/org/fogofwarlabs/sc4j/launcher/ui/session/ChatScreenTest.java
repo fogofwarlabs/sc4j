@@ -417,7 +417,7 @@ final class ChatScreenTest {
     @ParameterizedTest
     @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
     void player_menu_on_a_member_or_a_name_in_the_log_runs_the_account_menu_commands(double scale, @NotNull String languageCode,
-                                                                                    @TempDir @NotNull Path directory) throws Exception {
+                                                                                     @TempDir @NotNull Path directory) throws Exception {
         UiLanguage language = selectLanguage(languageCode);
         LauncherTexts texts = LauncherTexts.of(language);
         String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
@@ -505,7 +505,7 @@ final class ChatScreenTest {
         LauncherTexts texts = LauncherTexts.of(language);
         String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
         RecordingLauncherSession session = new RecordingLauncherSession(RAYNOR.getCode(), new SelfView(SessionState.OFFLINE, SelfStatus.ONLINE, "", 0,
-                                                                                                        SessionFailure.SIGNED_OUT));
+                                                                                                       SessionFailure.SIGNED_OUT));
 
         LauncherFxScenario.run(() -> {
             LauncherShell shell = createShell(texts, language, scale, directory, session, new ArrayList<>());

@@ -36,8 +36,8 @@ final class OptionsScreenTest {
     private static final double SCENE_HEIGHT = 800;
     private static final int NODE_PORT = 7455;
     private static final @NotNull List<@NotNull ConfiguredNode> NODES = List.of(ConfiguredNode.of("node.example.org", NODE_PORT, null),
-                                                                               ConfiguredNode.of("192.0.2.10", NODE_PORT, null),
-                                                                               ConfiguredNode.of("seed.example.net", NODE_PORT + 1, null));
+                                                                                ConfiguredNode.of("192.0.2.10", NODE_PORT, null),
+                                                                                ConfiguredNode.of("seed.example.net", NODE_PORT + 1, null));
 
     /**
      * Records the pinged peers and holds their results back.
