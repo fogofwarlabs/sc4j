@@ -1,6 +1,7 @@
 package org.fogofwarlabs.sc4j.launcher.ui;
 
 import javafx.beans.binding.Bindings;
+import javafx.beans.binding.BooleanBinding;
 import javafx.css.PseudoClass;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -189,6 +190,21 @@ public final class ComponentUtils {
         row.setAlignment(Pos.CENTER_LEFT);
 
         return row;
+    }
+
+    /**
+     * Creates a slot whose content a screen replaces; the slot takes no room in its parent's layout, spacing included, while it is empty.
+     *
+     * @return the created slot
+     */
+    public static @NotNull VBox slot() {
+        VBox slot = new VBox();
+        BooleanBinding filled = Bindings.isNotEmpty(slot.getChildren());
+
+        slot.visibleProperty().bind(filled);
+        slot.managedProperty().bind(filled);
+
+        return slot;
     }
 
     /**

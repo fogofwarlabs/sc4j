@@ -97,8 +97,8 @@ public final class RunScreen {
         this.actions = actions;
 
         this.root        = ComponentUtils.column(Spacing.L);
-        this.summarySlot = new VBox();
-        this.reportSlot  = new VBox();
+        this.summarySlot = ComponentUtils.slot();
+        this.reportSlot  = ComponentUtils.slot();
         this.log         = ComponentUtils.codeArea(run == null ? "" : String.join(LINE_SEPARATOR, run.getOutput().getLines()), "log-area");
 
         this.shownLineCount = run == null ? 0 : run.getOutput().getLines().size();
