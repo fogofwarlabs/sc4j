@@ -147,7 +147,7 @@ final class UpdateViewTest {
 
             Assertions.assertFalse(LauncherFxScenario.isShown(update));
             Assertions.assertTrue(findLabel(root, texts.format("update.status", texts.get("update.current"))).getStyleClass()
-                                                                                                          .contains("text-success"));
+                                                                                                             .contains("text-success"));
 
             view.showStatus(failed, Tone.DANGER, false);
 
