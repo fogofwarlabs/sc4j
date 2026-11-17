@@ -32,9 +32,9 @@ import java.util.function.BooleanSupplier;
 
 /**
  * Runs launcher views in the JavaFX toolkit of a test JVM without showing a window: starts the toolkit once, runs code on its thread, waits
- * for a state that work on other threads brings, finds buttons by their text, tells whether a node is shown, checks the room around the
- * controls of panel headers and footers and the text of an empty list, and saves renderings at a display scale as sample pictures in
- * {@value #SAMPLE_FOLDER}.
+ * for a state that work on other threads brings, finds buttons by their text, tells whether a node is shown, checks the height of panel
+ * headers, the room around the controls of panel headers and footers and the text of an empty list, and saves renderings at a display
+ * scale as sample pictures in {@value #SAMPLE_FOLDER}.
  */
 public final class LauncherFxScenario {
     /**
@@ -152,14 +152,15 @@ public final class LauncherFxScenario {
     }
 
     /**
-     * Checks every shown panel header with a shown control at its right end: the room right of the last control equals the room above and
-     * below it; call it on the JavaFX thread after a layout.
+     * Checks every shown panel header: all have one height, and in a header with a shown control at its right end the room right of the last
+     * control equals the room above and below it; call it on the JavaFX thread after a layout.
      *
      * @param root the node holding the panels
-     * @return the number of headers checked
+     * @return the number of headers with a control checked
      */
     public static int assertHeaderInsets(@NotNull Parent root) {
         int checked = 0;
+        double headerHeight = -1;
 
         for (Node node : root.lookupAll(".panel-header")) {
             Parent header = (Parent) node;
@@ -169,6 +170,12 @@ public final class LauncherFxScenario {
             if (!isShown(header)) {
                 continue;
             }
+
+            if (headerHeight < 0) {
+                headerHeight = header.getLayoutBounds().getHeight();
+            }
+
+            Assertions.assertEquals(headerHeight, header.getLayoutBounds().getHeight(), "every header has one height");
 
             for (int index = LEADING_HEADER_CHILDREN; index < children.size(); index++) {
                 if (children.get(index).isManaged() && children.get(index).isVisible()) {

@@ -366,10 +366,10 @@
     -fx-effect: dropshadow(gaussian, #000000a0, 18, 0.15, 0, 4);
 }
 
-/* Every panel header has the height of a header with a small button, whether it holds controls or not. The padding leaves the same room
-   above, below and right of a small button; the header widens the room right of a lower control to the room above and below it. */
+/* Every panel header has this one height, whether it holds controls or not; its controls are centred in it. The padding leaves the same
+   room above, below and right of a small button; the header widens the room right of a lower control to the room above and below it. */
 .panel-header {
-    -fx-min-height: 46;
+    -fx-pref-height: 47;
     -fx-background-color: -sc4j-header-fill;
     -fx-background-insets: 1 1 0 1;
     -fx-border-color: transparent transparent -sc4j-border -sc4j-accent;

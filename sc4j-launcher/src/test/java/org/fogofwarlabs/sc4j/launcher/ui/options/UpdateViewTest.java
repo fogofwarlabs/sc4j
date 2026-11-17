@@ -30,15 +30,17 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Tests the update part of the Settings screen offscreen: Check now passes the typed source and waits for its result, Update is shown only
- * while a newer version is available, the version and the check result are centred on the source field, and the source field and its
- * label start in line with the language box and its label above them.
+ * Tests the update parts of the Settings screen offscreen: Check now sits in the launcher panel's header, passes the typed source and waits
+ * for its result; the Version field shows the running version and the result after it in one line, Update after them only while a newer
+ * version is available, without changing the field's height; the update source field lines up with the language box.
  */
 final class UpdateViewTest {
     private static final @NotNull String VERSION = "1.1.0";
     private static final @NotNull String SOURCE = "owner/sc4j";
     private static final double SCENE_WIDTH = 1280;
     private static final double SCENE_HEIGHT = 800;
+    private static final @NotNull String NEWER_VERSION = "1.2.0";
+    private static final @NotNull String PROBLEM = "timeout";
     private static final double CENTER_TOLERANCE = 1;
 
     /**
@@ -64,7 +66,7 @@ final class UpdateViewTest {
     }
 
     private static @NotNull Bounds getSceneBounds(@NotNull Node node) {
-        return node.localToScene(node.getBoundsInLocal());
+        return node.localToScene(node.getLayoutBounds());
     }
 
     private static @NotNull Label findLabel(@NotNull Node root, @NotNull String text) {
@@ -82,6 +84,29 @@ final class UpdateViewTest {
         LauncherFxScenario.startToolkit();
     }
 
+    private static @NotNull UpdateView createView(@NotNull LauncherTexts texts, @NotNull List<@NotNull String> checked) {
+        return new UpdateView(texts, VERSION, SOURCE, new UpdateView.Actions() {
+            @Override
+            public void onCheck(@NotNull String source) {
+                checked.add(source);
+            }
+
+            @Override
+            public void onUpdate() {
+            }
+        });
+    }
+
+    private static @NotNull GridPane createRoot(@NotNull LauncherTexts texts, @NotNull UpdateView view, @NotNull Path directory) {
+        return new OptionsScreen(texts, null, false, view, List.of(), null, new LauncherNodeRunner(InstallLayout.of(directory)),
+                                 new NoActions()).getRoot();
+    }
+
+    private static void layOut(@NotNull GridPane root) {
+        root.applyCss();
+        root.layout();
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"en", "ko"})
     void check_should_wait_for_its_result_and_update_should_show_only_when_available(@NotNull String languageCode,
@@ -91,41 +116,43 @@ final class UpdateViewTest {
         List<String> checked = new ArrayList<>();
 
         LauncherFxScenario.run(() -> {
-            UpdateView view = new UpdateView(texts, VERSION, SOURCE, new UpdateView.Actions() {
-                @Override
-                public void onCheck(@NotNull String source) {
-                    checked.add(source);
-                }
-
-                @Override
-                public void onUpdate() {
-                }
-            });
-            OptionsScreen screen = new OptionsScreen(texts, null, false, view, List.of(), null, new LauncherNodeRunner(InstallLayout.of(directory)),
-                                                     new NoActions());
-            GridPane root = screen.getRoot();
-            Button check = LauncherFxScenario.findButton(view.getRoot(), texts.get("update.check"));
+            UpdateView view = createView(texts, checked);
+            GridPane root = createRoot(texts, view, directory);
+            Button check = view.getCheckButton();
+            String failed = texts.format("update.failed", PROBLEM);
             Button update;
 
             ThemeUtils.apply(new Scene(root, SCENE_WIDTH, SCENE_HEIGHT), language);
+            layOut(root);
+
+            Assertions.assertEquals(texts.get("update.check"), check.getText());
+            Assertions.assertTrue(check.getStyleClass().contains("small"), "Check now is a small header button");
+            Assertions.assertTrue(check.getParent().getStyleClass().contains("panel-header"), "Check now is in the panel header");
+            Assertions.assertEquals(texts.get("settings.launcher"), ((Label) check.getParent().lookup(".panel-title")).getText());
+
             check.fire();
             view.showChecking();
 
             Assertions.assertEquals(List.of(SOURCE), checked);
             Assertions.assertTrue(check.isDisabled());
+            Assertions.assertTrue(LauncherFxScenario.isShown(findLabel(root, texts.format("update.status", texts.get("update.checking")))));
 
-            view.showStatus(texts.format("update.available", "1.2.0"), Tone.ACCENT, true);
-            update = LauncherFxScenario.findButton(view.getRoot(), texts.get("update.start"));
+            view.showStatus(texts.format("update.available", NEWER_VERSION), Tone.ACCENT, true);
+            update = LauncherFxScenario.findButton(view.getVersionField(), texts.get("update.start"));
 
             Assertions.assertFalse(check.isDisabled());
             Assertions.assertTrue(LauncherFxScenario.isShown(update));
-            root.applyCss();
-            root.layout();
-            LauncherFxScenario.saveSample(root, 1, "settings-update-" + language.getCode());
 
             view.showStatus(texts.get("update.current"), Tone.SUCCESS, false);
 
             Assertions.assertFalse(LauncherFxScenario.isShown(update));
+            Assertions.assertTrue(findLabel(root, texts.format("update.status", texts.get("update.current"))).getStyleClass()
+                                                                                                          .contains("text-success"));
+
+            view.showStatus(failed, Tone.DANGER, false);
+
+            Assertions.assertFalse(LauncherFxScenario.isShown(update));
+            Assertions.assertTrue(findLabel(root, texts.format("update.status", failed)).getStyleClass().contains("text-danger"));
 
             return null;
         });
@@ -133,43 +160,50 @@ final class UpdateViewTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"en", "ko"})
-    void version_and_result_should_center_on_the_source_field(@NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
+    void version_field_should_show_the_result_after_the_version(@NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
         UiLanguage language = languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
         LauncherTexts texts = LauncherTexts.of(language);
 
         LauncherFxScenario.run(() -> {
-            UpdateView view = new UpdateView(texts, VERSION, SOURCE, new UpdateView.Actions() {
-                @Override
-                public void onCheck(@NotNull String source) {
-                }
-
-                @Override
-                public void onUpdate() {
-                }
-            });
-            OptionsScreen screen = new OptionsScreen(texts, null, false, view, List.of(), null, new LauncherNodeRunner(InstallLayout.of(directory)),
-                                                     new NoActions());
-            GridPane root = screen.getRoot();
+            UpdateView view = createView(texts, new ArrayList<>());
+            GridPane root = createRoot(texts, view, directory);
+            String available = texts.format("update.status", texts.format("update.available", NEWER_VERSION));
+            Bounds version;
+            Bounds result;
+            Bounds update;
+            Bounds languageBox;
+            Bounds source;
+            double fieldHeight;
 
             ThemeUtils.apply(new Scene(root, SCENE_WIDTH, SCENE_HEIGHT), language);
             view.showStatus(texts.get("update.current"), Tone.SUCCESS, false);
-            root.applyCss();
-            root.layout();
+            layOut(root);
 
-            Bounds source = getSceneBounds(view.getRoot().lookup(".text-field"));
-            Bounds check = getSceneBounds(LauncherFxScenario.findButton(view.getRoot(), texts.get("update.check")));
-            Bounds version = getSceneBounds(findLabel(view.getRoot(), texts.format("update.version", VERSION)));
-            Bounds result = getSceneBounds(findLabel(view.getRoot(), texts.get("update.current")));
-            double stateCenter = (version.getMinY() + result.getMaxY()) / 2;
+            version     = getSceneBounds(findLabel(view.getVersionField(), VERSION));
+            result      = getSceneBounds(findLabel(view.getVersionField(), texts.format("update.status", texts.get("update.current"))));
+            fieldHeight = view.getVersionField().getHeight();
 
-            LauncherFxScenario.saveSample(root, 1, "settings-update-current-" + language.getCode());
-            Assertions.assertInstanceOf(TextField.class, view.getRoot().lookup(".text-field"));
-            Assertions.assertEquals(source.getCenterY(), check.getCenterY(), CENTER_TOLERANCE, "Check now is centred on the source field");
-            Assertions.assertEquals(source.getCenterY(), stateCenter, CENTER_TOLERANCE, "the version and the result are centred on the source field");
-            Assertions.assertEquals(getSceneBounds(root.lookup(".combo-box")).getMinX(), source.getMinX(), CENTER_TOLERANCE,
-                                    "the source field lines up with the language box");
+            Assertions.assertEquals(texts.get("update.version"), ((Label) view.getVersionField().getChildrenUnmodifiable().getFirst()).getText());
+            Assertions.assertEquals(version.getCenterY(), result.getCenterY(), CENTER_TOLERANCE, "the result is in the version's line");
+            Assertions.assertTrue(version.getMaxX() < result.getMinX(), "the result follows the version");
+
+            view.showStatus(texts.format("update.available", NEWER_VERSION), Tone.ACCENT, true);
+            layOut(root);
+            result = getSceneBounds(findLabel(view.getVersionField(), available));
+            update = getSceneBounds(LauncherFxScenario.findButton(view.getVersionField(), texts.get("update.start")));
+
+            Assertions.assertEquals(result.getCenterY(), update.getCenterY(), CENTER_TOLERANCE, "Update is in the version's line");
+            Assertions.assertTrue(result.getMaxX() < update.getMinX(), "Update follows the result");
+            Assertions.assertEquals(fieldHeight, view.getVersionField().getHeight(), CENTER_TOLERANCE, "Update keeps the field's height");
+
+            languageBox = getSceneBounds(root.lookup(".combo-box"));
+            source      = getSceneBounds(view.getSourceField().lookup(".text-field"));
+
+            Assertions.assertInstanceOf(TextField.class, view.getSourceField().lookup(".text-field"));
+            Assertions.assertEquals(languageBox.getMinX(), source.getMinX(), CENTER_TOLERANCE, "the source field lines up with the language box");
+            Assertions.assertTrue(languageBox.getMaxY() < source.getMinY(), "the source field is below the language box");
             Assertions.assertEquals(getSceneBounds(findLabel(root, texts.get("settings.language"))).getMinX(),
-                                    getSceneBounds(findLabel(view.getRoot(), texts.get("update.source"))).getMinX(), CENTER_TOLERANCE,
+                                    getSceneBounds(findLabel(view.getSourceField(), texts.get("update.source"))).getMinX(), CENTER_TOLERANCE,
                                     "the source label lines up with the language label");
 
             return null;

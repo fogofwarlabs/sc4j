@@ -23,13 +23,14 @@ import java.util.*;
 import java.util.function.Consumer;
 
 /**
- * Shows the launcher's Settings screen in two columns of equal width. The left column holds the launcher panel, a form of one field per row:
- * the UI language (the system language or an explicit choice), the chat sound switch and the update ({@link UpdateView}). The right column
- * holds the Beacon.Link panel ({@link BeaconLinkPanel}: the node setting and the launcher node's status; keys are automatic and not shown)
- * and, under it behind its Seeds button, the seed list editor (the node list). The editor lists the seeds in the order the client contacts them and has the host and port fields
- * under the list: Add, Update and Remove change entries, Move up and Move down change the order. Field problems are shown with their
- * reasons; every change is saved at once through {@link Actions#onNodesChanged(List)}. Ping checks every listed seed and shows each result
- * in the seed's row: the round-trip delay, the node version and the address the node observed, or why it did not answer.
+ * Shows the launcher's Settings screen in two columns of equal width. The left column holds the launcher panel with Check now in its header
+ * and a form of one field per row: the version with the result of the last check, the UI language (the system language or an explicit
+ * choice), the chat sound switch and the update source (the update parts are {@link UpdateView}). The right column holds the Beacon.Link
+ * panel ({@link BeaconLinkPanel}: the node setting and the launcher node's status; keys are automatic and not shown) and, under it behind its
+ * Peers button, the seed list editor (the node list). The editor lists the seeds in the order the client contacts them and has the host and
+ * port fields under the list: Add, Update and Remove change entries, Move up and Move down change the order. Field problems are shown with
+ * their reasons; every change is saved at once through {@link Actions#onNodesChanged(List)}. Ping checks every listed seed and shows each
+ * result in the seed's row: the round-trip delay, the node version and the address the node observed, or why it did not answer.
  */
 public final class OptionsScreen {
     private static final @NotNull String LANGUAGE_NAME_KEY_PREFIX = "language.";
@@ -137,7 +138,7 @@ public final class OptionsScreen {
      * @param language         the language chosen in the launcher settings, or {@code null} when the launcher follows the
      *                         operating system
      * @param chatSoundMuted   whether the launcher settings mute the chat notification sound
-     * @param updateView       the update part of the launcher panel
+     * @param updateView       the update parts of the launcher panel
      * @param nodes            the saved node list, or the shipped seed list while the user has saved none
      * @param nodesLoadProblem why that list could not be read, or {@code null}
      * @param nodeRunner       the launcher's Beacon.Link node
@@ -235,10 +236,10 @@ public final class OptionsScreen {
         mute.setSelected(chatSoundMuted);
         mute.selectedProperty().addListener((observable, previous, current) -> this.actions.onChatSoundMutedChanged(current));
 
-        form = ComponentUtils.createForm(ComponentUtils.createField(this.texts.get("settings.language"), choice),
-                                         ComponentUtils.createField(this.texts.get("settings.sound"), mute), updateView.getRoot());
+        form = ComponentUtils.createForm(updateView.getVersionField(), ComponentUtils.createField(this.texts.get("settings.language"), choice),
+                                         ComponentUtils.createField(this.texts.get("settings.sound"), mute), updateView.getSourceField());
 
-        return ComponentUtils.createPanel(this.texts.get("settings.launcher"), ComponentUtils.createPanelBody(form));
+        return ComponentUtils.createPanel(this.texts.get("settings.launcher"), ComponentUtils.createPanelBody(form), updateView.getCheckButton());
     }
 
     private @NotNull String getLanguageName(@NotNull UiLanguage language) {

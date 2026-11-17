@@ -1,9 +1,9 @@
 package org.fogofwarlabs.sc4j.launcher.ui.options;
 
-import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.ui.*;
@@ -11,8 +11,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Shows the update part of the Settings screen's launcher panel: the update source, Check now, the running version over the result of the
- * last check, and Update when a newer version is available.
+ * Shows the update parts of the Settings screen's launcher panel: Check now for the panel header, the Version field (the running version, the
+ * result of the last check after it and Update when a newer version is available) and the update source field.
  */
 public final class UpdateView {
 
@@ -39,7 +39,8 @@ public final class UpdateView {
     private final @NotNull Button check;
     private final @NotNull Label status;
     private final @NotNull Button update;
-    private final @NotNull VBox root;
+    private final @NotNull VBox versionField;
+    private final @NotNull VBox sourceField;
 
     /**
      * Creates a {@link UpdateView} instance.
@@ -50,35 +51,45 @@ public final class UpdateView {
      * @param actions receives the actions
      */
     public UpdateView(@NotNull LauncherTexts texts, @NotNull String version, @NotNull String source, @NotNull Actions actions) {
-        VBox state;
+        HBox versionLine;
 
         this.texts  = texts;
         this.source = new TextField(source);
-        this.check  = ComponentUtils.createButton(texts.get("update.check"), ButtonRole.SECONDARY);
-        this.status = ComponentUtils.createLabel("", "text-caption");
+        this.check  = ComponentUtils.createSmallButton(texts.get("update.check"), ButtonRole.SECONDARY);
+        this.status = ComponentUtils.createLabel("");
         this.update = ComponentUtils.createButton(texts.get("update.start"), ButtonRole.PRIMARY);
 
         ComponentUtils.setControlWidth(this.source, ControlWidth.L);
         this.check.setOnAction(event -> actions.onCheck(this.source.getText()));
         this.update.setOnAction(event -> actions.onUpdate());
 
-        state = ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createLabel(texts.format("update.version", version), "text-caption"),
-                                            this.status);
-        // The status lines take the row's height instead of setting it.
-        state.setMinHeight(0);
-        state.setPrefHeight(0);
-        state.setAlignment(Pos.CENTER_LEFT);
-        this.root = ComponentUtils.createField(texts.get("update.source"),
-                                               ComponentUtils.createRow(Spacing.M, this.source, this.check, state, this.update));
+        versionLine = ComponentUtils.createRow(Spacing.XS, ComponentUtils.createLabel(version), this.status);
+
+        this.versionField = ComponentUtils.createField(texts.get("update.version"), ComponentUtils.createRow(Spacing.M, versionLine, this.update));
+        this.sourceField  = ComponentUtils.createField(texts.get("update.source"), this.source);
 
         this.showStatus(null, Tone.NEUTRAL, false);
     }
 
     /**
-     * @return the view's root node
+     * @return Check now, the trailing button of the launcher panel's header
      */
-    public @NotNull VBox getRoot() {
-        return this.root;
+    public @NotNull Button getCheckButton() {
+        return this.check;
+    }
+
+    /**
+     * @return the Version field: the running version, the result of the last check and Update
+     */
+    public @NotNull VBox getVersionField() {
+        return this.versionField;
+    }
+
+    /**
+     * @return the update source field
+     */
+    public @NotNull VBox getSourceField() {
+        return this.sourceField;
     }
 
     /**
@@ -90,7 +101,7 @@ public final class UpdateView {
     }
 
     /**
-     * Shows the result of a check and enables Check now again.
+     * Shows the result of a check after the running version and enables Check now again.
      *
      * @param text      the result, or {@code null} to show none
      * @param tone      the result's colour role
@@ -98,15 +109,15 @@ public final class UpdateView {
      */
     public void showStatus(@Nullable String text, @NotNull Tone tone, boolean updatable) {
         this.check.setDisable(false);
-        this.status.setText(text == null ? "" : text);
-        this.status.getStyleClass().setAll("label", "text-caption");
+        this.status.setText(text == null ? "" : this.texts.format("update.status", text));
+        this.status.getStyleClass().setAll("label");
 
         if (tone != Tone.NEUTRAL && tone != Tone.ACCENT) {
             this.status.getStyleClass().add(OptionsScreen.getToneStyle(tone));
         }
         this.status.setVisible(text != null);
         this.status.setManaged(text != null);
+        // Update keeps its room while hidden, so the field keeps its height.
         this.update.setVisible(updatable);
-        this.update.setManaged(updatable);
     }
 }

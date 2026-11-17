@@ -10,8 +10,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 /**
- * Lays out the header of a panel: the title on the left and the trailing controls at the right end. The room right of the last shown
- * trailing control equals the room above and below it, whatever its height.
+ * Lays out the header of a panel: the title on the left and the trailing controls at the right end, centred in the header's height. The
+ * header keeps its preferred height from the stylesheet whatever its controls and their state. The room right of the last shown trailing
+ * control equals the room above and below it, whatever its height.
  */
 final class PanelHeader extends HBox {
     private static final @NotNull String HEADER_STYLE_CLASS = "panel-header";
@@ -35,6 +36,8 @@ final class PanelHeader extends HBox {
 
         title.getStyleClass().add(TITLE_STYLE_CLASS);
         this.getStyleClass().add(HEADER_STYLE_CLASS);
+        this.setMinHeight(USE_PREF_SIZE);
+        this.setMaxHeight(USE_PREF_SIZE);
         this.getChildren().addAll(trailing);
     }
 
