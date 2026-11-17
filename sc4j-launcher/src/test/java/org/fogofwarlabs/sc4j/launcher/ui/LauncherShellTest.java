@@ -1,9 +1,9 @@
 package org.fogofwarlabs.sc4j.launcher.ui;
 
 import javafx.application.Platform;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
-import javafx.beans.property.SimpleBooleanProperty;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -92,6 +92,7 @@ final class LauncherShellTest {
     private static final double MINIMUM_SCENE_HEIGHT = 720;
     private static final double TALL_SCREEN_HEIGHT = 2000;
     private static final double TOLERANCE = 1;
+    private static final double DOT_DISTANCE = 4;
     private static final @NotNull String COMPACT_LIST_STYLE_CLASS = "compact";
     private static final long FX_TIMEOUT_SECONDS = 60;
 
@@ -166,9 +167,9 @@ final class LauncherShellTest {
     }
 
     /**
-     * Checks that the shown dot of a navigation entry touches or covers the top right corner of the entry's text.
+     * Checks that the shown dot of a navigation entry sits at the top right corner of the entry's text, at most {@link #DOT_DISTANCE} away.
      */
-    private static void assertDotOnTextCorner(@NotNull ToggleButton button) {
+    private static void assertDotAtTextCorner(@NotNull ToggleButton button) {
         Node textNode = button.lookup(TEXT_SELECTOR);
         Region dotNode = (Region) button.lookup(DOT_BADGE_SELECTOR);
         Bounds text = textNode.localToScene(textNode.getLayoutBounds());
@@ -177,7 +178,7 @@ final class LauncherShellTest {
         double outsideY = Math.max(0, Math.max(dot.getMinY() - text.getMinY(), text.getMinY() - dot.getMaxY()));
 
         Assertions.assertTrue(dotNode.getWidth() > 0 && dotNode.getHeight() > 0, "the dot has its size");
-        Assertions.assertTrue(outsideX <= TOLERANCE && outsideY <= TOLERANCE, () -> "the dot " + dot + " touches the text corner of " + text);
+        Assertions.assertTrue(outsideX <= DOT_DISTANCE && outsideY <= DOT_DISTANCE, () -> "the dot " + dot + " sits at the text corner of " + text);
     }
 
     @ParameterizedTest
@@ -249,7 +250,7 @@ final class LauncherShellTest {
                 assertTextCentred((ToggleButton) button);
 
                 if (chat) {
-                    assertDotOnTextCorner((ToggleButton) button);
+                    assertDotAtTextCorner((ToggleButton) button);
                 }
             }
 

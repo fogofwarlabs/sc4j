@@ -1269,8 +1269,8 @@
     -fx-min-height: 6;
     -fx-max-width: 6;
     -fx-max-height: 6;
-    -fx-translate-x: 1;
-    -fx-translate-y: 1;
+    -fx-translate-x: 3;
+    -fx-translate-y: 6;
     -fx-effect: dropshadow(gaussian, #ff5a5299, 5, 0.3, 0, 0);
 }
 
