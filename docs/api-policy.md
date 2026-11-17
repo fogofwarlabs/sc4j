@@ -14,13 +14,14 @@ Every `public` or `protected` class, interface, constructor, method and field (c
 | `sc4j-mod-manifest` | mod manifest `sc4j-mod.json`, validation, settings, versions, install layout | `sc4j-mod-manifest/api/sc4j-mod-manifest.api` |
 | `sc4j-engine-core` | JSON, fixed-point math, map grid, terrain, players, state hash, content types, mod identity, resource models | `sc4j-engine-core/api/sc4j-engine-core.api` |
 | `sc4j-engine-sim` | game, units, default systems, content, animation programs, orders, commands, computer players, triggers, data pack, maps, lockstep, replays, saves | `sc4j-engine-sim/api/sc4j-engine-sim.api` |
-| `sc4j-engine-net` | datagram links, lockstep transport, LAN discovery, network lobby, Beacon.Link and community interfaces | `sc4j-engine-net/api/sc4j-engine-net.api` |
+| `sc4j-engine-net` | datagram links, lockstep transport, LAN discovery, network lobby, Beacon.Link and community interfaces, channel chat | `sc4j-engine-net/api/sc4j-engine-net.api` |
 | `sc4j-engine-client` | host, scenes, input, renderer abstraction, projections, text, HUD, command card, console, dialogs, cursors, skins, world view, audio, video, settings store | `sc4j-engine-client/api/sc4j-engine-client.api` |
-| `sc4j-engine` | mod API (`engine.mod`), client application (`engine.client.app`), community screen parts (`engine.client.community`) | `sc4j-engine/api/sc4j-engine.api` |
+| `sc4j-engine` | mod API (`engine.mod`), client application (`engine.client.app`), community screen parts (`engine.client.community`), lobby parts (`engine.client.lobby`) | `sc4j-engine/api/sc4j-engine.api` |
+| `sc4j-catalog` | what is published: GitHub releases, release versions, the check for a newer release, the mod catalog | `sc4j-catalog/api/sc4j-catalog.api` |
 
-A mod depends on `sc4j-engine`, which brings the other modules.
+The mod plugin compiles a mod against these modules, the mod API that the runtime provides ([mod author guide, chapter 7.1](mod-guide.md#71-the-mods-own-build)).
 
-Published test fixtures are API too (`testImplementation testFixtures('org.fogofwarlabs.sc4j:<module>:<version>')`, listed in `<module>/api/<module>-test-fixtures.api`): `FakeInstallationRecords` and `TestJarUtils` (`sc4j-mod-manifest`), `RecordingBeaconLink` and `RecordingCommunitySession` (`sc4j-engine`), `ManualProtocolClock` (`sc4j-beaconlink-protocol`), `ClientScenario` and the loopback NAT emulator (`sc4j-beaconlink`). Other modules publish no test fixtures.
+Published test fixtures are API too (`testImplementation testFixtures('org.fogofwarlabs.sc4j:<module>:<version>')`, listed in `<module>/api/<module>-test-fixtures.api`): `FakeInstallationRecords` and `TestJarUtils` (`sc4j-mod-manifest`), `RecordingBeaconLink` and `RecordingCommunitySession` (`sc4j-engine-net`), `ManualProtocolClock` (`sc4j-beaconlink-protocol`), `ClientScenario` and the loopback NAT emulator (`sc4j-beaconlink`). Other modules publish no test fixtures.
 
 A listing is the `javap -protected -constants` output of the module's compiled classes, one block per class, classes and members sorted. A class is listed when it and every enclosing class are `public` or `protected`. Declaration order does not change it; compiler bridge methods appear in it. Annotations do not, so a nullability change is a contract change that review must catch (section 3.2).
 

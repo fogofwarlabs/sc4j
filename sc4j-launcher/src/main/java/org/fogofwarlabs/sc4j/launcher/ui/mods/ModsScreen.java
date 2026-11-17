@@ -12,6 +12,7 @@ import org.fogofwarlabs.sc4j.launcher.form.FormField;
 import org.fogofwarlabs.sc4j.launcher.form.SettingsForm;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.ui.ComponentUtils;
+import org.fogofwarlabs.sc4j.launcher.ui.Spacing;
 import org.fogofwarlabs.sc4j.manifest.ModManifest;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.fogofwarlabs.sc4j.manifest.settings.value.SettingValueStore;
@@ -96,7 +97,7 @@ public final class ModsScreen {
         this.listPanel    = new ModListPanel(catalog, texts, this.art, this::showDetail, actions::onOpenModsFolder, actions::onRefresh,
                                              actions::onInstall);
         this.detailArea   = new StackPane(prompt);
-        this.root         = ComponentUtils.row(ComponentUtils.Spacing.L, this.listPanel.getRoot(), this.detailArea);
+        this.root         = ComponentUtils.row(Spacing.L, this.listPanel.getRoot(), this.detailArea);
 
         this.updates = Map.of();
         this.shown   = null;

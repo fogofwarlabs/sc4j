@@ -5,6 +5,7 @@ import javafx.scene.control.ComboBox;
 import org.fogofwarlabs.sc4j.launcher.form.FormField;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.ui.ComponentUtils;
+import org.fogofwarlabs.sc4j.launcher.ui.ControlWidth;
 import org.fogofwarlabs.sc4j.manifest.settings.ChoiceSetting;
 import org.jetbrains.annotations.NotNull;
 
@@ -17,7 +18,6 @@ public final class ChoiceControlFactory implements FieldControlFactory {
      */
     public static final @NotNull ChoiceControlFactory INSTANCE = new ChoiceControlFactory();
 
-    private static final double CONTROL_WIDTH = 240;
 
     /**
      * Holds the combo box of one choice field.
@@ -35,7 +35,7 @@ public final class ChoiceControlFactory implements FieldControlFactory {
          */
         private ChoiceControl(@NotNull FormField field, @NotNull LauncherTexts texts, @NotNull Runnable onChange) {
             this.field    = field;
-            this.comboBox = ComponentUtils.comboBox(CONTROL_WIDTH);
+            this.comboBox = ComponentUtils.comboBox(ControlWidth.M);
 
             if (field.getDefinition() instanceof ChoiceSetting choice) {
                 this.comboBox.getItems().setAll(choice.getOptions());

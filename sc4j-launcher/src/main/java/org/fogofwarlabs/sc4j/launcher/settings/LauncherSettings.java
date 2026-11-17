@@ -1,7 +1,8 @@
 package org.fogofwarlabs.sc4j.launcher.settings;
 
+import org.fogofwarlabs.sc4j.catalog.ReleaseCheck;
+import org.fogofwarlabs.sc4j.catalog.ReleaseVersion;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseVersion;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -14,7 +15,7 @@ public final class LauncherSettings {
     /**
      * The GitHub repository whose releases update the install while the settings name no other.
      */
-    public static final @NotNull String DEFAULT_UPDATE_REPOSITORY = "fogofwarlabs/sc4j";
+    public static final @NotNull String DEFAULT_UPDATE_REPOSITORY = ReleaseCheck.DEFAULT_REPOSITORY.toString();
 
     /**
      * The settings before anything is saved: the system language, no last mod, the default window, the default update repository and no

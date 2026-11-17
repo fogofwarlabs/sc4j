@@ -14,13 +14,14 @@
 | `sc4j-mod-manifest` | 모드 매니페스트 `sc4j-mod.json`, 검증, 설정, 버전, 설치 폴더 구조 | `sc4j-mod-manifest/api/sc4j-mod-manifest.api` |
 | `sc4j-engine-core` | JSON, 고정소수점 연산, 맵 격자, 지형, 플레이어, 상태 해시, 콘텐츠 타입, 모드 정체성, 리소스 모델 | `sc4j-engine-core/api/sc4j-engine-core.api` |
 | `sc4j-engine-sim` | 게임, 유닛, 기본 시스템, 콘텐츠, 애니메이션 프로그램, 명령, 커맨드, 컴퓨터 플레이어, 트리거, 데이터 팩, 맵, 락스텝, 리플레이, 저장 | `sc4j-engine-sim/api/sc4j-engine-sim.api` |
-| `sc4j-engine-net` | 데이터그램 링크, 락스텝 전송, LAN 탐색, 네트워크 로비, Beacon.Link와 커뮤니티 인터페이스 | `sc4j-engine-net/api/sc4j-engine-net.api` |
+| `sc4j-engine-net` | 데이터그램 링크, 락스텝 전송, LAN 탐색, 네트워크 로비, Beacon.Link와 커뮤니티 인터페이스, 채널 채팅 | `sc4j-engine-net/api/sc4j-engine-net.api` |
 | `sc4j-engine-client` | 호스트, 씬, 입력, 렌더러 추상화, 투영, 텍스트, HUD, 커맨드 카드, 콘솔, 대화 상자, 커서, 스킨, 월드 뷰, 오디오, 동영상, 설정 저장소 | `sc4j-engine-client/api/sc4j-engine-client.api` |
-| `sc4j-engine` | 모드 API(`engine.mod`), 클라이언트 애플리케이션(`engine.client.app`), 커뮤니티 화면 부품(`engine.client.community`) | `sc4j-engine/api/sc4j-engine.api` |
+| `sc4j-engine` | 모드 API(`engine.mod`), 클라이언트 애플리케이션(`engine.client.app`), 커뮤니티 화면 부품(`engine.client.community`), 로비 부품(`engine.client.lobby`) | `sc4j-engine/api/sc4j-engine.api` |
+| `sc4j-catalog` | 공개된 정보: GitHub 릴리즈, 릴리즈 버전, 새 릴리즈 확인, 모드 목록 | `sc4j-catalog/api/sc4j-catalog.api` |
 
-모드는 `sc4j-engine`에 의존하며, 나머지 모듈은 그에 딸려 옵니다.
+모드 플러그인은 런타임이 제공하는 모드 API인 이 모듈들을 대상으로 모드를 컴파일합니다([모드 제작 가이드 7.1장](mod-guide.ko.md#71-모드-자체의-빌드)).
 
-배포되는 테스트 픽스처도 API입니다(`testImplementation testFixtures('org.fogofwarlabs.sc4j:<module>:<version>')`, 목록은 `<module>/api/<module>-test-fixtures.api`): `FakeInstallationRecords`와 `TestJarUtils`(`sc4j-mod-manifest`), `RecordingBeaconLink`와 `RecordingCommunitySession`(`sc4j-engine`), `ManualProtocolClock`(`sc4j-beaconlink-protocol`), `ClientScenario`와 루프백 NAT 에뮬레이터(`sc4j-beaconlink`). 다른 모듈은 테스트 픽스처를 배포하지 않습니다.
+배포되는 테스트 픽스처도 API입니다(`testImplementation testFixtures('org.fogofwarlabs.sc4j:<module>:<version>')`, 목록은 `<module>/api/<module>-test-fixtures.api`): `FakeInstallationRecords`와 `TestJarUtils`(`sc4j-mod-manifest`), `RecordingBeaconLink`와 `RecordingCommunitySession`(`sc4j-engine-net`), `ManualProtocolClock`(`sc4j-beaconlink-protocol`), `ClientScenario`와 루프백 NAT 에뮬레이터(`sc4j-beaconlink`). 다른 모듈은 테스트 픽스처를 배포하지 않습니다.
 
 목록은 모듈의 컴파일된 클래스에 대한 `javap -protected -constants` 출력이며, 클래스마다 블록 하나, 클래스와 멤버는 정렬되어 있습니다. 클래스와 그 클래스를 감싸는 모든 클래스가 `public` 또는 `protected`일 때 목록에 들어갑니다. 선언 순서는 목록을 바꾸지 않고, 컴파일러의 브리지 메서드는 목록에 보입니다. 애너테이션은 보이지 않으므로 null 여부 변경은 리뷰에서 잡아야 하는 계약 변경입니다(3.2절).
 

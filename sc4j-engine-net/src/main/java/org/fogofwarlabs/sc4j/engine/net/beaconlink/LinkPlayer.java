@@ -19,6 +19,10 @@ public final class LinkPlayer {
      * The byte length of a player key.
      */
     public static final int KEY_LENGTH = 32;
+    /**
+     * The character between a display name and the tag in a tagged name ({@code Name#abcd12}).
+     */
+    public static final char TAG_SEPARATOR = '#';
 
     private static final int DISPLAY_BYTES = 8;
     private static final int TAG_BYTES = 3;
@@ -63,6 +67,23 @@ public final class LinkPlayer {
         } catch (NoSuchAlgorithmException exception) {
             throw Exceptions.newIllegalStateException(exception, "The JDK has no {0} digest.", TAG_DIGEST);
         }
+    }
+
+    /**
+     * @return the tag with its separator, {@code #abcd12}, as a tagged name ends
+     */
+    public @NotNull String getTagText() {
+        return TAG_SEPARATOR + this.getTag();
+    }
+
+    /**
+     * Formats a display name of this player with the player's tag.
+     *
+     * @param name the display name
+     * @return the tagged name, {@code Name#abcd12}
+     */
+    public @NotNull String formatTaggedName(@NotNull String name) {
+        return name + this.getTagText();
     }
 
 

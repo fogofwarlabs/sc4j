@@ -2,6 +2,7 @@ package org.fogofwarlabs.sc4j.launcher.ui;
 
 import javafx.application.Platform;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.control.Button;
 import javafx.scene.image.PixelReader;
@@ -109,6 +110,17 @@ public final class LauncherFxScenario {
         Assertions.assertNotNull(found, () -> "no button " + text);
 
         return found;
+    }
+
+    /**
+     * Turns off the viewport cache for offscreen snapshots.
+     *
+     * @param root the node whose scroll viewports are drawn
+     */
+    public static void disableViewportCache(@NotNull Parent root) {
+        for (Node viewport : root.lookupAll(".viewport")) {
+            viewport.setCache(false);
+        }
     }
 
     /**

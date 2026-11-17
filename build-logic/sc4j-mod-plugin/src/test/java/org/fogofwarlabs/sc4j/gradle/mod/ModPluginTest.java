@@ -13,11 +13,13 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 
 /**
- * Tests the manifest handling of the mod plugin on a throwaway mod: the mod id it reads from {@code sc4j-mod.json}, the versions it writes
- * into it and the source manifests it refuses.
+ * Tests the mod plugin on a throwaway mod: the mod id it reads from {@code sc4j-mod.json}, the versions it writes into it, the source
+ * manifests it refuses and the mod API every mod compiles against.
  */
 final class ModPluginTest {
     private static final @NotNull String MOD_VERSION = "1.2.0-SNAPSHOT";
@@ -37,6 +39,17 @@ final class ModPluginTest {
                                                                 println('Mod jar: ' + jarName.get())
                                                             }
                                                         }
+                                                        
+                                                        tasks.register('printCompileModules') {
+                                                            def modules = provider {
+                                                                configurations.compileClasspath.allDependencies.collect { dependency ->
+                                                                    dependency.name
+                                                                }.sort()
+                                                            }
+                                                            doLast {
+                                                                println('Compile modules: ' + modules.get().join(' '))
+                                                            }
+                                                        }
                                                         """;
     private static final @NotNull String MOD_ID_BLOCK = """
                                                         
@@ -45,6 +58,7 @@ final class ModPluginTest {
                                                         }
                                                         """;
     private static final @NotNull String PRINT_JAR_NAME_TASK = "printJarName";
+    private static final @NotNull String PRINT_COMPILE_MODULES_TASK = "printCompileModules";
     private static final @NotNull String PROCESS_RESOURCES_TASK = "processResources";
 
     @Test
@@ -154,6 +168,18 @@ final class ModPluginTest {
                               missing.getOutput());
         Assertions.assertTrue(withoutId.getOutput().contains("sc4j-mod.json has no \"id\"."), withoutId.getOutput());
         Assertions.assertTrue(withoutIdButModId.getOutput().contains("The manifest sc4j-mod.json has no \"id\"."), withoutIdButModId.getOutput());
+    }
+
+    @Test
+    void every_mod_should_compile_against_the_mod_api(@TempDir @NotNull Path project) throws IOException {
+        List<String> modApi = Arrays.stream(readEngineProperties().getProperty("modApi").split(",")).sorted().toList();
+        BuildResult result;
+
+        writeProject(project, MOD_VERSION, "{\n  \"format\": 1,\n  \"id\": \"test-mod\"\n}\n");
+        result = createRunner(project, PRINT_COMPILE_MODULES_TASK).build();
+
+        Assertions.assertTrue(modApi.contains("sc4j-engine"), modApi.toString());
+        Assertions.assertTrue(result.getOutput().contains("Compile modules: " + String.join(" ", modApi)), result.getOutput());
     }
 
     private static @NotNull Properties readEngineProperties() throws IOException {

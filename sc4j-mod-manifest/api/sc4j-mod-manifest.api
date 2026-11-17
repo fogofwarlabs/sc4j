@@ -288,6 +288,7 @@ public final class org.fogofwarlabs.sc4j.manifest.version.EngineVersion {
   public int getMinor();
   public int hashCode();
   public java.lang.String toString();
+  public static final java.lang.String SC4J_VERSION;
   public static final org.fogofwarlabs.sc4j.manifest.version.EngineVersion CURRENT;
   public static org.fogofwarlabs.sc4j.manifest.version.EngineVersion parse(java.lang.String);
 }

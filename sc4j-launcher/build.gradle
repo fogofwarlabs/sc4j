@@ -9,17 +9,21 @@ plugins {
 // separate process. It reads mod jars only through the manifest module (never loading a mod class) and depends on no
 // runtime or mod module; the Beacon.Link protocol module gives it the shared node list file and the node Ping, the Beacon.Link
 // peer library the node it runs while it is open, and the Beacon.Link client (the one the games use, with the engine's network
-// interface it implements) the session of the logged-in account; JavaFX (OpenJFX) is its only other dependency.
+// interface it implements) the session of the logged-in account, and the catalog reader its updates, the mod catalog and mod releases;
+// JavaFX (OpenJFX) is its only other dependency.
 dependencies {
     implementation project(':sc4j-mod-manifest')
     implementation project(':sc4j-beaconlink-protocol')
     implementation project(':sc4j-beaconlink-peer')
     implementation project(':sc4j-beaconlink')
+    implementation project(':sc4j-catalog')
 
     // Test mod jars (org.fogofwarlabs.sc4j.manifest.test.TestJarUtils).
     testImplementation testFixtures(project(':sc4j-mod-manifest'))
     // Nodes, game clients and their mod identities on 127.0.0.1 (org.fogofwarlabs.sc4j.beaconlink.test.client.ClientScenario).
     testImplementation testFixtures(project(':sc4j-beaconlink'))
+    // The local stand-in for GitHub (org.fogofwarlabs.sc4j.catalog.test.ReleaseServerScenario).
+    testImplementation testFixtures(project(':sc4j-catalog'))
 }
 
 javafx {

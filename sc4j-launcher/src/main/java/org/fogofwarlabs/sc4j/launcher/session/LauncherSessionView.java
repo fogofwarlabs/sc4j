@@ -1,17 +1,19 @@
 package org.fogofwarlabs.sc4j.launcher.session;
 
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.CommunitySession;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
- * Shows the launcher the Beacon.Link session of the logged-in account and takes the commands of its account menu. The launcher opens one view
- * when the user logs in and closes it when the user logs out or closes the launcher.
+ * Shows the launcher the Beacon.Link session of the logged-in account and takes the commands of its account menu and its Chat screen. The
+ * launcher opens one view when the user logs in and closes it when the user logs out or closes the launcher.
  * <p>
- * The launcher calls every method on the JavaFX thread. The views it reads ({@link SelfView}, {@link FriendView}, {@link WhisperView}) never
- * change; after the session published new views it calls the change listener, on the JavaFX thread too. A command only starts work: its
- * outcome shows in later views.
+ * The launcher calls every method on the JavaFX thread. The views it reads ({@link SelfView}, {@link FriendView}, {@link WhisperView},
+ * {@link ChannelView}, {@link ChatEntryView}) never change; after the session published new views it calls the change listener, on the JavaFX
+ * thread too. A command only starts work: its outcome shows in later views.
  */
 public interface LauncherSessionView {
     /**
@@ -34,6 +36,24 @@ public interface LauncherSessionView {
      * @return the whispers the account received and sent while logged in, the oldest first; the oldest give way after a hundred
      */
     @NotNull List<@NotNull WhisperView> getWhispers();
+
+    /**
+     * @return the channels the account's chat is in, in the order it joined them, with their members; empty until {@link #openChat} and while
+     * the session runs no connection
+     */
+    @NotNull List<@NotNull ChannelView> getChannels();
+
+    /**
+     * @return the channels the session knows of among the launcher users and the channels the chat is in, the most members first, without
+     * members; empty until {@link #openChat}
+     */
+    @NotNull List<@NotNull ChannelView> getKnownChannels();
+
+    /**
+     * @return the entries of the account's chat, the oldest first: the lines, notices and command answers of every channel it is in, without
+     * whispers ({@link #getWhispers()}); the oldest give way after {@value LauncherSession#MAXIMUM_CHAT_ENTRIES}
+     */
+    @NotNull List<@NotNull ChatEntryView> getChatEntries();
 
     /**
      * Sets the listener called after the session published new views.
@@ -79,6 +99,36 @@ public interface LauncherSessionView {
      * @param text   the text, at most {@value org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel#MAXIMUM_TEXT_LENGTH} UTF-8 bytes
      */
     void whisper(@NotNull FriendCode player, @NotNull String text);
+
+    /**
+     * Opens the account's chat once: it joins the shared channel and keeps up to {@value CommunitySession#MAXIMUM_CHANNELS} channels; later
+     * calls do nothing. Does nothing while the session runs no connection.
+     *
+     * @param locale the locale of the chat's notices and command answers
+     */
+    void openChat(@NotNull Locale locale);
+
+    /**
+     * Joins a channel; the chat keeps the channels it is in. A refused name or the channel limit shows as an error entry.
+     *
+     * @param name the channel name
+     */
+    void joinChannel(@NotNull String name);
+
+    /**
+     * Leaves a channel the chat is in.
+     *
+     * @param channel the channel's name, as the chat joined it
+     */
+    void leaveChannel(@NotNull String channel);
+
+    /**
+     * Runs a line typed in a channel the chat is in: a slash command ({@code /help} lists them) or a line said in the channel.
+     *
+     * @param channel the channel's name, as the chat joined it
+     * @param text    the typed text
+     */
+    void submitChat(@NotNull String channel, @NotNull String text);
 
     /**
      * Signs the account out on its other devices; this launcher stays logged in. Does nothing unless the session is

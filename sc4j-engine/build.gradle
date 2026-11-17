@@ -1,15 +1,12 @@
 plugins {
     id 'java-library'
-    // The Beacon.Link session and community part played by hand (engine.client.community: RecordingBeaconLink,
-    // RecordingCommunitySession) that the tests of the community screens of this module and of the mods share.
-    id 'java-test-fixtures'
     id 'org.fogofwarlabs.sc4j.java'
 }
 
 // The engine that mods compile against and the runtime runs: the mod API (engine.mod), the mod loader (engine.mod.loading), the client
 // application (engine.client.app: the window, audio and first scene of a run, the file lists over replays and saves) and the default parts
-// of the community screens (engine.client.community: channel chat, room filter, chat log and table controls), over the engine modules core,
-// sim, net and client.
+// of the community screens (engine.client.community: room filter, chat log and table controls) and the lobby (engine.client.lobby: recent
+// maps), over the engine modules core, sim, net and client.
 dependencies {
     api project(':sc4j-engine-core')
     api project(':sc4j-engine-sim')

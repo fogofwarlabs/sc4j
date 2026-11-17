@@ -8,5 +8,7 @@
  * ({@link org.fogofwarlabs.sc4j.engine.net.beaconlink.BeaconLinkSession#getCommunity()}). Events come to
  * {@link org.fogofwarlabs.sc4j.engine.net.beaconlink.community.CommunityListener}s on the session's thread. Players are objects
  * ({@link org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer}, the account's key, whichever device it uses), shown as {@code Name#tag}.
+ * <p>
+ * The channel chat over a community session is in {@link org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat}.
  */
 package org.fogofwarlabs.sc4j.engine.net.beaconlink.community;

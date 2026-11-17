@@ -4,6 +4,8 @@ import javafx.scene.Node;
 import javafx.scene.control.TextField;
 import org.fogofwarlabs.sc4j.launcher.form.FormField;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
+import org.fogofwarlabs.sc4j.launcher.ui.ComponentUtils;
+import org.fogofwarlabs.sc4j.launcher.ui.ControlWidth;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -15,7 +17,6 @@ public final class StringControlFactory implements FieldControlFactory {
      */
     public static final @NotNull StringControlFactory INSTANCE = new StringControlFactory();
 
-    private static final double CONTROL_WIDTH = 320;
 
     /**
      * Holds the text field of one string field.
@@ -34,7 +35,7 @@ public final class StringControlFactory implements FieldControlFactory {
             this.field = field;
             this.text  = new TextField(field.getText());
 
-            this.text.setMaxWidth(CONTROL_WIDTH);
+            ComponentUtils.setControlWidth(this.text, ControlWidth.L);
             this.text.textProperty().addListener((observable, previous, current) -> {
                 field.setInput(current);
                 onChange.run();

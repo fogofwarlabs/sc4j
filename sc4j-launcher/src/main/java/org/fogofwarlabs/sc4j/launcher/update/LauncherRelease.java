@@ -1,7 +1,7 @@
 package org.fogofwarlabs.sc4j.launcher.update;
 
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseAsset;
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseVersion;
+import org.fogofwarlabs.sc4j.catalog.ReleaseVersion;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseAsset;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

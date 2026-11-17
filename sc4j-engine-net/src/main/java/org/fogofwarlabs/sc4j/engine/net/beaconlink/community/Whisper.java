@@ -49,7 +49,7 @@ public final class Whisper {
      * @return the other player's display name with its tag, {@code Name#abcd12}
      */
     public @NotNull String getTaggedOtherName() {
-        return this.otherName + "#" + this.other.getTag();
+        return this.other.formatTaggedName(this.otherName);
     }
 
     /**

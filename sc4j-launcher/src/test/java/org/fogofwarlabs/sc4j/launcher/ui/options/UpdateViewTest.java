@@ -12,9 +12,9 @@ import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
 import org.fogofwarlabs.sc4j.launcher.nodes.NodePingResult;
 import org.fogofwarlabs.sc4j.launcher.peer.LauncherNodeRunner;
-import org.fogofwarlabs.sc4j.launcher.ui.ComponentUtils;
 import org.fogofwarlabs.sc4j.launcher.ui.LauncherFxScenario;
 import org.fogofwarlabs.sc4j.launcher.ui.ThemeUtils;
+import org.fogofwarlabs.sc4j.launcher.ui.Tone;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -109,7 +109,7 @@ final class UpdateViewTest {
             Assertions.assertEquals(List.of(SOURCE), checked);
             Assertions.assertTrue(check.isDisabled());
 
-            view.showStatus(texts.format("update.available", "1.2.0"), ComponentUtils.Tone.ACCENT, true);
+            view.showStatus(texts.format("update.available", "1.2.0"), Tone.ACCENT, true);
             update = LauncherFxScenario.findButton(view.getRoot(), texts.get("update.start"));
 
             Assertions.assertFalse(check.isDisabled());
@@ -118,7 +118,7 @@ final class UpdateViewTest {
             root.layout();
             LauncherFxScenario.saveSample(root, 1, "settings-update-" + language.getCode());
 
-            view.showStatus(texts.get("update.current"), ComponentUtils.Tone.SUCCESS, false);
+            view.showStatus(texts.get("update.current"), Tone.SUCCESS, false);
 
             Assertions.assertFalse(LauncherFxScenario.isShown(update));
 
@@ -147,7 +147,7 @@ final class UpdateViewTest {
             VBox root = screen.getRoot();
 
             ThemeUtils.apply(new Scene(root, SCENE_WIDTH, SCENE_HEIGHT), language);
-            view.showStatus(texts.get("update.current"), ComponentUtils.Tone.SUCCESS, false);
+            view.showStatus(texts.get("update.current"), Tone.SUCCESS, false);
             root.applyCss();
             root.layout();
 

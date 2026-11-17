@@ -22,6 +22,7 @@ def engineGroup = engineProperties.getProperty('group')
 def engineVersion = engineProperties.getProperty('version')
 def engineApiVersion = engineProperties.getProperty('engineApi')
 def manifestFormat = Integer.parseInt(engineProperties.getProperty('manifestFormat'))
+def modApiModules = engineProperties.getProperty('modApi').split(',').toList()
 
 def mod = extensions.create('sc4jMod', ModExtension)
 def mainSourceSet = sourceSets.main
@@ -88,12 +89,16 @@ def writeManifestVersions = { File manifestFile, String version, String configur
     manifestFile.setText(text.substring(0, start) + inserted + text.substring(start), 'UTF-8')
 }
 def configuredModId = mod.id.orElse('')
+def engineModule = { String name -> engineGroup + ':' + name + ':' + engineVersion }
+// Every source set of the mod, in whichever project owns it, compiles against the mod API; the runtime provides it, so the mod jar does not
+// hold it.
 afterEvaluate {
     // A source set container finds source sets by name, so the owner of each source set is found by identity.
     modSourceSets().each { sourceSet ->
         def owner = rootProject.allprojects.find { candidate ->
             candidate.extensions.findByType(SourceSetContainer)?.any { candidateSourceSet -> candidateSourceSet.is(sourceSet) }
         }
+        modApiModules.each { module -> owner.dependencies.add(sourceSet.implementationConfigurationName, engineModule(module)) }
         owner.tasks.named(sourceSet.processResourcesTaskName, ProcessResources) { task ->
             task.inputs.property('sc4jModVersion', modVersion)
             task.inputs.property('sc4jEngineApiVersion', engineApiVersion)
@@ -113,18 +118,6 @@ def javaRuntime = { AttributeContainer attributes ->
     attributes.attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.LIBRARY))
     attributes.attribute(LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE, objects.named(LibraryElements, LibraryElements.JAR))
     attributes.attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling, Bundling.EXTERNAL))
-}
-def engineModule = { String name -> engineGroup + ':' + name + ':' + engineVersion }
-
-// The engine API: the runtime provides it, so the mod jar does not hold it.
-def engineApi = configurations.dependencyScope('sc4jEngineApi')
-dependencies.add('sc4jEngineApi', engineModule('sc4j-engine'))
-afterEvaluate {
-    mod.sourceSets.get().findAll { sourceSet -> sourceSets.contains(sourceSet) }.each { sourceSet ->
-        configurations.named(sourceSet.implementationConfigurationName) {
-            extendsFrom(engineApi.get())
-        }
-    }
 }
 
 // The mod jar: no file times and a fixed order, so the same sources give the same jar and the same mod identity.

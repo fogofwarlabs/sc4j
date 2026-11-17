@@ -265,8 +265,11 @@ public final class org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer {
   public boolean equals(java.lang.Object);
   public byte[] getKey();
   public int hashCode();
+  public java.lang.String formatTaggedName(java.lang.String);
   public java.lang.String getTag();
+  public java.lang.String getTagText();
   public java.lang.String toString();
+  public static final char TAG_SEPARATOR = '#';
   public static final int KEY_LENGTH = 32;
   public static org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer of(byte[]);
 }
@@ -416,6 +419,175 @@ public final class org.fogofwarlabs.sc4j.engine.net.beaconlink.community.Whisper
   public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.WhisperResult NOT_ONLINE;
   public static org.fogofwarlabs.sc4j.engine.net.beaconlink.community.WhisperResult valueOf(java.lang.String);
   public static org.fogofwarlabs.sc4j.engine.net.beaconlink.community.WhisperResult[] values();
+}
+
+public final class org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChannelChat implements org.fogofwarlabs.sc4j.engine.net.beaconlink.community.CommunityListener {
+  public boolean addFriend(java.lang.String);
+  public boolean isAway();
+  public boolean isBlocked(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
+  public boolean isFriend(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence);
+  public boolean isSelf(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence);
+  public boolean selectChannel(java.lang.String);
+  public java.lang.String createWhisperStart(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
+  public java.lang.String describeMod(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence);
+  public java.lang.String describeStatus(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence);
+  public java.lang.String getInputPrefix();
+  public java.lang.String getStatusText(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence);
+  public java.lang.String getTaggedName(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
+  public java.lang.String takeWhisperStart(java.lang.String);
+  public java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.FoundRoom> listUnblockedRooms(java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.FoundRoom>);
+  public java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer> getFriends();
+  public java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChannelSummary> listChannels();
+  public java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel> getChannels();
+  public java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence> getMembers();
+  public java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence> getMembers(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel);
+  public org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer getWhisperTarget();
+  public org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel getChannel();
+  public org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence findPlayer(java.lang.String);
+  public org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence findPresence(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
+  public org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChannelChat(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.CommunitySession, java.util.Locale, java.lang.String);
+  public org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChannelChat(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.CommunitySession, java.util.Locale, java.lang.String, boolean);
+  public static final int DEFAULT_CHANNEL_CAPACITY = 64;
+  public static final int HISTORY = 100;
+  public static final java.lang.String SHARED_CHANNEL = "SC4J";
+  public static int getTextLength(java.lang.String);
+  public static java.lang.String findDefaultChannel(java.lang.String, java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChannelSummary>);
+  public void addLog(java.util.function.Consumer<org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntry>, boolean);
+  public void block(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
+  public void close();
+  public void join(java.lang.String);
+  public void leave();
+  public void leave(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel);
+  public void onChatLine(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel, org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatLine);
+  public void onMembersChanged(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel);
+  public void onWhisper(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.Whisper);
+  public void onWhisperResult(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.Whisper, org.fogofwarlabs.sc4j.engine.net.beaconlink.community.WhisperResult);
+  public void open();
+  public void open(java.lang.String);
+  public void removeFriend(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
+  public void removeLog(java.util.function.Consumer<org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntry>);
+  public void setAway(boolean);
+  public void setWhisperTarget(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
+  public void showAvailable();
+  public void submit(java.lang.String);
+  public void submit(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel, java.lang.String);
+  public void unblock(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
+}
+
+public final class org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand extends java.lang.Enum<org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand> {
+  public java.util.List<java.lang.String> getNames();
+  public org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText getHelp();
+  public static boolean isCommand(java.lang.String);
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand AWAY;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand EMOTE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand FRIENDS;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand HELP;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand IGNORE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand JOIN;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand LEAVE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand REPLY;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand UNIGNORE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand WHISPER;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand WHO;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand WHOIS;
+  public static org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand find(java.lang.String);
+  public static org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand valueOf(java.lang.String);
+  public static org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatCommand[] values();
+}
+
+public final class org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntry {
+  public boolean isSent();
+  public java.lang.String getPlayerName();
+  public java.lang.String getPrefix();
+  public java.lang.String getText();
+  public java.lang.String toString();
+  public org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer getPlayer();
+  public org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel getChannel();
+  public org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntry(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind, java.lang.String, java.lang.String);
+  public org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntry(org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind, java.lang.String, java.lang.String, org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel, org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer, java.lang.String);
+  public org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind getKind();
+  public static org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntry createWhisper(java.lang.String, java.lang.String, org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer, java.lang.String, boolean);
+}
+
+public final class org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind extends java.lang.Enum<org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind> {
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind EMOTE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind ERROR;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind INFO;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind SAY;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind WHISPER;
+  public static org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind valueOf(java.lang.String);
+  public static org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind[] values();
+}
+
+public final class org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText extends java.lang.Enum<org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText> {
+  public java.lang.String format(java.util.Locale, java.lang.Object...);
+  public java.lang.String get(java.util.Locale);
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText ANY;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText AWAY_OFF;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText AWAY_ON;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText BLOCK;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText BLOCKED;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText CHANNEL;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText CHANNEL_LEFT;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText CLOSED_GAMES;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText FRIENDS;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText FRIEND_ADDED;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText FRIEND_REMOVED;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText HELP_AWAY;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText HELP_EMOTE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText HELP_FRIENDS;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText HELP_HELP;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText HELP_IGNORE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText HELP_JOIN;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText HELP_LEAVE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText HELP_REPLY;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText HELP_TITLE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText HELP_UNIGNORE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText HELP_WHISPER;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText HELP_WHO;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText HELP_WHOIS;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText HIDE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText IGNORED;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText INPUT_CHANNEL;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText INVALID_NAME;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText IS_AWAY;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText IS_AWAY_TEXT;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText JOINED;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText LATENCY;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText LATENCY_FAIR;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText LATENCY_GOOD;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText LEFT;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText LIMIT;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText MAXIMUM_PLAYERS;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText NEEDS_ACCOUNT;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText NOT_ONLINE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText NO_CHANNEL;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText NO_GAMES;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText NO_REPLY;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText OTHER_VERSION;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText OTHER_VERSIONS;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText SHOW;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText STATUS_AVAILABLE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText STATUS_AWAY;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText STATUS_AWAY_TEXT;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText STATUS_IN_GAME;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText STATUS_IN_ROOM;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText STATUS_OFFLINE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText TOO_FAST;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText TOO_LONG;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText UNBLOCK;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText UNBLOCKED;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText UNIGNORED;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText UNKNOWN;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText UNKNOWN_COMMAND;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText UNKNOWN_PLAYER;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText USAGE;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText USERS;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText USER_INFO;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText WHISPER_FROM;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText WHISPER_TO;
+  public static org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText valueOf(java.lang.String);
+  public static org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText[] values();
 }
 
 public final class org.fogofwarlabs.sc4j.engine.net.discovery.DiscoveredRoom {

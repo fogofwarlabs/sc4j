@@ -5,15 +5,17 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.layout.StackPane;
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseClient;
+import org.fogofwarlabs.sc4j.catalog.mods.ModIndex;
+import org.fogofwarlabs.sc4j.catalog.test.ReleaseServerScenario;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModCatalog;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModEntry;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
-import org.fogofwarlabs.sc4j.launcher.install.ModIndex;
 import org.fogofwarlabs.sc4j.launcher.install.ModInstaller;
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseClient;
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseServerScenario;
 import org.fogofwarlabs.sc4j.launcher.ui.LauncherFxScenario;
 import org.fogofwarlabs.sc4j.launcher.ui.LauncherShell;
 import org.fogofwarlabs.sc4j.launcher.ui.ThemeUtils;
@@ -53,7 +55,10 @@ final class ModReleaseDialogsTest {
                                                     }
                                                     """;
     private static final @NotNull String CATALOG = """
-                                                   {"format": 1, "mods": [{"name": "My Mod", "repository": "owner/my-mod"}]}
+                                                   {
+                                                     "format": 1,
+                                                     "mods": [{"name": {"en": "My Mod", "ko": "내 모드"}, "repository": "owner/my-mod"}]
+                                                   }
                                                    """;
     private static final @NotNull String REPOSITORY = "owner/my-mod";
     private static final @NotNull String JAR = "my-mod.jar";
@@ -62,6 +67,9 @@ final class ModReleaseDialogsTest {
     private static final @NotNull String MESSAGE_SELECTOR = ".field-message";
     private static final double SCENE_WIDTH = 1280;
     private static final double SCENE_HEIGHT = 800;
+    private static final double LIST_WIDTH = 380;
+    private static final double LIST_HEIGHT = 120;
+    private static final @NotNull String POPUP_STYLE_CLASS = "combo-box-popup";
 
     /**
      * Holds the shell and the dialogs of one test.
@@ -107,6 +115,10 @@ final class ModReleaseDialogsTest {
             });
             LauncherFxScenario.await(() -> findRepositoryChoice(shown.shell).getItems().equals(List.of(REPOSITORY)), "the catalog is listed");
             LauncherFxScenario.run(() -> {
+                StackPane list = createCatalogList(findRepositoryChoice(shown.shell), language);
+
+                LauncherFxScenario.saveSample(list, 1, "mod-install-list-" + language.getCode());
+                Assertions.assertTrue(hasLabel(list, language == UiLanguage.KOREAN ? "내 모드" : "My Mod"));
                 findRepositoryChoice(shown.shell).getEditor().setText(REPOSITORY);
                 LauncherFxScenario.saveSample(shown.shell.getRoot(), 1, "mod-install-" + language.getCode());
                 LauncherFxScenario.findButton(shown.shell.getRoot(), texts.get("mods.install.next")).fire();
@@ -226,8 +238,33 @@ final class ModReleaseDialogsTest {
         }
     }
 
-    private static @NotNull ComboBox<?> findRepositoryChoice(@NotNull LauncherShell shell) {
+    @SuppressWarnings("unchecked")
+    private static @NotNull ComboBox<String> findRepositoryChoice(@NotNull LauncherShell shell) {
         return Assertions.assertInstanceOf(ComboBox.class, shell.getRoot().lookup(".combo-box"));
+    }
+
+    private static @NotNull StackPane createCatalogList(@NotNull ComboBox<String> choice, @NotNull UiLanguage language) {
+        ListView<String> list = new ListView<>(choice.getItems());
+        StackPane popup = new StackPane(list);
+        Scene scene = new Scene(popup, LIST_WIDTH, LIST_HEIGHT);
+
+        list.setCellFactory(choice.getCellFactory());
+        popup.getStyleClass().add(POPUP_STYLE_CLASS);
+        ThemeUtils.apply(scene, language);
+        popup.applyCss();
+        popup.layout();
+
+        return popup;
+    }
+
+    private static boolean hasLabel(@NotNull Node root, @NotNull String text) {
+        for (Node node : root.lookupAll(".label")) {
+            if (node instanceof Label label && text.equals(label.getText())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static boolean hasButton(@NotNull Node root, @NotNull String text) {

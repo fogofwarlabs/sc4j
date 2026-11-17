@@ -168,7 +168,7 @@ READY   my-mod               my-mod.jar
 
 `<install>\launcher\bin\sc4j-launcher.bat`은 런처를 엽니다. "My Mod"를 시작하면 `FirstScene`이 보입니다.
 
-플레이어는 릴리즈된 모드를 런처에서 설치합니다. 모드 저장소의 최신 GitHub 릴리즈에 `<id>.jar`와 `<id>.jar.sha256`이 있어야 합니다. [`fogofwarlabs/sc4j-mods`](https://github.com/fogofwarlabs/sc4j-mods) 목록은 모드를 이름으로 보여 줍니다.
+플레이어는 릴리즈된 모드를 런처에서 설치합니다. 모드 저장소의 최신 GitHub 릴리즈에 `<id>.jar`와 `<id>.jar.sha256`이 있어야 합니다. [`fogofwarlabs/sc4j-mods`](https://github.com/fogofwarlabs/sc4j-mods) 목록은 `mods.json`(`"format": 1`)에 모드를 나열합니다. 각 항목에는 `name`, `repository`(`owner/name`), 선택 항목 `description`이 있으며, `name`과 `description`은 매니페스트의 다국어 형식(`{"en": "My Mod", "ko": "내 모드"}`, 3장)입니다. 런처는 플레이어의 언어로 보여 줍니다.
 
 ### 2.6 게임으로 만들기
 
@@ -303,12 +303,14 @@ plugins {
 
 | 태스크나 설정 | 효과 |
 |---|---|
-| 컴파일 | 플러그인 버전의 엔진 API(`org.fogofwarlabs.sc4j:sc4j-engine`과 `sc4j-base`, `sc4j-mod-manifest`, 엔진 모듈) 대상. jar에는 넣지 않음 |
+| 컴파일 | 모드의 모든 소스 세트(빌드의 어느 프로젝트에 있든)를 플러그인 버전의 SC4J 모드 API, 곧 런타임이 제공하는 엔진 모듈 대상으로 컴파일. jar에는 넣지 않음 |
 | `processResources` | `sc4j-mod.json`에 `version`과 `engine`을 씀(3장) |
 | `jar` | `build/libs/<id>.jar`, 재현 가능(시간 기록 없음, 고정 순서, 중복이면 실패), `META-INF/`에 `LICENSE`와 `NOTICE`. `sc4j-mod.json`이 다른 id, 다른 버전, 없는 진입 클래스를 가리키면 실패 |
 | `run` | 플러그인 버전의 엔진 런타임에서 설치본의 사용자 데이터(없으면 `build/sc4j-run`)로 실행. `--args=--headless`, `--debug-jvm` |
 | `installMod` | jar를 `<install>/mods/`에 복사(Gradle 속성 `sc4j.install`) |
 | `sc4jMod` | `id`(선택, 매니페스트 `id`와 같아야 함. 빌드 태스크가 매니페스트를 쓰면 필요), `sourceSets`(jar에 더 넣을 소스 세트), `install`, `licenses`(`META-INF/`의 파일) |
+
+목록 리더 `sc4j-catalog`는 공개된 정보를 읽습니다. SC4J 릴리즈(`ReleaseCheck`, `ReleaseVersion`, `catalog.github`)와 모드 목록(`catalog.mods`)입니다. `ReleaseCheck.read(new ReleaseClient(ReleaseClient.GITHUB_API), ReleaseCheck.DEFAULT_REPOSITORY, ReleaseVersion.CURRENT)`은 네트워크로 최신 SC4J 릴리즈를 읽으므로 프레임 스레드 밖에서 호출합니다.
 
 태스크는 그룹 `sc4j`에 있고, `tasks.named('jar') { from(...) }`로 파일을 더 넣습니다. 실행에 필요한 라이브러리는 런타임의 `lib/`에 없으면(LWJGL, FFmpeg 등은 있음) jar에 넣으며, 먼저 라이선스를 확인합니다(17장).
 
@@ -419,7 +421,7 @@ for (String file : List.of("maps/first-field.json")) {
 - **친구와 무시한 플레이어**: `addFriend`, `removeFriend`(친구 최대 16명), `ignore`, `unignore`, `isIgnored`. 목록은 계정에 속하며, 무시한 플레이어의 줄과 귓속말은 버리고 그 방은 모드가 숨깁니다.
 - **리스너**: `addListener(CommunityListener)`: `onChatLine`, `onMembersChanged`, `onWhisper`, `onWhisperResult`. `poll()` 안에서 호출됩니다.
 
-`BeaconLinkSession.signOutOtherDevices()`는 계정의 다른 연결을 끝냅니다. `engine.client.community`(`sc4j-engine`)에는 커뮤니티 화면 부품 `ChannelChat`, `RoomFilter`, `ChatLogBox`, `TableBox`가 있습니다. 와이어: [프로토콜 참조](beaconlink/protocol.ko.md). 공개 피어: [운영 가이드](beaconlink/operator.ko.md).
+`BeaconLinkSession.signOutOtherDevices()`는 계정의 다른 연결을 끝냅니다. `ChannelChat`(`engine.net.beaconlink.community.chat`, `sc4j-engine-net`)이 채널 채팅을 실행합니다. `engine.client.community`(`sc4j-engine`)에는 커뮤니티 화면 부품 `RoomFilter`, `ChatLogBox`, `TableBox`가 있고, `engine.client.lobby`에는 `RecentMaps`가 있습니다. 와이어: [프로토콜 참조](beaconlink/protocol.ko.md). 공개 피어: [운영 가이드](beaconlink/operator.ko.md).
 
 ## 15. 빌드, 설치, 실행
 
@@ -431,7 +433,7 @@ for (String file : List.of("maps/first-field.json")) {
 
 자세히: [엔진 API 정책](api-policy.ko.md).
 
-- API는 `sc4j-base`, `sc4j-mod-manifest`, `sc4j-engine-core`, `-sim`, `-net`, `-client`, `sc4j-engine`의 public, protected 클래스와 멤버이며 `api/*.api`에 나열됩니다. 각 클래스의 Javadoc이 계약입니다.
+- API는 `sc4j-base`, `sc4j-mod-manifest`, `sc4j-engine-core`, `-sim`, `-net`, `-client`, `sc4j-engine`, `sc4j-catalog`의 public, protected 클래스와 멤버이며 `api/*.api`에 나열됩니다. 각 클래스의 Javadoc이 계약입니다.
 - API가 아닌 내부 요소(`@ApiStatus.Internal`): `engine.mod.loading`, `engine.client.render.gl`, `engine.client.audio.openal`, `GlfwClientHost`, `GlfwHostWindow`, `GlfwInput`, `GlfwKeyCodes`, `GlfwCursorSurface`, `WindowsTextInputMethod`, `WindowsSystemPointerSpeed`, `WindowsHostTickClock`. 대신 `engine.client.render`(`GraphicsDevice.getCurrent()`), `engine.client.audio`(`AudioDevice.openDefault()`), `engine.client.host` 인터페이스(`ClientHost.initialize()`. `HostWindow`: `createInput`, `isKeyDown`, `setPointerMode`, `createCursorSurface`, 포커스, 클립보드, 끌어다 놓은 파일, 감마 램프, `getTextInputMethod`. `SystemPointerSpeed`, `HostTickClock`)를 씁니다.
 - SC4J 버전은 유의적 버전이며, 그 `MAJOR.MINOR`가 엔진 API 버전(`EngineVersion.CURRENT`)입니다. 모드 플러그인이 이 값을 매니페스트의 `engine` 필드에 씁니다. major는 모드를 깨뜨릴 수 있고 minor는 추가만 합니다. 0.x에서는 무엇이든 바뀔 수 있으며 `.api` 차이로 드러납니다.
 - 시뮬레이션 결과가 바뀌면 적어도 minor 버전을 올립니다. 리플레이와 저장 게임은 엔진 버전 사이에 호환되지 않습니다.
@@ -444,7 +446,7 @@ for (String file : List.of("maps/first-field.json")) {
 ## 18. 모드 테스트
 
 - 이 저장소 밖: jar를 빌드해 임시 설치본에 설치하고, 런타임을 헤드리스로 두 번, 리플레이로 한 번 실행해 프레임 해시를 비교합니다.
-- 배포되는 테스트 픽스처([API 정책](api-policy.ko.md#1-api란)): `RecordingCommunitySession`, `RecordingBeaconLink`(`sc4j-engine`), 127.0.0.1에서 NAT를 에뮬레이션하는 `ClientScenario`(`sc4j-beaconlink`), `FakeInstallationRecords`(`sc4j-mod-manifest`).
+- 배포되는 테스트 픽스처([API 정책](api-policy.ko.md#1-api란)): `RecordingCommunitySession`, `RecordingBeaconLink`(`sc4j-engine-net`), 127.0.0.1에서 NAT를 에뮬레이션하는 `ClientScenario`(`sc4j-beaconlink`), `FakeInstallationRecords`(`sc4j-mod-manifest`).
 - 이 저장소 안: 테스트 JVM의 `RuntimeSession.run`(`DemoModTest`), 화면 밖 클라이언트(`DemoClientScenario`), 런타임 JVM 둘(`determinismCheck`).
 
 ## 19. 모드가 실행되는 두 방식

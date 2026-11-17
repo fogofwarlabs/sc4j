@@ -38,11 +38,12 @@ SC4J(Simulation Core for Java)는 실시간 전략 게임 엔진입니다. 게�
 | `sc4j-mod-manifest` | 모드 매니페스트 `sc4j-mod.json`, 설정, 버전, 설치 폴더 구조 |
 | `sc4j-engine-core` | 고정소수점 연산, 맵 격자, 지형, 플레이어, 상태 해시, 콘텐츠 타입, 모드 정체성 |
 | `sc4j-engine-sim` | 게임, 유닛, 기본 시스템, 명령, 커맨드, 데이터 팩, 맵, 리플레이, 저장 |
-| `sc4j-engine-net` | 락스텝 전송, LAN 탐색, 네트워크 로비, Beacon.Link 인터페이스 |
+| `sc4j-engine-net` | 데이터그램 링크, 락스텝 전송, LAN 탐색, 네트워크 로비, Beacon.Link와 커뮤니티 인터페이스, 채널 채팅 |
 | `sc4j-engine-client` | 호스트, 씬, 입력, 렌더러, 투영, HUD, 콘솔, 오디오, 동영상 |
 | `sc4j-engine` | 모드가 컴파일할 때 쓰는 모드 API와 클라이언트 애플리케이션 |
 | `sc4j-runtime` | 모드 jar 하나를 창 모드 또는 헤드리스로 실행 |
 | `sc4j-launcher` | 런처(JavaFX) |
+| `sc4j-catalog` | 공개된 정보: GitHub 릴리즈, 새 릴리즈 확인, 모드 목록. 런처가 사용하고 런타임이 모드용으로 포함 |
 | `sc4j-beaconlink-protocol`, `-peer`, `-node`, `sc4j-beaconlink` | Beacon.Link 와이어 프로토콜, 피어 라이브러리, 헤드리스 노드, 클라이언트 |
 | [`mods/`](mods/) | 데모 모드 |
 | [`tools/`](tools/) | `api-check`(API 목록), `windows-manifest`(Windows 프로그램의 UTF-8 코드 페이지) |

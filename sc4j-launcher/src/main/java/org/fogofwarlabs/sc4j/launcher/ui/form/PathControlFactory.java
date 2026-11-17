@@ -10,7 +10,9 @@ import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import org.fogofwarlabs.sc4j.launcher.form.FormField;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
+import org.fogofwarlabs.sc4j.launcher.ui.ButtonRole;
 import org.fogofwarlabs.sc4j.launcher.ui.ComponentUtils;
+import org.fogofwarlabs.sc4j.launcher.ui.Spacing;
 import org.fogofwarlabs.sc4j.manifest.settings.FileSetting;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -55,11 +57,11 @@ public final class PathControlFactory implements FieldControlFactory {
          * @param onChange called after a changed value was passed to the field
          */
         private PathControl(@NotNull FormField field, @NotNull LauncherTexts texts, @NotNull Runnable onChange) {
-            Button browse = ComponentUtils.button(texts.get("form.browse"), ComponentUtils.ButtonRole.SECONDARY);
+            Button browse = ComponentUtils.button(texts.get("form.browse"), ButtonRole.SECONDARY);
 
             this.field = field;
             this.text  = new TextField(field.getText());
-            this.node  = ComponentUtils.row(ComponentUtils.Spacing.S, this.text, browse);
+            this.node  = ComponentUtils.row(Spacing.S, this.text, browse);
 
             this.text.setPromptText(texts.get(PathControlFactory.this.directory ? "form.choose.folder" : "form.choose.file"));
             this.text.textProperty().addListener((observable, previous, current) -> {

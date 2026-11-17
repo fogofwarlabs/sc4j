@@ -1,0 +1,90 @@
+public final class org.fogofwarlabs.sc4j.catalog.ReleaseCheck {
+  public boolean isNewer();
+  public org.fogofwarlabs.sc4j.catalog.ReleaseVersion getLatestVersion();
+  public org.fogofwarlabs.sc4j.catalog.github.Release getRelease();
+  public static final org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository DEFAULT_REPOSITORY;
+  public static org.fogofwarlabs.sc4j.catalog.ReleaseCheck read(org.fogofwarlabs.sc4j.catalog.github.ReleaseClient, org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository, org.fogofwarlabs.sc4j.catalog.ReleaseVersion) throws org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
+}
+
+public final class org.fogofwarlabs.sc4j.catalog.ReleaseVersion {
+  public boolean isNewerThan(org.fogofwarlabs.sc4j.catalog.ReleaseVersion);
+  public boolean isSnapshot();
+  public java.lang.String getPreRelease();
+  public java.lang.String toString();
+  public static final org.fogofwarlabs.sc4j.catalog.ReleaseVersion CURRENT;
+  public static org.fogofwarlabs.sc4j.catalog.ReleaseVersion parse(java.lang.String);
+}
+
+public final class org.fogofwarlabs.sc4j.catalog.github.Release {
+  public java.lang.String getNotes();
+  public java.lang.String getTag();
+  public java.time.Instant getPublishedAt();
+  public java.util.List<org.fogofwarlabs.sc4j.catalog.github.ReleaseAsset> getAssets();
+  public org.fogofwarlabs.sc4j.catalog.github.Release(org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository, java.lang.String, java.time.Instant, java.lang.String, java.util.List<org.fogofwarlabs.sc4j.catalog.github.ReleaseAsset>);
+  public org.fogofwarlabs.sc4j.catalog.github.ReleaseAsset findAsset(java.lang.String);
+  public org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository getRepository();
+}
+
+public final class org.fogofwarlabs.sc4j.catalog.github.ReleaseAsset {
+  public java.lang.String getName();
+  public java.net.URI getAddress();
+  public long getSize();
+  public org.fogofwarlabs.sc4j.catalog.github.ReleaseAsset(java.lang.String, java.net.URI, long);
+}
+
+public final class org.fogofwarlabs.sc4j.catalog.github.ReleaseClient {
+  public byte[] read(java.net.URI, int) throws org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
+  public org.fogofwarlabs.sc4j.catalog.github.Release findLatestRelease(org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository) throws org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
+  public org.fogofwarlabs.sc4j.catalog.github.ReleaseClient(java.net.URI);
+  public static final java.net.URI GITHUB_API;
+  public void download(org.fogofwarlabs.sc4j.catalog.github.ReleaseAsset, org.fogofwarlabs.sc4j.catalog.github.ReleaseAsset, java.nio.file.Path, long, java.util.function.DoubleConsumer) throws java.io.IOException;
+}
+
+public final class org.fogofwarlabs.sc4j.catalog.github.ReleaseException extends java.io.IOException {
+  public org.fogofwarlabs.sc4j.catalog.github.ReleaseException(org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem, java.lang.String);
+  public org.fogofwarlabs.sc4j.catalog.github.ReleaseException(org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem, java.lang.String, java.lang.Throwable);
+  public org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem getProblem();
+}
+
+public final class org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem extends java.lang.Enum<org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem> {
+  public static final org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem ASSET_MISSING;
+  public static final org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem CHECKSUM_MISMATCH;
+  public static final org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem INVALID_REPOSITORY;
+  public static final org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem INVALID_RESPONSE;
+  public static final org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem NOT_FOUND;
+  public static final org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem TOO_LARGE;
+  public static final org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem UNAVAILABLE;
+  public static org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem valueOf(java.lang.String);
+  public static org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem[] values();
+}
+
+public final class org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository {
+  public java.lang.String getName();
+  public java.lang.String getOwner();
+  public java.lang.String toString();
+  public static org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository of(java.lang.String, java.lang.String);
+  public static org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository parse(java.lang.String);
+}
+
+public final class org.fogofwarlabs.sc4j.catalog.mods.ModIndex {
+  public java.util.List<org.fogofwarlabs.sc4j.catalog.mods.ModIndexEntry> read() throws java.io.IOException;
+  public org.fogofwarlabs.sc4j.catalog.mods.ModIndex(org.fogofwarlabs.sc4j.catalog.github.ReleaseClient, java.net.URI);
+  public static final int FORMAT = 1;
+  public static final java.net.URI DEFAULT_ADDRESS;
+  public static java.util.List<org.fogofwarlabs.sc4j.catalog.mods.ModIndexEntry> parse(byte[]) throws java.io.IOException;
+}
+
+public final class org.fogofwarlabs.sc4j.catalog.mods.ModIndexEntry {
+  public org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository getRepository();
+  public org.fogofwarlabs.sc4j.catalog.mods.ModIndexEntry(org.fogofwarlabs.sc4j.manifest.text.LocalizedText, org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository, org.fogofwarlabs.sc4j.manifest.text.LocalizedText);
+  public org.fogofwarlabs.sc4j.manifest.text.LocalizedText getDescription();
+  public org.fogofwarlabs.sc4j.manifest.text.LocalizedText getName();
+}
+
+public final class org.fogofwarlabs.sc4j.catalog.mods.ModRelease {
+  public java.lang.String getTag();
+  public org.fogofwarlabs.sc4j.catalog.github.ReleaseAsset getChecksumFile();
+  public org.fogofwarlabs.sc4j.catalog.github.ReleaseAsset getJarFile();
+  public org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository getRepository();
+  public static org.fogofwarlabs.sc4j.catalog.mods.ModRelease find(org.fogofwarlabs.sc4j.catalog.github.ReleaseClient, org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository, java.lang.String) throws org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
+}

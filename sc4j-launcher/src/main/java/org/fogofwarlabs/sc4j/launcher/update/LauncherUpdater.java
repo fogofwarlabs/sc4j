@@ -1,7 +1,9 @@
 package org.fogofwarlabs.sc4j.launcher.update;
 
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
-import org.fogofwarlabs.sc4j.launcher.release.*;
+import org.fogofwarlabs.sc4j.catalog.ReleaseCheck;
+import org.fogofwarlabs.sc4j.catalog.ReleaseVersion;
+import org.fogofwarlabs.sc4j.catalog.github.*;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -52,13 +54,11 @@ public final class LauncherUpdater {
      * Tells whether the launcher checks for updates by itself at its start: only a release build does, never a development build
      * ({@code -SNAPSHOT}) or a run from the source tree. Any build can check when the player asks.
      *
-     * @param runningVersion the running launcher's version
+     * @param running the running launcher's version, or {@code null} when it is not a semantic version
      * @return {@code true} if the version is a release version, {@code false} otherwise
      */
-    public static boolean isAutomaticCheckAllowed(@NotNull String runningVersion) {
-        ReleaseVersion version = ReleaseVersion.parse(runningVersion);
-
-        return version != null && !version.isSnapshot();
+    public static boolean isAutomaticCheckAllowed(@Nullable ReleaseVersion running) {
+        return running != null && !running.isSnapshot();
     }
 
     private static void markExecutable(@NotNull Path packageRoot) throws IOException {
@@ -105,24 +105,20 @@ public final class LauncherUpdater {
     }
 
     /**
-     * Reads the latest release of the update repository and returns it when it is newer than the running launcher. A running version that is
-     * not a semantic version (a run from the source tree) is older than every release.
+     * Reads the latest release of the update repository and returns it when it is newer than the running launcher. A missing running version
+     * counts as older than every release.
      *
-     * @param repository     the update repository
-     * @param runningVersion the running launcher's version
+     * @param repository the update repository
+     * @param running    the running launcher's version, or {@code null} when it is not a semantic version
      * @return the newer release, or {@code null} when the running launcher is up to date
      * @throws ReleaseException if the release cannot be read, its tag is not a version or it lacks the package or its checksum file
      */
-    public @Nullable LauncherRelease findUpdate(@NotNull ReleaseRepository repository, @NotNull String runningVersion) throws ReleaseException {
-        Release release = this.client.findLatestRelease(repository);
-        ReleaseVersion latest = ReleaseVersion.parse(release.getTag());
-        ReleaseVersion running = ReleaseVersion.parse(runningVersion);
+    public @Nullable LauncherRelease findUpdate(@NotNull ReleaseRepository repository, @Nullable ReleaseVersion running) throws ReleaseException {
+        ReleaseCheck check = ReleaseCheck.read(this.client, repository, running);
+        Release release = check.getRelease();
+        ReleaseVersion latest = check.getLatestVersion();
 
-        if (latest == null) {
-            throw new ReleaseException(ReleaseProblem.INVALID_RESPONSE, Exceptions.format("The release tag {0} is not a version", release.getTag()));
-        }
-
-        if (running != null && !latest.isNewerThan(running)) {
+        if (!check.isNewer()) {
             return null;
         }
 
@@ -161,8 +157,8 @@ public final class LauncherUpdater {
      * @param release     the release the package belongs to
      * @param packageFile the downloaded package
      * @return the unpacked package's folder {@code SC4J-<version>}
-     * @throws ReleaseException if the package is broken or not an SC4J package of the release
-     * @throws IOException      if the package cannot be written
+     * @throws InvalidPackageException if the package is broken or not an SC4J package of the release
+     * @throws IOException             if the package cannot be written
      */
     public @NotNull Path unpack(@NotNull LauncherRelease release, @NotNull Path packageFile) throws IOException {
         Path packageDirectory = this.folder.getPackageDirectory();
@@ -174,8 +170,8 @@ public final class LauncherUpdater {
             FileTreeUtils.unzip(packageFile, packageDirectory, MAXIMUM_UNPACKED_SIZE);
             PackageSwap.checkPackage(packageRoot);
         } catch (IOException exception) {
-            throw new ReleaseException(ReleaseProblem.INVALID_PACKAGE, Exceptions.format("{0} is not an SC4J package: {1}", packageFile.getFileName(),
-                                                                                         exception.getMessage()), exception);
+            throw new InvalidPackageException(Exceptions.format("{0} is not an SC4J package: {1}", packageFile.getFileName(), exception.getMessage()),
+                                              exception);
         }
 
         markExecutable(packageRoot);

@@ -2,7 +2,6 @@ package org.fogofwarlabs.sc4j.launcher.ui;
 
 import javafx.css.PseudoClass;
 import javafx.scene.Scene;
-import javafx.scene.control.DialogPane;
 import javafx.scene.image.Image;
 import javafx.scene.text.Font;
 import javafx.stage.Screen;
@@ -74,17 +73,6 @@ public final class ThemeUtils {
     public static void apply(@NotNull Scene scene, @NotNull UiLanguage language) {
         scene.getStylesheets().setAll(getStylesheets(language));
         ChamferUtils.install(scene);
-    }
-
-    /**
-     * Applies the theme to a dialog, which has its own scene.
-     *
-     * @param dialogPane the dialog's pane
-     * @param language   the UI language
-     */
-    public static void apply(@NotNull DialogPane dialogPane, @NotNull UiLanguage language) {
-        dialogPane.getStylesheets().setAll(getStylesheets(language));
-        ChamferUtils.install(dialogPane);
     }
 
     private static @NotNull List<@NotNull String> getStylesheets(@NotNull UiLanguage language) {

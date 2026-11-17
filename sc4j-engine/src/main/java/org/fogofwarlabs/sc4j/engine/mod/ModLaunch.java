@@ -16,8 +16,8 @@ import java.util.List;
 /**
  * Describes how the runtime was asked to start the mod's application: headless or not, a replay to play (with the mod's format the runtime
  * found it in) or a game to join, the identity computed for this run, the definition of the mod's games, the provider of its resources and
- * the formats of its replays and saved games, created with the run's identity, and the run's Beacon.Link (nothing of it is opened before the
- * mod asks).
+ * the formats of its replays and saved games, created with the run's identity, and the run's Beacon.Link (nothing of it is opened
+ * before the mod asks).
  */
 public final class ModLaunch {
     private final boolean headless;

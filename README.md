@@ -38,11 +38,12 @@ This repository holds the engine, the runtime, the launcher, Beacon.Link and the
 | `sc4j-mod-manifest` | mod manifest `sc4j-mod.json`, settings, versions, install layout |
 | `sc4j-engine-core` | fixed-point math, map grid, terrain, players, state hash, content types, mod identity |
 | `sc4j-engine-sim` | game, units, default systems, orders, commands, data pack, maps, replays, saves |
-| `sc4j-engine-net` | lockstep transport, LAN discovery, network lobby, Beacon.Link interfaces |
+| `sc4j-engine-net` | datagram links, lockstep transport, LAN discovery, network lobby, Beacon.Link and community interfaces, channel chat |
 | `sc4j-engine-client` | host, scenes, input, renderer, projections, HUD, console, audio, video |
 | `sc4j-engine` | the mod API and client application that mods compile against |
 | `sc4j-runtime` | runs one mod jar, in a window or headless |
 | `sc4j-launcher` | the launcher (JavaFX) |
+| `sc4j-catalog` | what is published: GitHub releases, the check for a newer release, the mod catalog; used by the launcher, shipped by the runtime for mods |
 | `sc4j-beaconlink-protocol`, `-peer`, `-node`, `sc4j-beaconlink` | Beacon.Link wire protocol, peer library, headless node, client |
 | [`mods/`](mods/) | the demo mod |
 | [`tools/`](tools/) | `api-check` (API listings), `windows-manifest` (UTF-8 code page of the Windows programs) |

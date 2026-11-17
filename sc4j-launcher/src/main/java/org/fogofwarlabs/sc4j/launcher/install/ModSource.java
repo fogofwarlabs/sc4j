@@ -1,6 +1,6 @@
 package org.fogofwarlabs.sc4j.launcher.install;
 
-import org.fogofwarlabs.sc4j.launcher.release.ReleaseRepository;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository;
 import org.jetbrains.annotations.NotNull;
 
 /**

@@ -109,8 +109,9 @@ configure([project(':sc4j-engine-core'), project(':sc4j-engine-sim')]) { module 
 // method and field of its main classes outside the internal elements: the packages and classes annotated ApiStatus.Internal, which stay
 // public for the engine's own modules and the runtime. apiDump writes it with the JDK's javap to api/<module>.api
 // (checked in); apiCheck, which "check" (and so "build") runs, fails when the compiled classes differ from that file. The base and the
-// manifest are listed too: mods compile against them through the engine.
-def apiModules = ['sc4j-base', 'sc4j-mod-manifest', 'sc4j-engine-core', 'sc4j-engine-sim', 'sc4j-engine-net', 'sc4j-engine-client', 'sc4j-engine']
+// manifest are listed too: mods compile against them through the engine. The catalog is the part of the mod API that a mod declares itself.
+def apiModules = ['sc4j-base', 'sc4j-mod-manifest', 'sc4j-engine-core', 'sc4j-engine-sim', 'sc4j-engine-net', 'sc4j-engine-client', 'sc4j-engine',
+                  'sc4j-catalog']
 def apiToolMainClass = 'org.fogofwarlabs.sc4j.tools.api.ApiTool'
 def createApiToolConfiguration = { module ->
     def configuration = module.configurations.create('apiTool') {
@@ -123,7 +124,7 @@ def createApiToolConfiguration = { module ->
 
 // The modules whose test fixtures are published (the testFixtures variants of their component), with the API listing
 // api/<module>-test-fixtures.api of the tasks testFixturesApiDump and testFixturesApiCheck; check also builds their Javadoc.
-def publishedTestFixtureModules = ['sc4j-mod-manifest', 'sc4j-engine', 'sc4j-beaconlink-protocol', 'sc4j-beaconlink']
+def publishedTestFixtureModules = ['sc4j-mod-manifest', 'sc4j-engine-net', 'sc4j-beaconlink-protocol', 'sc4j-beaconlink']
 // The listing file suffix, the task names and the report of each listed source set.
 def apiListings = [
     main        : [suffix: '', dump: 'apiDump', check: 'apiCheck', report: 'api-check'],
@@ -606,6 +607,7 @@ def publishedModules = [
     'sc4j-beaconlink-protocol': 'Beacon.Link wire protocol of SC4J: identities, the wire reader and writer, signed rooms and messages.',
     'sc4j-beaconlink-peer'    : 'Beacon.Link peer library of SC4J: the node roles that the launcher, the runtime and the node program run.',
     'sc4j-beaconlink'         : 'Beacon.Link client of SC4J: node sessions, rooms, participant channels and the overlay that a mod plays over.',
+    'sc4j-catalog'            : 'SC4J catalog reader: GitHub releases, release versions, the check for a newer release and the mod catalog.',
     'sc4j-runtime'            : 'SC4J runtime: reads a mod jar, loads the mod in its own class loader and runs it in a window or headless.'
 ]
 // Inside this build the coordinates of the published modules (as the mod plugin names them) resolve to their projects.

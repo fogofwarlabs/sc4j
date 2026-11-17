@@ -8,12 +8,12 @@ import org.fogofwarlabs.sc4j.engine.client.dialog.Button;
 import org.fogofwarlabs.sc4j.engine.client.dialog.ComboBox;
 import org.fogofwarlabs.sc4j.engine.client.dialog.Control;
 import org.fogofwarlabs.sc4j.engine.client.dialog.Dialog;
+import org.fogofwarlabs.sc4j.engine.client.lobby.RecentMaps;
 import org.fogofwarlabs.sc4j.engine.game.MapReference;
 import org.fogofwarlabs.sc4j.engine.net.NetworkClock;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.*;
-import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChannelSummary;
-import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel;
-import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.PlayerPresence;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.*;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -487,7 +487,7 @@ public final class BeaconLinkScene extends DemoMenuScene {
         ChatLogBox log = (ChatLogBox) this.requireControl(CHAT_LOG_ID);
 
         this.chat = opened;
-        opened.setLog(entry -> log.addLine(entry.getPrefix() + entry.getText(), getEntryColor(entry)));
+        opened.addLog(entry -> log.addLine(entry.getPrefix() + entry.getText(), getEntryColor(entry)), true);
         opened.open();
     }
 

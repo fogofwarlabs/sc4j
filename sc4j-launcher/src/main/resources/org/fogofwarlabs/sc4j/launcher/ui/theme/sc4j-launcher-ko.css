@@ -26,7 +26,6 @@
 .toggle-button,
 .list-title,
 .tab-pane > .tab-header-area > .headers-region > .tab .tab-label,
-.dialog-pane > .header-panel .label,
 .field-label,
 .field-required {
     -fx-font-family: "Malgun Gothic";

@@ -1,6 +1,7 @@
 package org.fogofwarlabs.sc4j.launcher.ui;
 
 import javafx.beans.binding.Bindings;
+import javafx.css.PseudoClass;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
@@ -8,12 +9,8 @@ import javafx.scene.control.skin.ComboBoxListViewSkin;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
-import org.fogofwarlabs.sc4j.launcher.catalog.ModStatus;
-import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.Locale;
 
 /**
  * Builds the shared components of the launcher theme. Every screen builds its controls here, so each component has one
@@ -21,99 +18,13 @@ import java.util.Locale;
  * the stylesheet's spacing classes, never from code.
  */
 public final class ComponentUtils {
-    private static final @NotNull String SPACING_PREFIX = "spacing-";
     private static final @NotNull String BADGE_PREFIX = "badge-";
     private static final @NotNull String STATUS_MARKER_PREFIX = "status-marker-";
     private static final @NotNull String NOTICE_PREFIX = "notice-";
-    private static final @NotNull String STATUS_KEY_PREFIX = "status.";
-
-    /**
-     * Lists the spacing scale of the stylesheet: 4, 8, 12, 16, 24 and 32 pixels.
-     */
-    public enum Spacing {
-        /**
-         * 4 pixels.
-         */
-        XS,
-        /**
-         * 8 pixels.
-         */
-        S,
-        /**
-         * 12 pixels.
-         */
-        M,
-        /**
-         * 16 pixels.
-         */
-        L,
-        /**
-         * 24 pixels.
-         */
-        XL,
-        /**
-         * 32 pixels.
-         */
-        XXL;
-
-        /**
-         * @return the style class of the spacing, such as {@code spacing-m}
-         */
-        public @NotNull String getStyleClass() {
-            return SPACING_PREFIX + this.name().toLowerCase(Locale.ROOT);
-        }
-    }
-
-    /**
-     * Lists the colour roles of badges, status markers and notices.
-     */
-    public enum Tone {
-        /**
-         * Plain steel.
-         */
-        NEUTRAL,
-        /**
-         * The cyan accent.
-         */
-        ACCENT,
-        /**
-         * Green: ready, online.
-         */
-        SUCCESS,
-        /**
-         * Amber: needs attention.
-         */
-        WARNING,
-        /**
-         * Red: failed, unusable.
-         */
-        DANGER;
-
-        /**
-         * @return the style class suffix of the tone, such as {@code danger}
-         */
-        public @NotNull String getSuffix() {
-            return this.name().toLowerCase(Locale.ROOT);
-        }
-    }
-
-    /**
-     * Lists the button roles: one primary action per screen, secondary for the rest, danger for destructive actions.
-     */
-    public enum ButtonRole {
-        /**
-         * The main action of a screen.
-         */
-        PRIMARY,
-        /**
-         * Any other action.
-         */
-        SECONDARY,
-        /**
-         * A destructive action.
-         */
-        DANGER
-    }
+    private static final @NotNull String COMPACT_LIST_STYLE_CLASS = "compact";
+    private static final @NotNull String SUNKEN_LIST_STYLE_CLASS = "sunken";
+    private static final @NotNull String LOG_LIST_STYLE_CLASS = "log-list";
+    private static final @NotNull PseudoClass FIRST_ROW = PseudoClass.getPseudoClass("first-row");
 
     /**
      * Creates a label.
@@ -213,31 +124,6 @@ public final class ComponentUtils {
     }
 
     /**
-     * Creates the badge of a mod status; every view shows a status with it.
-     *
-     * @param status the mod status
-     * @param texts  the launcher texts of the display language
-     * @return the created badge
-     */
-    public static @NotNull Label statusBadge(@NotNull ModStatus status, @NotNull LauncherTexts texts) {
-        return badge(texts.get(STATUS_KEY_PREFIX + status.name().toLowerCase(Locale.ROOT)), getTone(status));
-    }
-
-    /**
-     * Returns the colour role of a mod status.
-     *
-     * @param status the mod status
-     * @return {@link Tone#SUCCESS} for ready, {@link Tone#WARNING} for a warning and {@link Tone#DANGER} for an error
-     */
-    public static @NotNull Tone getTone(@NotNull ModStatus status) {
-        return switch (status) {
-            case READY -> Tone.SUCCESS;
-            case WARNING -> Tone.WARNING;
-            case ERROR -> Tone.DANGER;
-        };
-    }
-
-    /**
      * Creates a diamond status marker, the cell of the logo grid.
      *
      * @param tone the colour role
@@ -321,6 +207,58 @@ public final class ComponentUtils {
     }
 
     /**
+     * Creates a row of a label and a text after it: the label keeps its width, the text takes the rest of the row and wraps, such as a
+     * sender's name before a chat line.
+     *
+     * @param spacing the spacing between the label and the text
+     * @param label   the label
+     * @param text    the text, a paragraph ({@link #paragraph})
+     * @return the created row, its children aligned at the top
+     */
+    public static @NotNull HBox textRow(@NotNull Spacing spacing, @NotNull Label label, @NotNull Label text) {
+        HBox row = row(spacing, label, text);
+
+        label.setMinWidth(Region.USE_PREF_SIZE);
+        text.setMinWidth(0);
+        HBox.setHgrow(text, Priority.ALWAYS);
+        row.setAlignment(Pos.TOP_LEFT);
+
+        return row;
+    }
+
+    /**
+     * Lets a region take the full height its parent gives it, such as a panel beside a taller one.
+     *
+     * @param region the region
+     */
+    public static void fillHeight(@NotNull Region region) {
+        region.setMaxHeight(Double.MAX_VALUE);
+    }
+
+    /**
+     * Gives a side column of a screen its fixed width and the full height ({@link #fillHeight}).
+     *
+     * @param column the column, such as a panel
+     * @param width  the width
+     */
+    public static void setColumnWidth(@NotNull Region column, @NotNull ColumnWidth width) {
+        column.setMinWidth(width.getWidth());
+        column.setPrefWidth(width.getWidth());
+        fillHeight(column);
+    }
+
+    /**
+     * Gives an input control its width.
+     *
+     * @param control the control, such as a text field or a spinner
+     * @param width   the width
+     */
+    public static void setControlWidth(@NotNull Region control, @NotNull ControlWidth width) {
+        control.setPrefWidth(width.getWidth());
+        control.setMaxWidth(width.getWidth());
+    }
+
+    /**
      * Creates an empty region that takes the free space of a row or a column.
      *
      * @return the created spacer
@@ -397,8 +335,23 @@ public final class ComponentUtils {
      * @return the created panel
      */
     public static @NotNull VBox panel(@NotNull String title, @NotNull Node body, @NotNull Node @NotNull ... headerTrailing) {
-        HBox header = new HBox(label(title, "panel-title"), growingSpacer());
+        return panel(label(title), body, headerTrailing);
+    }
+
+    /**
+     * Creates a raised metal panel with a title header whose title label the caller keeps to change its text; the body grows to fill the
+     * panel.
+     *
+     * @param title          the title label, shown in capitals by the stylesheet
+     * @param body           the body
+     * @param headerTrailing the nodes at the right end of the header
+     * @return the created panel
+     */
+    public static @NotNull VBox panel(@NotNull Label title, @NotNull Node body, @NotNull Node @NotNull ... headerTrailing) {
+        HBox header = new HBox(title, growingSpacer());
         VBox panel;
+
+        title.getStyleClass().add("panel-title");
 
         header.getChildren().addAll(headerTrailing);
         header.getStyleClass().add("panel-header");
@@ -406,6 +359,39 @@ public final class ComponentUtils {
 
         panel = new VBox(header, body);
         panel.getStyleClass().add("panel");
+
+        return panel;
+    }
+
+    /**
+     * Creates a raised metal panel with a title header, a body that grows to fill the panel and a footer strip ({@link #panelFooter}).
+     *
+     * @param title          the title, shown in capitals by the stylesheet
+     * @param body           the body
+     * @param footer         the footer
+     * @param headerTrailing the nodes at the right end of the header
+     * @return the created panel
+     */
+    public static @NotNull VBox panelWithFooter(@NotNull String title, @NotNull Node body, @NotNull HBox footer,
+                                                @NotNull Node @NotNull ... headerTrailing) {
+        return panelWithFooter(label(title), body, footer, headerTrailing);
+    }
+
+    /**
+     * Creates a raised metal panel with a title header whose title label the caller keeps to change its text, a body that grows to fill the
+     * panel and a footer strip ({@link #panelFooter}).
+     *
+     * @param title          the title label, shown in capitals by the stylesheet
+     * @param body           the body
+     * @param footer         the footer
+     * @param headerTrailing the nodes at the right end of the header
+     * @return the created panel
+     */
+    public static @NotNull VBox panelWithFooter(@NotNull Label title, @NotNull Node body, @NotNull HBox footer,
+                                                @NotNull Node @NotNull ... headerTrailing) {
+        VBox panel = panel(title, body, headerTrailing);
+
+        panel.getChildren().add(footer);
 
         return panel;
     }
@@ -468,6 +454,37 @@ public final class ComponentUtils {
     }
 
     /**
+     * Creates the red panel of a failure report or another blocking error, holding its children in a column.
+     *
+     * @param children the children, such as a headline and the details
+     * @return the created panel
+     */
+    public static @NotNull VBox dangerPanel(@NotNull Node @NotNull ... children) {
+        VBox panel = new VBox(children);
+
+        panel.getStyleClass().add("panel-danger");
+
+        return panel;
+    }
+
+    /**
+     * Creates a menu: a panel of flat entries ({@link #menuButton}) under a header, such as a {@link ListItem} of the player the menu is about.
+     *
+     * @param header  the header
+     * @param entries the entries and the separators between their groups
+     * @return the created menu
+     */
+    public static @NotNull VBox menuPanel(@NotNull Region header, @NotNull Node @NotNull ... entries) {
+        VBox menu = new VBox(header);
+
+        header.getStyleClass().add("menu-header");
+        menu.getChildren().addAll(entries);
+        menu.getStyleClass().addAll("panel", "menu-panel");
+
+        return menu;
+    }
+
+    /**
      * Creates a read-only monospaced text area, for logs and file contents.
      *
      * @param text       the text
@@ -484,21 +501,17 @@ public final class ComponentUtils {
     }
 
     /**
-     * Creates a read-only text area of wrapped plain text in the body font, of a fixed height that scrolls, for longer text such as release
-     * notes.
+     * Creates a read-only text area of wrapped plain text in the body font that scrolls, for longer text such as release notes; a dialog
+     * gives it its height ({@link ModalDialog#addGrowingContent}).
      *
-     * @param text   the text
-     * @param height the height in pixels
+     * @param text the text
      * @return the created text area
      */
-    public static @NotNull TextArea textArea(@NotNull String text, double height) {
+    public static @NotNull TextArea textArea(@NotNull String text) {
         TextArea area = new TextArea(text);
 
         area.setEditable(false);
         area.setWrapText(true);
-        area.setMinHeight(height);
-        area.setPrefHeight(height);
-        area.setMaxHeight(height);
 
         return area;
     }
@@ -545,6 +558,63 @@ public final class ComponentUtils {
     }
 
     /**
+     * Creates a list view whose items have the given size.
+     *
+     * @param size the size of the items
+     * @param <T>  the item type
+     * @return the created list view
+     */
+    public static <T> @NotNull ListView<T> listView(@NotNull ListItemSize size) {
+        ListView<T> list = new ListView<>();
+
+        if (size == ListItemSize.COMPACT) {
+            list.getStyleClass().add(COMPACT_LIST_STYLE_CLASS);
+        }
+
+        return list;
+    }
+
+    /**
+     * Creates a list view in a sunken frame, for a list inside a panel body.
+     *
+     * @param size the size of the items
+     * @param <T>  the item type
+     * @return the created list view
+     */
+    public static <T> @NotNull ListView<T> sunkenListView(@NotNull ListItemSize size) {
+        ListView<T> list = listView(size);
+
+        list.getStyleClass().add(SUNKEN_LIST_STYLE_CLASS);
+
+        return list;
+    }
+
+    /**
+     * Creates a list view of log lines that run edge to edge in a flush panel body ({@link #flushPanelBody}): the lines sit close together and
+     * are not selected, the first line ({@link #markFirstRow}) starts below the header by the room left of the lines, and the room below the
+     * last line is the same.
+     *
+     * @param <T> the item type
+     * @return the created list view
+     */
+    public static <T> @NotNull ListView<T> logListView() {
+        ListView<T> list = new ListView<>();
+
+        list.getStyleClass().add(LOG_LIST_STYLE_CLASS);
+
+        return list;
+    }
+
+    /**
+     * Gives a list cell the pseudo-class {@code first-row} while it shows the list's first item.
+     *
+     * @param cell the list cell
+     */
+    public static void markFirstRow(@NotNull ListCell<?> cell) {
+        cell.indexProperty().addListener((observable, previous, index) -> cell.pseudoClassStateChanged(FIRST_ROW, index.intValue() == 0));
+    }
+
+    /**
      * Sets a rich cell graphic that spans the cell width (inside its border and padding), so trailing badges align.
      *
      * @param cell    the list cell
@@ -565,10 +635,10 @@ public final class ComponentUtils {
      * @param <T>   the item type
      * @return the combo box
      */
-    public static <T> @NotNull ComboBox<T> comboBox(double width) {
+    public static <T> @NotNull ComboBox<T> comboBox(@NotNull ControlWidth width) {
         ComboBox<T> comboBox = new ComboBox<>();
 
-        comboBox.setPrefWidth(width);
+        comboBox.setPrefWidth(width.getWidth());
         comboBox.addEventHandler(ComboBoxBase.ON_SHOWING, event -> {
             if (comboBox.getSkin() instanceof ComboBoxListViewSkin<?> skin && skin.getPopupContent() instanceof Region list) {
                 list.setMinWidth(comboBox.getWidth());

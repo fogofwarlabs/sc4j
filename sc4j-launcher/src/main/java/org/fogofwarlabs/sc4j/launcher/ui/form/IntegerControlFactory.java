@@ -6,6 +6,8 @@ import javafx.scene.control.SpinnerValueFactory;
 import javafx.util.converter.IntegerStringConverter;
 import org.fogofwarlabs.sc4j.launcher.form.FormField;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
+import org.fogofwarlabs.sc4j.launcher.ui.ComponentUtils;
+import org.fogofwarlabs.sc4j.launcher.ui.ControlWidth;
 import org.fogofwarlabs.sc4j.manifest.settings.IntegerSetting;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -21,7 +23,6 @@ public final class IntegerControlFactory implements FieldControlFactory {
      */
     public static final @NotNull IntegerControlFactory INSTANCE = new IntegerControlFactory();
 
-    private static final double CONTROL_WIDTH = 160;
 
     /**
      * Holds the spinner of one integer field.
@@ -69,7 +70,7 @@ public final class IntegerControlFactory implements FieldControlFactory {
             this.spinner = new Spinner<>(values);
 
             this.spinner.setEditable(true);
-            this.spinner.setPrefWidth(CONTROL_WIDTH);
+            ComponentUtils.setControlWidth(this.spinner, ControlWidth.S);
             this.showValue();
             this.spinner.getEditor().textProperty().addListener((observable, previous, current) -> {
                 field.setInput(current);
