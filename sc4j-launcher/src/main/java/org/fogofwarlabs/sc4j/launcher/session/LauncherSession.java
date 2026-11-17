@@ -36,9 +36,10 @@ import java.util.function.Consumer;
  * Runs the Beacon.Link session of the logged-in account in the launcher: one connection of the account, beside the account's games and
  * other devices, that shows the account "in the launcher" (presence mod id {@value BeaconLink#LAUNCHER_MOD_ID}) to its friends.
  * <p>
- * Its chat is the engine's channel chat ({@link ChannelChat}), which the Chat screen opens once: it joins the shared channel
- * {@value ChannelChat#SHARED_CHANNEL}, keeps up to {@value CommunitySession#MAXIMUM_CHANNELS} channels and lists the channels of the launcher
- * users.
+ * Its chat is the engine's channel chat ({@link ChannelChat}), which runs from {@link #openChat} on: it joins the shared channel
+ * {@value ChannelChat#SHARED_CHANNEL} once the session is connected, keeps up to {@value CommunitySession#MAXIMUM_CHANNELS} channels and lists
+ * the channels of the launcher users. A connection that fails is opened again after ten seconds, and the chat joins again the channels it was
+ * in.
  * <p>
  * The whispers are recorded once, from the community's whisper events: those the account menu and the Chat screen send, with their outcome,
  * and those the account receives, whichever screen is open. The chat's own whisper entries are not kept; its notices after a whisper are.
@@ -59,6 +60,7 @@ public final class LauncherSession implements LauncherSessionView {
     private static final @NotNull Logger LOGGER = Logger.of(LauncherSession.class);
     private static final @NotNull String THREAD_NAME = "sc4j-launcher-session";
     private static final long POLL_MILLIS = 20L;
+    private static final long RECONNECT_MILLIS = 10_000L;
     private static final int MAXIMUM_WHISPERS = 100;
     private static final @NotNull ModVersion DEVELOPMENT_VERSION = ModVersion.parse("0.0.0-development");
     private static final @NotNull Comparator<@NotNull FriendView> FRIEND_ORDER =
@@ -247,6 +249,9 @@ public final class LauncherSession implements LauncherSessionView {
     private @Nullable BeaconLinkSession connection;
     private @Nullable CommunitySession community;
     private @Nullable ChannelChat chat;
+    private @Nullable Locale chatLocale;
+    private @NotNull List<@NotNull String> chatChannels;
+    private long connectNanos;
     private @NotNull SelfStatus status;
     private @NotNull String awayText;
     private @NotNull SelfView lastSelf;
@@ -279,6 +284,9 @@ public final class LauncherSession implements LauncherSessionView {
         this.connection        = null;
         this.community         = null;
         this.chat              = null;
+        this.chatLocale        = null;
+        this.chatChannels      = List.of();
+        this.connectNanos      = 0L;
         this.status            = SelfStatus.ONLINE;
         this.awayText          = "";
         this.lastSelf          = new SelfView(SessionState.CONNECTING, SelfStatus.ONLINE, "", 0, null);
@@ -334,7 +342,7 @@ public final class LauncherSession implements LauncherSessionView {
     }
 
     /**
-     * @return the channels the account's chat is in, in the order it joined them, with their members; empty until {@link #openChat} and while
+     * @return the channels the account's chat is in, in the order it joined them, with their members; empty until the chat opened and while
      * the session runs no connection
      */
     @Override
@@ -344,7 +352,7 @@ public final class LauncherSession implements LauncherSessionView {
 
     /**
      * @return the channels the session knows of among the launcher users and the channels the chat is in, the most members first, without
-     * members; empty until {@link #openChat}
+     * members; empty until the chat opened
      */
     @Override
     public @NotNull List<@NotNull ChannelView> getKnownChannels() {
@@ -452,24 +460,18 @@ public final class LauncherSession implements LauncherSessionView {
     }
 
     /**
-     * Opens the account's chat once: it joins the shared channel and keeps up to {@value CommunitySession#MAXIMUM_CHANNELS} channels; later
-     * calls do nothing. Does nothing while the session runs no connection.
+     * Runs the account's chat from now on: it joins the shared channel once the session is connected, keeps up to
+     * {@value CommunitySession#MAXIMUM_CHANNELS} channels and, when the session connects again after its connection failed, joins again the
+     * channels it was in. Later calls do nothing.
      *
      * @param locale the locale of the chat's notices and command answers
      */
     @Override
     public void openChat(@NotNull Locale locale) {
-        this.runOnCommunity(opened -> {
-            if (this.chat != null) {
-                return;
+        this.commands.add(() -> {
+            if (this.chatLocale == null) {
+                this.chatLocale = locale;
             }
-
-            ChannelChat created = new ChannelChat(opened, locale, ChannelChat.SHARED_CHANNEL, true);
-
-            created.addLog(this::addChatEntry, false);
-            created.open(ChannelChat.SHARED_CHANNEL);
-
-            this.chat = created;
         });
     }
 
@@ -601,7 +603,9 @@ public final class LauncherSession implements LauncherSessionView {
 
             while (!this.closed) {
                 this.runCommands();
+                this.reconnect();
                 this.poll();
+                this.openChatWhenConnected();
                 this.publish();
             }
         } catch (InterruptedException exception) {
@@ -638,6 +642,8 @@ public final class LauncherSession implements LauncherSessionView {
     }
 
     private void openConnection() {
+        this.connectNanos = System.nanoTime();
+
         try {
             BeaconLinkSession opened = this.link.open();
             CommunitySession openedCommunity = opened.getCommunity();
@@ -650,6 +656,42 @@ public final class LauncherSession implements LauncherSessionView {
         } catch (IOException | RuntimeException exception) {
             LOGGER.exception(LogLevel.WARNING, exception, "BEACON.LINK: the launcher session of {0} could not start.", this.account.getTaggedName());
         }
+    }
+
+    /**
+     * Opens the connection again {@value #RECONNECT_MILLIS} ms after the last try while the session runs none.
+     */
+    private void reconnect() {
+        if (this.connection == null && System.nanoTime() - this.connectNanos >= TimeUnit.MILLISECONDS.toNanos(RECONNECT_MILLIS)) {
+            this.openConnection();
+        }
+    }
+
+    /**
+     * Opens the chat once the session is connected, after {@link #openChat}: in the channels it was in before the connection failed, else in
+     * the shared channel.
+     */
+    private void openChatWhenConnected() {
+        BeaconLinkSession opened = this.connection;
+        CommunitySession openedCommunity = this.community;
+        Locale locale = this.chatLocale;
+
+        if (this.chat != null || locale == null || opened == null || openedCommunity == null || opened.getFailure() != null ||
+            opened.getObservedAddress() == null) {
+            return;
+        }
+
+        ChannelChat created = new ChannelChat(openedCommunity, locale, ChannelChat.SHARED_CHANNEL, true);
+        List<String> channels = this.chatChannels.isEmpty() ? List.of(ChannelChat.SHARED_CHANNEL) : this.chatChannels;
+
+        created.addLog(this::addChatEntry, false);
+        created.open(channels.getFirst());
+
+        for (String name : channels.subList(1, channels.size())) {
+            created.join(name);
+        }
+
+        this.chat = created;
     }
 
     /**
@@ -674,7 +716,15 @@ public final class LauncherSession implements LauncherSessionView {
         try {
             opened.poll();
         } catch (IOException exception) {
+            ChannelChat openedChat = this.chat;
+
             LOGGER.exception(LogLevel.WARNING, exception, "BEACON.LINK: the launcher session of {0} stopped.", this.account.getTaggedName());
+
+            if (openedChat != null) {
+                this.chatChannels = openedChat.getChannels().stream().map(ChatChannel::getName).toList();
+                openedChat.close();
+            }
+
             opened.close();
             this.connection = null;
             this.community  = null;

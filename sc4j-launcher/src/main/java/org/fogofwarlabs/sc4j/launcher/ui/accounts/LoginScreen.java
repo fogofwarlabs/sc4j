@@ -103,8 +103,8 @@ public final class LoginScreen {
      * @param actions receives the login and the file questions
      */
     public LoginScreen(@NotNull AccountStore store, @NotNull LauncherTexts texts, @NotNull Actions actions) {
-        Button create = ComponentUtils.smallButton(texts.get("accounts.new"), ButtonRole.SECONDARY);
-        Button importButton = ComponentUtils.smallButton(texts.get("accounts.import"), ButtonRole.SECONDARY);
+        Button create = ComponentUtils.createSmallButton(texts.get("accounts.new"), ButtonRole.SECONDARY);
+        Button importButton = ComponentUtils.createSmallButton(texts.get("accounts.import"), ButtonRole.SECONDARY);
         VBox listPanel;
         VBox detailPanel;
         VBox detailColumn;
@@ -117,19 +117,19 @@ public final class LoginScreen {
         this.random     = new SecureRandom();
         this.dateFormat = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(texts.getLocale()).withZone(ZoneId.systemDefault());
 
-        this.list         = ComponentUtils.listView(ListItemSize.REGULAR);
-        this.notices      = ComponentUtils.column(Spacing.S);
-        this.detailBody   = ComponentUtils.panelBody();
-        this.exportButton = ComponentUtils.button(texts.get("accounts.export"), ButtonRole.SECONDARY);
-        this.deleteButton = ComponentUtils.button(texts.get("accounts.delete"), ButtonRole.DANGER);
-        this.logInButton  = ComponentUtils.button(texts.get("accounts.log.in"), ButtonRole.PRIMARY);
+        this.list         = ComponentUtils.createListView(ListItemSize.REGULAR);
+        this.notices      = ComponentUtils.createColumn(Spacing.S);
+        this.detailBody   = ComponentUtils.createPanelBody();
+        this.exportButton = ComponentUtils.createButton(texts.get("accounts.export"), ButtonRole.SECONDARY);
+        this.deleteButton = ComponentUtils.createButton(texts.get("accounts.delete"), ButtonRole.DANGER);
+        this.logInButton  = ComponentUtils.createButton(texts.get("accounts.log.in"), ButtonRole.PRIMARY);
         this.root         = new StackPane();
 
         this.inUse  = new HashSet<>();
         this.dialog = null;
 
         this.list.setCellFactory(view -> new ListItemCell<>(this::createAccountItem));
-        this.list.setPlaceholder(ComponentUtils.paragraph(texts.get("accounts.empty"), "text-caption"));
+        this.list.setPlaceholder(ComponentUtils.createParagraph(texts.get("accounts.empty"), "text-caption"));
         this.list.getSelectionModel().selectedItemProperty().addListener((observable, previous, current) -> this.showDetail(current));
         this.list.setOnMouseClicked(event -> {
             Account selected = this.list.getSelectionModel().getSelectedItem();
@@ -146,22 +146,22 @@ public final class LoginScreen {
         this.deleteButton.setOnAction(event -> this.withSelection(this::openDelete));
         this.logInButton.setOnAction(event -> this.withSelection(this::logIn));
 
-        listPanel = ComponentUtils.panelWithFooter(texts.get("accounts.title"), ComponentUtils.flushPanelBody(this.list),
-                                                   ComponentUtils.panelFooter(create, ComponentUtils.growingSpacer(), importButton));
+        listPanel = ComponentUtils.createPanelWithFooter(texts.get("accounts.title"), ComponentUtils.createFlushPanelBody(this.list),
+                                                         ComponentUtils.createPanelFooter(create, ComponentUtils.createGrowingSpacer(), importButton));
         ComponentUtils.setColumnWidth(listPanel, ColumnWidth.WIDE);
 
-        detailPanel = ComponentUtils.panelWithFooter(texts.get("accounts.detail"), this.detailBody,
-                                                     ComponentUtils.panelFooter(this.exportButton, this.deleteButton, ComponentUtils.growingSpacer(),
-                                                                                this.logInButton));
+        detailPanel = ComponentUtils.createPanelWithFooter(texts.get("accounts.detail"), this.detailBody,
+                                                           ComponentUtils.createPanelFooter(this.exportButton, this.deleteButton, ComponentUtils.createGrowingSpacer(),
+                                                                                            this.logInButton));
         ComponentUtils.fillHeight(detailPanel);
         VBox.setVgrow(detailPanel, Priority.ALWAYS);
 
-        detailColumn = ComponentUtils.column(Spacing.M, this.notices, detailPanel);
+        detailColumn = ComponentUtils.createColumn(Spacing.M, this.notices, detailPanel);
         this.notices.setVisible(false);
         this.notices.setManaged(false);
         HBox.setHgrow(detailColumn, Priority.ALWAYS);
 
-        content = ComponentUtils.row(Spacing.L, listPanel, detailColumn);
+        content = ComponentUtils.createRow(Spacing.L, listPanel, detailColumn);
         content.setAlignment(Pos.TOP_LEFT);
         content.setMaxSize(CONTENT_WIDTH, CONTENT_HEIGHT);
         page = new StackPane(content);
@@ -194,12 +194,12 @@ public final class LoginScreen {
     public void openNewAccount() {
         ModalDialog shown = new ModalDialog(this.texts.get("accounts.new.title"));
         TextField name = new TextField();
-        Button cancel = ComponentUtils.button(this.texts.get("accounts.cancel"), ButtonRole.SECONDARY);
-        Button create = ComponentUtils.button(this.texts.get("accounts.create"), ButtonRole.PRIMARY);
+        Button cancel = ComponentUtils.createButton(this.texts.get("accounts.cancel"), ButtonRole.SECONDARY);
+        Button create = ComponentUtils.createButton(this.texts.get("accounts.create"), ButtonRole.PRIMARY);
         AtomicBoolean cancelled = new AtomicBoolean(false);
 
-        shown.addContent(ComponentUtils.field(this.texts.get("accounts.name"), name),
-                         ComponentUtils.paragraph(this.texts.get("accounts.name.fixed"), "text-caption"));
+        shown.addContent(ComponentUtils.createField(this.texts.get("accounts.name"), name),
+                         ComponentUtils.createParagraph(this.texts.get("accounts.name.fixed"), "text-caption"));
         shown.setButtons(cancel, create);
         cancel.setOnAction(event -> {
             cancelled.set(true);
@@ -272,16 +272,16 @@ public final class LoginScreen {
     private void openImport(byte @NotNull [] contents, @Nullable AccountBackup plain) {
         ModalDialog shown = new ModalDialog(this.texts.get("accounts.import.title"));
         PasswordField password = new PasswordField();
-        Button cancel = ComponentUtils.button(this.texts.get("accounts.cancel"), ButtonRole.SECONDARY);
-        Button importButton = ComponentUtils.button(this.texts.get("accounts.import"), ButtonRole.PRIMARY);
+        Button cancel = ComponentUtils.createButton(this.texts.get("accounts.cancel"), ButtonRole.SECONDARY);
+        Button importButton = ComponentUtils.createButton(this.texts.get("accounts.import"), ButtonRole.PRIMARY);
         AtomicBoolean cancelled = new AtomicBoolean(false);
 
         if (plain == null) {
-            shown.addContent(ComponentUtils.field(this.texts.get("accounts.password"), password));
+            shown.addContent(ComponentUtils.createField(this.texts.get("accounts.password"), password));
         } else {
             LinkPlayer player = LinkPlayer.of(plain.getKeyPair().getPublicKey().getBytes());
 
-            shown.addContent(ComponentUtils.label(player.formatTaggedName(plain.getName()), "text-subtitle"));
+            shown.addContent(ComponentUtils.createLabel(player.formatTaggedName(plain.getName()), "text-subtitle"));
         }
 
         shown.setButtons(cancel, importButton);
@@ -329,13 +329,13 @@ public final class LoginScreen {
         ModalDialog shown = new ModalDialog(this.texts.get("accounts.export.title"));
         PasswordField password = new PasswordField();
         PasswordField repeated = new PasswordField();
-        Button cancel = ComponentUtils.button(this.texts.get("accounts.cancel"), ButtonRole.SECONDARY);
-        Button export = ComponentUtils.button(this.texts.get("accounts.export"), ButtonRole.PRIMARY);
+        Button cancel = ComponentUtils.createButton(this.texts.get("accounts.cancel"), ButtonRole.SECONDARY);
+        Button export = ComponentUtils.createButton(this.texts.get("accounts.export"), ButtonRole.PRIMARY);
         AtomicBoolean cancelled = new AtomicBoolean(false);
 
-        shown.addContent(ComponentUtils.label(account.getTaggedName(), "text-subtitle"),
-                         ComponentUtils.field(this.texts.get("accounts.password.optional"), password),
-                         ComponentUtils.field(this.texts.get("accounts.password.repeat"), repeated));
+        shown.addContent(ComponentUtils.createLabel(account.getTaggedName(), "text-subtitle"),
+                         ComponentUtils.createField(this.texts.get("accounts.password.optional"), password),
+                         ComponentUtils.createField(this.texts.get("accounts.password.repeat"), repeated));
         shown.setButtons(cancel, export);
         cancel.setOnAction(event -> {
             cancelled.set(true);
@@ -385,10 +385,10 @@ public final class LoginScreen {
 
     private void openDelete(@NotNull Account account) {
         ModalDialog shown = new ModalDialog(this.texts.get("accounts.delete.title"));
-        Button cancel = ComponentUtils.button(this.texts.get("accounts.cancel"), ButtonRole.SECONDARY);
-        Button delete = ComponentUtils.button(this.texts.get("accounts.delete"), ButtonRole.DANGER);
+        Button cancel = ComponentUtils.createButton(this.texts.get("accounts.cancel"), ButtonRole.SECONDARY);
+        Button delete = ComponentUtils.createButton(this.texts.get("accounts.delete"), ButtonRole.DANGER);
 
-        shown.addContent(ComponentUtils.paragraph(this.texts.format("accounts.delete.text", account.getTaggedName()), "text-body"));
+        shown.addContent(ComponentUtils.createParagraph(this.texts.format("accounts.delete.text", account.getTaggedName()), "text-body"));
         shown.setButtons(cancel, delete);
         cancel.setOnAction(event -> this.closeDialog(shown));
         delete.setOnAction(event -> {
@@ -473,7 +473,7 @@ public final class LoginScreen {
 
     private void showDetail(@Nullable Account account) {
         if (account == null) {
-            this.detailBody.getChildren().setAll(ComponentUtils.paragraph(this.texts.get("accounts.select"), "text-caption"));
+            this.detailBody.getChildren().setAll(ComponentUtils.createParagraph(this.texts.get("accounts.select"), "text-caption"));
             this.exportButton.setDisable(true);
             this.deleteButton.setDisable(true);
             this.logInButton.setDisable(true);
@@ -482,15 +482,15 @@ public final class LoginScreen {
         }
 
         boolean inUse = this.inUse.contains(account.getId());
-        Label name = ComponentUtils.label(account.getName(), "text-display");
-        Label tag = ComponentUtils.label(LinkPlayer.of(account.getKey().getBytes()).getTagText(), "text-title", "text-muted");
-        HBox heading = ComponentUtils.row(Spacing.XS, name, tag);
+        Label name = ComponentUtils.createLabel(account.getName(), "text-display");
+        Label tag = ComponentUtils.createLabel(LinkPlayer.of(account.getKey().getBytes()).getTagText(), "text-title", "text-muted");
+        HBox heading = ComponentUtils.createRow(Spacing.XS, name, tag);
 
         heading.setAlignment(Pos.BASELINE_LEFT);
-        this.detailBody.getChildren().setAll(heading, ComponentUtils.label(this.describeLastUse(account), "text-caption"));
+        this.detailBody.getChildren().setAll(heading, ComponentUtils.createLabel(this.describeLastUse(account), "text-caption"));
 
         if (inUse) {
-            this.detailBody.getChildren().add(ComponentUtils.notice(Tone.WARNING, this.texts.get("accounts.in.use.notice")));
+            this.detailBody.getChildren().add(ComponentUtils.createNotice(Tone.WARNING, this.texts.get("accounts.in.use.notice")));
         }
 
         this.exportButton.setDisable(false);
@@ -508,7 +508,7 @@ public final class LoginScreen {
                                                              .addCaption(this.describeLastUse(account));
 
         if (used) {
-            item.setBadge(ComponentUtils.badge(this.texts.get("accounts.in.use"), Tone.WARNING));
+            item.setBadge(ComponentUtils.createBadge(this.texts.get("accounts.in.use"), Tone.WARNING));
         }
 
         return item;
@@ -522,7 +522,7 @@ public final class LoginScreen {
     }
 
     private void showNotice(@NotNull Tone tone, @NotNull String text) {
-        this.notices.getChildren().setAll(ComponentUtils.notice(tone, text));
+        this.notices.getChildren().setAll(ComponentUtils.createNotice(tone, text));
         this.notices.setVisible(true);
         this.notices.setManaged(true);
     }

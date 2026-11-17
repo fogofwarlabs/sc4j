@@ -26,8 +26,8 @@ import java.util.function.Function;
 /**
  * Shows the Chat screen of the logged-in account in three columns: on the left the channels the chat is in, at most
  * {@value CommunitySession#MAXIMUM_CHANNELS}, with Join, and the whisper conversations ({@link Conversations}), each with its unread count; in
- * the middle the shown conversation's log and the input; on the right the shown channel's members. Showing the screen opens the chat, which
- * joins the shared channel the first time; a channel the chat joins is shown unless a whisper conversation is shown.
+ * the middle the shown conversation's log and the input; on the right the shown channel's members. The screen only shows the chat, which the
+ * session runs while the account is logged in; a channel the chat joins is shown unless a whisper conversation is shown.
  * <p>
  * A channel's input says lines and runs slash commands ({@code /help} lists them); a whisper conversation's input whispers to its player. A
  * right click on a member, or on a name in the log, opens the player's menu with Whisper, Add or Remove friend, Ignore or Unignore, Copy name
@@ -104,10 +104,10 @@ public final class ChatScreen {
                 return;
             }
 
-            Label text = ComponentUtils.paragraph(line.text, line.textStyle);
-            Label name = ComponentUtils.label(line.prefix, "text-heading", "text-accent-strong");
-            HBox row = ComponentUtils.textRow(Spacing.S, name, text);
-            VBox graphic = ComponentUtils.column(Spacing.XS, row);
+            Label text = ComponentUtils.createParagraph(line.text, line.textStyle);
+            Label name = ComponentUtils.createLabel(line.prefix, "text-heading", "text-accent-strong");
+            HBox row = ComponentUtils.createTextRow(Spacing.S, name, text);
+            VBox graphic = ComponentUtils.createColumn(Spacing.XS, row);
             FriendCode player = line.player;
 
             if (line.prefix.isEmpty()) {
@@ -117,7 +117,7 @@ public final class ChatScreen {
             }
 
             if (line.caption != null) {
-                graphic.getChildren().add(ComponentUtils.label(line.caption, "text-caption"));
+                graphic.getChildren().add(ComponentUtils.createLabel(line.caption, "text-caption"));
             }
 
             ComponentUtils.setCellGraphic(this, graphic);
@@ -149,12 +149,11 @@ public final class ChatScreen {
     private @Nullable String shownChannel;
     private @Nullable Conversation shownConversation;
     private @NotNull List<?> shownSource;
-    private boolean chatOpened;
     private boolean listed;
     private boolean updating;
 
     /**
-     * Creates a {@link ChatScreen} instance; {@link #update()} opens the chat and shows the session's latest views.
+     * Creates a {@link ChatScreen} instance; {@link #update()} shows the session's latest views.
      *
      * @param shell         the shell that shows the screen's menus and dialogs
      * @param texts         the launcher texts of the display language
@@ -166,7 +165,7 @@ public final class ChatScreen {
      */
     public ChatScreen(@NotNull LauncherShell shell, @NotNull LauncherTexts texts, @NotNull String taggedName, @NotNull LauncherSessionView session,
                       @NotNull Conversations conversations, @NotNull Function<@NotNull String, @NotNull String> modNames, @NotNull Actions actions) {
-        Button join = ComponentUtils.smallButton(texts.get("chat.join"), ButtonRole.SECONDARY);
+        Button join = ComponentUtils.createSmallButton(texts.get("chat.join"), ButtonRole.SECONDARY);
 
         this.shell         = shell;
         this.texts         = texts;
@@ -176,24 +175,23 @@ public final class ChatScreen {
         this.playerTexts   = new PlayerTexts(texts, modNames);
         this.actions       = actions;
 
-        this.root             = ComponentUtils.column(Spacing.L);
-        this.channelList      = ComponentUtils.listView(ListItemSize.COMPACT);
-        this.conversationList = ComponentUtils.listView(ListItemSize.COMPACT);
-        this.logTitle         = new Label();
-        this.leave            = ComponentUtils.smallButton(texts.get("chat.leave"), ButtonRole.SECONDARY);
-        this.log              = ComponentUtils.logListView();
+        this.root             = ComponentUtils.createColumn(Spacing.L);
+        this.channelList      = ComponentUtils.createListView(ListItemSize.COMPACT);
+        this.conversationList = ComponentUtils.createListView(ListItemSize.COMPACT);
+        this.logTitle         = ComponentUtils.createLabel("");
+        this.leave            = ComponentUtils.createSmallButton(texts.get("chat.leave"), ButtonRole.SECONDARY);
+        this.log              = ComponentUtils.createLogListView();
         this.input            = new TextField();
-        this.send             = ComponentUtils.button(texts.get("session.whispers.send"), ButtonRole.PRIMARY);
-        this.inputMessage     = ComponentUtils.label("", "field-message");
-        this.memberCount      = ComponentUtils.label("", "text-caption");
-        this.memberList       = ComponentUtils.listView(ListItemSize.COMPACT);
-        this.columns          = ComponentUtils.row(Spacing.L, this.createSide(join), this.createLog(), this.createMembers());
+        this.send             = ComponentUtils.createButton(texts.get("session.whispers.send"), ButtonRole.PRIMARY);
+        this.inputMessage     = ComponentUtils.createLabel("", "field-message");
+        this.memberCount      = ComponentUtils.createLabel("", "text-caption");
+        this.memberList       = ComponentUtils.createListView(ListItemSize.COMPACT);
+        this.columns          = ComponentUtils.createRow(Spacing.L, this.createSide(join), this.createLog(), this.createMembers());
 
         this.seenChannels      = new HashSet<>();
         this.shownChannel      = null;
         this.shownConversation = null;
         this.shownSource       = List.of();
-        this.chatOpened        = false;
         this.listed            = false;
         this.updating          = false;
 
@@ -210,9 +208,24 @@ public final class ChatScreen {
     }
 
     /**
+     * @return the name of the channel the screen shows, or {@code null} while it shows a whisper conversation or nothing
+     */
+    public @Nullable String getShownChannel() {
+        return this.shownChannel;
+    }
+
+    /**
+     * @return the friend code of the player whose whisper conversation the screen shows, or {@code null} while it shows a channel or nothing
+     */
+    public @Nullable FriendCode getShownPlayer() {
+        Conversation conversation = this.shownConversation;
+
+        return conversation == null ? null : conversation.getCode();
+    }
+
+    /**
      * Shows the session's latest views: the channels, the conversations, the shown conversation's log and the shown channel's members, or
-     * why the session has no connection. The first update with a connection opens the account's chat, which joins the shared channel the
-     * first time.
+     * why the session has no connection.
      */
     public void update() {
         SelfView self = this.session.getSelf();
@@ -222,14 +235,9 @@ public final class ChatScreen {
                           ? this.playerTexts.describe(self)
                           : this.texts.get("session.not.connected") + " " + this.playerTexts.describe(self);
 
-            this.root.getChildren().setAll(ComponentUtils.panel(ComponentUtils.panelBody(ComponentUtils.notice(Tone.NEUTRAL, text))));
+            this.root.getChildren().setAll(ComponentUtils.createPanel(ComponentUtils.createPanelBody(ComponentUtils.createNotice(Tone.NEUTRAL, text))));
 
             return;
-        }
-
-        if (!this.chatOpened) {
-            this.chatOpened = true;
-            this.session.openChat(this.texts.getLocale());
         }
 
         if (this.root.getChildren().size() != 1 || this.root.getChildren().getFirst() != this.columns) {
@@ -256,12 +264,12 @@ public final class ChatScreen {
     }
 
     private @NotNull VBox createSide(@NotNull Button join) {
-        VBox channels = ComponentUtils.panel(this.texts.get("chat.channels"), ComponentUtils.flushPanelBody(this.channelList), join);
-        VBox whispers = ComponentUtils.panel(this.texts.get("session.whispers.title"), ComponentUtils.flushPanelBody(this.conversationList));
-        VBox side = ComponentUtils.column(Spacing.L, channels, whispers);
+        VBox channels = ComponentUtils.createPanel(this.texts.get("chat.channels"), ComponentUtils.createFlushPanelBody(this.channelList), join);
+        VBox whispers = ComponentUtils.createPanel(this.texts.get("session.whispers.title"), ComponentUtils.createFlushPanelBody(this.conversationList));
+        VBox side = ComponentUtils.createColumn(Spacing.L, channels, whispers);
 
         this.channelList.setCellFactory(view -> new ListItemCell<>(channel -> this.createChannelItem(channel, true)));
-        this.channelList.setPlaceholder(ComponentUtils.paragraph(this.texts.get("chat.channels.empty"), "text-caption"));
+        this.channelList.setPlaceholder(ComponentUtils.createParagraph(this.texts.get("chat.channels.empty"), "text-caption"));
         this.channelList.getSelectionModel().selectedItemProperty().addListener((observable, previous, current) -> {
             if (!this.updating && current != null) {
                 this.shownChannel      = current.getName();
@@ -271,7 +279,7 @@ public final class ChatScreen {
         });
 
         this.conversationList.setCellFactory(view -> new ListItemCell<>(this::createConversationItem));
-        this.conversationList.setPlaceholder(ComponentUtils.paragraph(this.texts.get("session.whispers.empty"), "text-caption"));
+        this.conversationList.setPlaceholder(ComponentUtils.createParagraph(this.texts.get("session.whispers.empty"), "text-caption"));
         this.conversationList.getSelectionModel().selectedItemProperty().addListener((observable, previous, current) -> {
             if (!this.updating && current != null) {
                 this.shownChannel      = null;
@@ -288,12 +296,9 @@ public final class ChatScreen {
     }
 
     private @NotNull VBox createLog() {
-        VBox inputColumn = ComponentUtils.column(Spacing.XS, ComponentUtils.row(Spacing.S, this.input, this.send),
-                                                 this.inputMessage);
-        VBox panel = ComponentUtils.panelWithFooter(this.logTitle, ComponentUtils.flushPanelBody(this.log), ComponentUtils.panelFooter(inputColumn),
-                                                    this.leave);
+        VBox panel = ComponentUtils.createPanelWithFooter(this.logTitle, ComponentUtils.createFlushPanelBody(this.log),
+                                                          ComponentUtils.createInputFooter(this.input, this.send, this.inputMessage), this.leave);
 
-        HBox.setHgrow(inputColumn, Priority.ALWAYS);
         HBox.setHgrow(panel, Priority.ALWAYS);
         ComponentUtils.fillHeight(panel);
 
@@ -310,7 +315,6 @@ public final class ChatScreen {
         this.input.setPromptText(this.texts.get("session.whispers.message"));
         this.input.textProperty().addListener((observable, previous, current) -> this.showInputMessage(null));
         this.input.setOnAction(event -> this.submit());
-        HBox.setHgrow(this.input, Priority.ALWAYS);
         this.send.setOnAction(event -> this.submit());
         this.inputMessage.setWrapText(true);
         this.showInputMessage(null);
@@ -319,7 +323,7 @@ public final class ChatScreen {
     }
 
     private @NotNull VBox createMembers() {
-        VBox panel = ComponentUtils.panel(this.texts.get("chat.members"), ComponentUtils.flushPanelBody(this.memberList), this.memberCount);
+        VBox panel = ComponentUtils.createPanel(this.texts.get("chat.members"), ComponentUtils.createFlushPanelBody(this.memberList), this.memberCount);
 
         this.memberList.setCellFactory(view -> {
             ListItemCell<FriendView> cell = new ListItemCell<>(this.playerTexts::createItem);
@@ -334,7 +338,7 @@ public final class ChatScreen {
 
             return cell;
         });
-        this.memberList.setPlaceholder(ComponentUtils.paragraph(this.texts.get("chat.members.empty"), "text-caption"));
+        this.memberList.setPlaceholder(ComponentUtils.createParagraph(this.texts.get("chat.members.empty"), "text-caption"));
         ComponentUtils.setColumnWidth(panel, ColumnWidth.NARROW);
 
         return panel;
@@ -454,7 +458,7 @@ public final class ChatScreen {
         if (!source.equals(this.shownSource)) {
             this.shownSource = source;
             this.log.getItems().setAll(lines);
-            this.log.scrollTo(lines.size() - 1);
+            ComponentUtils.scrollToLast(this.log);
         }
 
         if (!members.equals(this.memberList.getItems())) {
@@ -463,7 +467,7 @@ public final class ChatScreen {
 
         String placeholder = channel == null && conversation == null ? "chat.channels.empty" : "chat.log.empty";
 
-        this.log.setPlaceholder(ComponentUtils.paragraph(this.texts.get(placeholder), "text-caption"));
+        this.log.setPlaceholder(ComponentUtils.createParagraph(this.texts.get(placeholder), "text-caption"));
         this.memberCount.setText(channel == null ? "" : Integer.toString(members.size()));
         this.leave.setVisible(channel != null);
         this.leave.setManaged(channel != null);
@@ -539,15 +543,15 @@ public final class ChatScreen {
      */
     private void openJoin() {
         ModalDialog dialog = new ModalDialog(this.texts.get("chat.join.title"));
-        ListView<ChannelView> known = ComponentUtils.sunkenListView(ListItemSize.REGULAR);
+        ListView<ChannelView> known = ComponentUtils.createSunkenListView(ListItemSize.REGULAR);
         TextField name = new TextField();
-        Button cancel = ComponentUtils.button(this.texts.get("session.cancel"), ButtonRole.SECONDARY);
-        Button joinButton = ComponentUtils.button(this.texts.get("chat.join"), ButtonRole.PRIMARY);
+        Button cancel = ComponentUtils.createButton(this.texts.get("session.cancel"), ButtonRole.SECONDARY);
+        Button joinButton = ComponentUtils.createButton(this.texts.get("chat.join"), ButtonRole.PRIMARY);
         boolean full = this.session.getChannels().size() >= CommunitySession.MAXIMUM_CHANNELS;
 
         known.getItems().setAll(this.session.getKnownChannels());
         known.setCellFactory(view -> new ListItemCell<>(channel -> this.createChannelItem(channel, false)));
-        known.setPlaceholder(ComponentUtils.paragraph(this.texts.get("chat.channels.none"), "text-caption"));
+        known.setPlaceholder(ComponentUtils.createParagraph(this.texts.get("chat.channels.none"), "text-caption"));
         known.getSelectionModel().selectedItemProperty().addListener((observable, previous, current) -> {
             if (current != null) {
                 name.setText(current.getName());
@@ -556,14 +560,14 @@ public final class ChatScreen {
 
         if (full) {
             joinButton.setDisable(true);
-            dialog.addContent(ComponentUtils.notice(Tone.WARNING,
-                                                    this.texts.format("chat.join.full", CommunitySession.MAXIMUM_CHANNELS)));
+            dialog.addContent(ComponentUtils.createNotice(Tone.WARNING,
+                                                          this.texts.format("chat.join.full", CommunitySession.MAXIMUM_CHANNELS)));
         } else {
             joinButton.disableProperty().bind(name.textProperty().isEmpty());
         }
 
         dialog.addGrowingContent(known);
-        dialog.addContent(ComponentUtils.field(this.texts.get("chat.join.name"), name));
+        dialog.addContent(ComponentUtils.createField(this.texts.get("chat.join.name"), name));
         dialog.setButtons(cancel, joinButton);
         cancel.setOnAction(event -> this.shell.closeDialog(dialog));
         joinButton.setOnAction(event -> {
@@ -593,13 +597,13 @@ public final class ChatScreen {
         boolean ignored = shown != null && shown.isIgnored();
         boolean full = this.session.getFriends().size() >= CommunitySession.MAXIMUM_FRIENDS;
         String status = shown == null ? this.texts.get("session.friend.offline") : this.playerTexts.describe(shown);
-        Button whisper = ComponentUtils.menuButton(this.texts.get("session.friends.whisper"));
-        Button friendButton = ComponentUtils.menuButton(this.texts.get(friend ? "chat.menu.remove.friend" : "chat.menu.add.friend"));
-        Button ignore = ComponentUtils.menuButton(this.texts.get(ignored ? "session.friends.unignore" : "session.friends.ignore"));
-        Button copy = ComponentUtils.menuButton(this.texts.get("chat.menu.copy.name"));
-        Button statusButton = ComponentUtils.menuButton(this.texts.get("chat.menu.status"));
-        VBox menu = ComponentUtils.menuPanel(this.createPlayerItem(code, playerName).createNode(), new Separator(), whisper, friendButton, ignore,
-                                             copy, statusButton);
+        Button whisper = ComponentUtils.createMenuButton(this.texts.get("session.friends.whisper"));
+        Button friendButton = ComponentUtils.createMenuButton(this.texts.get(friend ? "chat.menu.remove.friend" : "chat.menu.add.friend"));
+        Button ignore = ComponentUtils.createMenuButton(this.texts.get(ignored ? "session.friends.unignore" : "session.friends.ignore"));
+        Button copy = ComponentUtils.createMenuButton(this.texts.get("chat.menu.copy.name"));
+        Button statusButton = ComponentUtils.createMenuButton(this.texts.get("chat.menu.status"));
+        VBox menu = ComponentUtils.createMenuPanel(this.createPlayerItem(code, playerName).createNode(), new Separator(), whisper, friendButton, ignore,
+                                                   copy, statusButton);
 
         whisper.setDisable(self);
         whisper.setOnAction(action -> {
@@ -642,7 +646,7 @@ public final class ChatScreen {
         ListItem item = new ListItem(channel.getName()).addCaption(this.texts.formatCount("chat.channel.members", channel.getMemberCount()));
 
         if (unread > 0) {
-            item.setBadge(ComponentUtils.badge(Integer.toString(unread), Tone.ACCENT));
+            item.setBadge(ComponentUtils.createBadge(Integer.toString(unread), Tone.ACCENT));
         }
 
         return item;
@@ -656,7 +660,7 @@ public final class ChatScreen {
         ListItem item = this.createPlayerItem(conversation.getCode(), conversation.getTaggedName());
 
         if (unread > 0) {
-            item.setBadge(ComponentUtils.badge(Integer.toString(unread), Tone.ACCENT));
+            item.setBadge(ComponentUtils.createBadge(Integer.toString(unread), Tone.ACCENT));
         }
 
         return item;
@@ -692,8 +696,8 @@ public final class ChatScreen {
 
     private void openStatus(@NotNull FriendCode code, @NotNull String playerName, @NotNull String status) {
         ModalDialog dialog = new ModalDialog(playerName);
-        Button close = ComponentUtils.button(this.texts.get("session.close"), ButtonRole.SECONDARY);
-        GridPane grid = ComponentUtils.metaGrid();
+        Button close = ComponentUtils.createButton(this.texts.get("session.close"), ButtonRole.SECONDARY);
+        GridPane grid = ComponentUtils.createMetaGrid();
 
         ComponentUtils.addMetaRow(grid, this.texts.get("chat.status.state"), status);
         ComponentUtils.addMetaRow(grid, this.texts.get("chat.status.code"), code.getGroupedText());

@@ -57,11 +57,11 @@ public final class PathControlFactory implements FieldControlFactory {
          * @param onChange called after a changed value was passed to the field
          */
         private PathControl(@NotNull FormField field, @NotNull LauncherTexts texts, @NotNull Runnable onChange) {
-            Button browse = ComponentUtils.button(texts.get("form.browse"), ButtonRole.SECONDARY);
+            Button browse = ComponentUtils.createButton(texts.get("form.browse"), ButtonRole.SECONDARY);
 
             this.field = field;
             this.text  = new TextField(field.getText());
-            this.node  = ComponentUtils.row(Spacing.S, this.text, browse);
+            this.node  = ComponentUtils.createRow(Spacing.S, this.text, browse);
 
             this.text.setPromptText(texts.get(PathControlFactory.this.directory ? "form.choose.folder" : "form.choose.file"));
             this.text.textProperty().addListener((observable, previous, current) -> {

@@ -120,7 +120,7 @@ public final class ModDetailView {
     private @NotNull Region createUsableView(@NotNull SettingsForm form, @NotNull ObservableBooleanValue running) {
         VBox aboutPanel = this.createAboutPanel();
         VBox settingsPanel = this.createSettingsPanel(form, running);
-        HBox lower = ComponentUtils.row(Spacing.L, aboutPanel, settingsPanel);
+        HBox lower = ComponentUtils.createRow(Spacing.L, aboutPanel, settingsPanel);
         VBox detail;
 
         ComponentUtils.setColumnWidth(aboutPanel, ColumnWidth.WIDE);
@@ -128,7 +128,7 @@ public final class ModDetailView {
         lower.setAlignment(Pos.TOP_LEFT);
         VBox.setVgrow(lower, Priority.ALWAYS);
 
-        detail = ComponentUtils.column(Spacing.L, this.createBanner());
+        detail = ComponentUtils.createColumn(Spacing.L, this.createBanner());
 
         if (this.updateRelease != null) {
             detail.getChildren().add(this.createUpdateNotice(this.updateRelease));
@@ -141,15 +141,15 @@ public final class ModDetailView {
     }
 
     private @NotNull HBox createUpdateNotice(@NotNull String release) {
-        Button update = ComponentUtils.smallButton(this.texts.get("mods.update.start"), ButtonRole.PRIMARY);
+        Button update = ComponentUtils.createSmallButton(this.texts.get("mods.update.start"), ButtonRole.PRIMARY);
 
         update.setOnAction(event -> this.actions.onUpdate(this.entry));
 
-        return ComponentUtils.notice(Tone.ACCENT, this.texts.format("mods.update.available", release), update);
+        return ComponentUtils.createNotice(Tone.ACCENT, this.texts.format("mods.update.available", release), update);
     }
 
     private @NotNull Button createRemoveButton() {
-        Button remove = ComponentUtils.button(this.texts.get("mods.remove"), ButtonRole.DANGER);
+        Button remove = ComponentUtils.createButton(this.texts.get("mods.remove"), ButtonRole.DANGER);
 
         remove.setOnAction(event -> this.actions.onRemove(this.entry));
 
@@ -159,16 +159,16 @@ public final class ModDetailView {
     private @NotNull StackPane createBanner() {
         ModManifest manifest = this.requireManifest();
         Image bannerImage = this.art.getBanner(this.entry);
-        VBox heading = ComponentUtils.column(Spacing.XS,
-                                             ComponentUtils.label(this.texts.localize(manifest.getName()), "text-display"),
-                                             ComponentUtils.label(this.texts.format("detail.version.line", manifest.getVersion(),
-                                                                                    String.join(", ", manifest.getAuthors())),
-                                                                  "text-subtitle", "text-muted"));
-        HBox caption = ComponentUtils.row(Spacing.L,
-                                          ComponentUtils.thumbnail(this.art.getIcon(this.entry, BANNER_ICON_SIZE), BANNER_ICON_SIZE, BANNER_ICON_SIZE),
-                                          heading,
-                                          ComponentUtils.growingSpacer(),
-                                          ModStatusUtils.createBadge(this.entry.getStatus(), this.texts));
+        VBox heading = ComponentUtils.createColumn(Spacing.XS,
+                                                   ComponentUtils.createLabel(this.texts.localize(manifest.getName()), "text-display"),
+                                                   ComponentUtils.createLabel(this.texts.format("detail.version.line", manifest.getVersion(),
+                                                                                                String.join(", ", manifest.getAuthors())),
+                                                                              "text-subtitle", "text-muted"));
+        HBox caption = ComponentUtils.createRow(Spacing.L,
+                                                ComponentUtils.createThumbnail(this.art.getIcon(this.entry, BANNER_ICON_SIZE), BANNER_ICON_SIZE, BANNER_ICON_SIZE),
+                                                heading,
+                                                ComponentUtils.createGrowingSpacer(),
+                                                ModStatusUtils.createBadge(this.entry.getStatus(), this.texts));
         StackPane banner = new StackPane();
 
         heading.getStyleClass().add("banner-heading");
@@ -194,7 +194,7 @@ public final class ModDetailView {
 
     private @NotNull VBox createAboutPanel() {
         ModManifest manifest = this.requireManifest();
-        GridPane meta = ComponentUtils.metaGrid();
+        GridPane meta = ComponentUtils.createMetaGrid();
         LocalizedText description = manifest.getDescription();
         String website = manifest.getWebsite();
         VBox body;
@@ -218,27 +218,27 @@ public final class ModDetailView {
             ComponentUtils.addMetaRow(meta, this.texts.get("detail.website"), link);
         }
 
-        body = ComponentUtils.panelBody();
+        body = ComponentUtils.createPanelBody();
 
         if (description != null) {
-            body.getChildren().add(ComponentUtils.paragraph(this.texts.localize(description), "text-body"));
+            body.getChildren().add(ComponentUtils.createParagraph(this.texts.localize(description), "text-body"));
         }
 
         body.getChildren().add(meta);
 
         if (!manifest.getImages().getScreenshots().isEmpty()) {
-            HBox screenshots = ComponentUtils.row(Spacing.S);
+            HBox screenshots = ComponentUtils.createRow(Spacing.S);
 
             for (String screenshot : manifest.getImages().getScreenshots()) {
-                screenshots.getChildren().add(ComponentUtils.thumbnail(this.art.getImage(this.entry, screenshot, SCREENSHOT_WIDTH, SCREENSHOT_HEIGHT),
-                                                                       SCREENSHOT_WIDTH, SCREENSHOT_HEIGHT));
+                screenshots.getChildren().add(ComponentUtils.createThumbnail(this.art.getImage(this.entry, screenshot, SCREENSHOT_WIDTH, SCREENSHOT_HEIGHT),
+                                                                             SCREENSHOT_WIDTH, SCREENSHOT_HEIGHT));
             }
 
-            body.getChildren().addAll(ComponentUtils.label(this.texts.get("detail.screenshots"), "text-heading"), screenshots);
+            body.getChildren().addAll(ComponentUtils.createLabel(this.texts.get("detail.screenshots"), "text-heading"), screenshots);
         }
 
-        panel = ComponentUtils.panelWithFooter(this.texts.get("detail.about"), body,
-                                               ComponentUtils.panelFooter(ComponentUtils.growingSpacer(), this.createRemoveButton()));
+        panel = ComponentUtils.createPanelWithFooter(this.texts.get("detail.about"), body,
+                                                     ComponentUtils.createPanelFooter(ComponentUtils.createGrowingSpacer(), this.createRemoveButton()));
         ComponentUtils.fillHeight(panel);
 
         return panel;
@@ -247,16 +247,16 @@ public final class ModDetailView {
     private @NotNull VBox createSettingsPanel(@NotNull SettingsForm form, @NotNull ObservableBooleanValue running) {
         SettingsFormView formView = new SettingsFormView(form, this.texts);
         ScrollPane scroll = new ScrollPane(formView.getRoot());
-        VBox body = ComponentUtils.panelBody();
-        Button reset = ComponentUtils.button(this.texts.get("detail.reset"), ButtonRole.SECONDARY);
-        Button run = ComponentUtils.button(this.texts.get("detail.run"), ButtonRole.PRIMARY);
-        Label blocker = new Label();
+        VBox body = ComponentUtils.createPanelBody();
+        Button reset = ComponentUtils.createButton(this.texts.get("detail.reset"), ButtonRole.SECONDARY);
+        Button run = ComponentUtils.createButton(this.texts.get("detail.run"), ButtonRole.PRIMARY);
+        Label blocker = ComponentUtils.createLabel("");
         Region blockerIcon = new Region();
         VBox panel;
 
         for (ModIssue issue : this.entry.getIssues()) {
             if (issue instanceof SettingsIssue settingsIssue && settingsIssue.getDefinition() == null) {
-                body.getChildren().add(ComponentUtils.notice(Tone.WARNING, issue.describe(this.texts)));
+                body.getChildren().add(ComponentUtils.createNotice(Tone.WARNING, issue.describe(this.texts)));
             }
         }
 
@@ -282,8 +282,8 @@ public final class ModDetailView {
                                                                  formView.invalidCountProperty()));
         blocker.visibleProperty().bind(formView.invalidCountProperty().greaterThan(0));
 
-        panel = ComponentUtils.panelWithFooter(this.texts.get("detail.settings"), body,
-                                               ComponentUtils.panelFooter(blocker, ComponentUtils.growingSpacer(), reset, run));
+        panel = ComponentUtils.createPanelWithFooter(this.texts.get("detail.settings"), body,
+                                                     ComponentUtils.createPanelFooter(blocker, ComponentUtils.createGrowingSpacer(), reset, run));
         ComponentUtils.fillHeight(panel);
 
         return panel;
@@ -291,50 +291,50 @@ public final class ModDetailView {
 
     private @NotNull Region createUnusableView() {
         ModManifest manifest = this.entry.getManifest();
-        VBox identityText = ComponentUtils.column(Spacing.XS,
-                                                  ComponentUtils.label(ModArt.getName(this.entry, this.texts), "text-title"),
-                                                  ComponentUtils.label(this.entry.getJar().toString(), "text-mono", "text-muted"));
-        HBox badgeRow = ComponentUtils.row(Spacing.S, ModStatusUtils.createBadge(this.entry.getStatus(), this.texts));
-        HBox identity = ComponentUtils.row(Spacing.L,
-                                           ComponentUtils.thumbnail(this.art.getIcon(this.entry, ICON_SIZE), ICON_SIZE, ICON_SIZE),
-                                           identityText);
-        VBox report = ComponentUtils.dangerPanel(ComponentUtils.label(this.texts.get("detail.error.title"), "text-subtitle", "text-danger"));
+        VBox identityText = ComponentUtils.createColumn(Spacing.XS,
+                                                        ComponentUtils.createLabel(ModArt.getName(this.entry, this.texts), "text-title"),
+                                                        ComponentUtils.createLabel(this.entry.getJar().toString(), "text-mono", "text-muted"));
+        HBox badgeRow = ComponentUtils.createRow(Spacing.S, ModStatusUtils.createBadge(this.entry.getStatus(), this.texts));
+        HBox identity = ComponentUtils.createRow(Spacing.L,
+                                                 ComponentUtils.createThumbnail(this.art.getIcon(this.entry, ICON_SIZE), ICON_SIZE, ICON_SIZE),
+                                                 identityText);
+        VBox report = ComponentUtils.createDangerPanel(ComponentUtils.createLabel(this.texts.get("detail.error.title"), "text-subtitle", "text-danger"));
         List<String> details = new ArrayList<>();
-        Button copy = ComponentUtils.button(this.texts.get("detail.copy.problems"), ButtonRole.SECONDARY);
-        Button run = ComponentUtils.button(this.texts.get("detail.run"), ButtonRole.PRIMARY);
+        Button copy = ComponentUtils.createButton(this.texts.get("detail.copy.problems"), ButtonRole.SECONDARY);
+        Button run = ComponentUtils.createButton(this.texts.get("detail.run"), ButtonRole.PRIMARY);
         VBox body;
         VBox panel;
 
         if (manifest != null) {
             String identityLine = this.texts.format("detail.identity.line", manifest.getId(), manifest.getVersion(), manifest.getEngine());
 
-            badgeRow.getChildren().add(ComponentUtils.label(identityLine, "text-caption"));
+            badgeRow.getChildren().add(ComponentUtils.createLabel(identityLine, "text-caption"));
         }
 
         identityText.getChildren().add(badgeRow);
         details.add(this.entry.getJar().toString());
 
         for (ModIssue issue : this.entry.getIssues()) {
-            Node reason = ComponentUtils.column(Spacing.XS, ComponentUtils.paragraph(issue.describe(this.texts)),
-                                                ComponentUtils.paragraph(issue.describeDetail(), "text-caption", "text-mono"));
-            Node marker = ComponentUtils.statusMarker(ModStatusUtils.getTone(issue.getStatus()));
+            Node reason = ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createParagraph(issue.describe(this.texts)),
+                                                      ComponentUtils.createParagraph(issue.describeDetail(), "text-caption", "text-mono"));
+            Node marker = ComponentUtils.createStatusMarker(ModStatusUtils.getTone(issue.getStatus()));
 
-            report.getChildren().add(ComponentUtils.row(Spacing.S, marker, reason));
+            report.getChildren().add(ComponentUtils.createRow(Spacing.S, marker, reason));
             details.add(issue.describeDetail());
         }
 
         copy.setOnAction(event -> this.actions.onCopy(String.join(LINE_SEPARATOR, details)));
         run.setDisable(true);
 
-        body = ComponentUtils.panelBody(identity);
+        body = ComponentUtils.createPanelBody(identity);
 
         if (this.updateRelease != null) {
             body.getChildren().add(this.createUpdateNotice(this.updateRelease));
         }
 
         body.getChildren().add(report);
-        panel = ComponentUtils.panelWithFooter(this.texts.get("detail.title"), body,
-                                               ComponentUtils.panelFooter(copy, this.createRemoveButton(), ComponentUtils.growingSpacer(), run));
+        panel = ComponentUtils.createPanelWithFooter(this.texts.get("detail.title"), body,
+                                                     ComponentUtils.createPanelFooter(copy, this.createRemoveButton(), ComponentUtils.createGrowingSpacer(), run));
         HBox.setHgrow(panel, Priority.ALWAYS);
         ComponentUtils.fillHeight(panel);
 

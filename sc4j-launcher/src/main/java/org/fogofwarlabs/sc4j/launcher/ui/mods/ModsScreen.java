@@ -85,7 +85,7 @@ public final class ModsScreen {
      */
     public ModsScreen(@NotNull InstallLayout install, @NotNull ModCatalog catalog, @NotNull LauncherTexts texts, double imageScale,
                       @NotNull ObservableBooleanValue running, @NotNull Actions actions) {
-        VBox prompt = ComponentUtils.panel(ComponentUtils.panelBody(ComponentUtils.paragraph(texts.get("mods.select"), "text-caption")));
+        VBox prompt = ComponentUtils.createPanel(ComponentUtils.createPanelBody(ComponentUtils.createParagraph(texts.get("mods.select"), "text-caption")));
 
         this.install      = install;
         this.texts        = texts;
@@ -97,7 +97,7 @@ public final class ModsScreen {
         this.listPanel    = new ModListPanel(catalog, texts, this.art, this::showDetail, actions::onOpenModsFolder, actions::onRefresh,
                                              actions::onInstall);
         this.detailArea   = new StackPane(prompt);
-        this.root         = ComponentUtils.row(Spacing.L, this.listPanel.getRoot(), this.detailArea);
+        this.root         = ComponentUtils.createRow(Spacing.L, this.listPanel.getRoot(), this.detailArea);
 
         this.updates = Map.of();
         this.shown   = null;

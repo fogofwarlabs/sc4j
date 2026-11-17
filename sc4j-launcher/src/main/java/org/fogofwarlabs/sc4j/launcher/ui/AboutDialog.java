@@ -34,7 +34,7 @@ public final class AboutDialog {
      * @return the created column, empty when no mod declares notices
      */
     private static @NotNull VBox createModNotices(@NotNull LauncherTexts texts, @NotNull List<@NotNull ModManifest> mods) {
-        VBox column = ComponentUtils.column(Spacing.M);
+        VBox column = ComponentUtils.createColumn(Spacing.M);
         Set<String> shownIds = new HashSet<>();
 
         for (ModManifest mod : mods) {
@@ -42,10 +42,10 @@ public final class AboutDialog {
                 continue;
             }
 
-            VBox modColumn = ComponentUtils.column(Spacing.XS, ComponentUtils.label(texts.localize(mod.getName()), "text-heading"));
+            VBox modColumn = ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createLabel(texts.localize(mod.getName()), "text-heading"));
 
             for (LocalizedText notice : mod.getNotices()) {
-                modColumn.getChildren().add(ComponentUtils.paragraph(texts.localize(notice), "text-caption"));
+                modColumn.getChildren().add(ComponentUtils.createParagraph(texts.localize(notice), "text-caption"));
             }
 
             column.getChildren().add(modColumn);
@@ -72,31 +72,31 @@ public final class AboutDialog {
                        @NotNull List<@NotNull ModManifest> mods, @NotNull Consumer<@NotNull String> openWebsite) {
         double logoSize = IconSize.L.getSize();
         Hyperlink website = new Hyperlink(PUBLISHER_WEBSITE);
-        Label versionLabel = ComponentUtils.label(texts.format("about.version", version, EngineVersion.CURRENT), "text-subtitle");
-        Label titleLabel = ComponentUtils.label(texts.get("about.heading"), "text-title");
-        HBox header = ComponentUtils.row(Spacing.L,
-                                         ComponentUtils.imageView(ThemeUtils.loadImage(ThemeUtils.SC4J_LOGO, logoSize, imageScale), logoSize),
-                                         ComponentUtils.column(Spacing.XS, titleLabel, versionLabel));
+        Label versionLabel = ComponentUtils.createLabel(texts.format("about.version", version, EngineVersion.CURRENT), "text-subtitle");
+        Label titleLabel = ComponentUtils.createLabel(texts.get("about.heading"), "text-title");
+        HBox header = ComponentUtils.createRow(Spacing.L,
+                                               ComponentUtils.createImageView(ThemeUtils.loadImage(ThemeUtils.SC4J_LOGO, logoSize, imageScale), logoSize),
+                                               ComponentUtils.createColumn(Spacing.XS, titleLabel, versionLabel));
         Image publisherLogo = ThemeUtils.loadImage(ThemeUtils.FOG_OF_WAR_LABS_LOGO, IconSize.M.getSize(), imageScale);
-        HBox publisher = ComponentUtils.row(Spacing.M,
-                                            ComponentUtils.imageView(publisherLogo, IconSize.M.getSize()),
-                                            ComponentUtils.column(Spacing.XS, ComponentUtils.label(PUBLISHER_NAME, "text-subtitle"),
-                                                                  website));
-        VBox privacy = ComponentUtils.column(Spacing.XS,
-                                             ComponentUtils.label(texts.get("about.privacy.title"), "text-heading"),
-                                             ComponentUtils.paragraph(texts.get("about.privacy.address"), "text-caption"),
-                                             ComponentUtils.paragraph(texts.get("about.privacy.shared"), "text-caption"),
-                                             ComponentUtils.paragraph(texts.get("about.privacy.files"), "text-caption"));
-        VBox content = ComponentUtils.column(Spacing.M,
-                                             publisher,
-                                             new Separator(),
-                                             ComponentUtils.paragraph(texts.get("about.license"), "text-caption"),
-                                             ComponentUtils.paragraph(texts.get("about.fonts"), "text-caption"),
-                                             new Separator(),
-                                             privacy);
+        HBox publisher = ComponentUtils.createRow(Spacing.M,
+                                                  ComponentUtils.createImageView(publisherLogo, IconSize.M.getSize()),
+                                                  ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createLabel(PUBLISHER_NAME, "text-subtitle"),
+                                                                              website));
+        VBox privacy = ComponentUtils.createColumn(Spacing.XS,
+                                                   ComponentUtils.createLabel(texts.get("about.privacy.title"), "text-heading"),
+                                                   ComponentUtils.createParagraph(texts.get("about.privacy.address"), "text-caption"),
+                                                   ComponentUtils.createParagraph(texts.get("about.privacy.shared"), "text-caption"),
+                                                   ComponentUtils.createParagraph(texts.get("about.privacy.files"), "text-caption"));
+        VBox content = ComponentUtils.createColumn(Spacing.M,
+                                                   publisher,
+                                                   new Separator(),
+                                                   ComponentUtils.createParagraph(texts.get("about.license"), "text-caption"),
+                                                   ComponentUtils.createParagraph(texts.get("about.fonts"), "text-caption"),
+                                                   new Separator(),
+                                                   privacy);
         VBox modNotices = createModNotices(texts, mods);
         ScrollPane scroll = new ScrollPane(content);
-        Button close = ComponentUtils.button(texts.get("about.close"), ButtonRole.SECONDARY);
+        Button close = ComponentUtils.createButton(texts.get("about.close"), ButtonRole.SECONDARY);
 
         this.shell  = shell;
         this.dialog = new ModalDialog(texts.get("about.title"), ModalDialog.Width.WIDE);

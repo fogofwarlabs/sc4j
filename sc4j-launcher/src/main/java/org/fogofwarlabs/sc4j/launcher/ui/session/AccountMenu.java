@@ -70,16 +70,16 @@ public final class AccountMenu {
          */
         private FriendsPanel() {
             LauncherTexts texts = AccountMenu.this.texts;
-            Label code = ComponentUtils.paragraph(AccountMenu.this.session.getFriendCode().getGroupedText(), "text-mono");
-            Button copy = ComponentUtils.button(texts.get("session.friends.copy"), ButtonRole.SECONDARY);
-            Button add = ComponentUtils.button(texts.get("session.friends.add"), ButtonRole.SECONDARY);
-            Button close = ComponentUtils.button(texts.get("session.close"), ButtonRole.SECONDARY);
+            Label code = ComponentUtils.createParagraph(AccountMenu.this.session.getFriendCode().getGroupedText(), "text-mono");
+            Button copy = ComponentUtils.createButton(texts.get("session.friends.copy"), ButtonRole.SECONDARY);
+            Button add = ComponentUtils.createButton(texts.get("session.friends.add"), ButtonRole.SECONDARY);
+            Button close = ComponentUtils.createButton(texts.get("session.close"), ButtonRole.SECONDARY);
 
             this.dialog  = new ModalDialog(texts.get("session.friends.title"), ModalDialog.Height.TALL);
-            this.list    = ComponentUtils.sunkenListView(ListItemSize.COMPACT);
-            this.whisper = ComponentUtils.button(texts.get("session.friends.whisper"), ButtonRole.SECONDARY);
-            this.ignore  = ComponentUtils.button(texts.get("session.friends.ignore"), ButtonRole.SECONDARY);
-            this.remove  = ComponentUtils.button(texts.get("session.friends.remove"), ButtonRole.SECONDARY);
+            this.list    = ComponentUtils.createSunkenListView(ListItemSize.COMPACT);
+            this.whisper = ComponentUtils.createButton(texts.get("session.friends.whisper"), ButtonRole.SECONDARY);
+            this.ignore  = ComponentUtils.createButton(texts.get("session.friends.ignore"), ButtonRole.SECONDARY);
+            this.remove  = ComponentUtils.createButton(texts.get("session.friends.remove"), ButtonRole.SECONDARY);
             this.added   = new TextField();
 
             // The code wraps between its groups; Copy takes it whole.
@@ -88,7 +88,7 @@ public final class AccountMenu {
             copy.setOnAction(event -> AccountMenu.this.actions.onCopy(AccountMenu.this.session.getFriendCode().getText()));
 
             this.list.setCellFactory(view -> new ListItemCell<>(AccountMenu.this.playerTexts::createItem));
-            this.list.setPlaceholder(ComponentUtils.paragraph(texts.get("session.friends.empty"), "text-caption"));
+            this.list.setPlaceholder(ComponentUtils.createParagraph(texts.get("session.friends.empty"), "text-caption"));
             this.list.getSelectionModel().selectedItemProperty().addListener((observable, previous, current) -> this.updateButtons());
 
             this.whisper.setOnAction(event -> {
@@ -120,9 +120,9 @@ public final class AccountMenu {
             add.setOnAction(event -> this.add());
 
             AccountMenu.this.addConnectionNotice(this.dialog);
-            this.dialog.addContent(ComponentUtils.field(texts.get("session.friends.code"), ComponentUtils.row(Spacing.S, code, copy)));
+            this.dialog.addContent(ComponentUtils.createField(texts.get("session.friends.code"), ComponentUtils.createRow(Spacing.S, code, copy)));
             this.dialog.addGrowingContent(this.list);
-            this.dialog.addContent(ComponentUtils.field(texts.get("session.friends.add.code"), ComponentUtils.row(Spacing.S, this.added, add)));
+            this.dialog.addContent(ComponentUtils.createField(texts.get("session.friends.add.code"), ComponentUtils.createRow(Spacing.S, this.added, add)));
             this.dialog.setButtons(List.of(this.whisper, this.ignore, this.remove), close, null);
             close.setOnAction(event -> AccountMenu.this.closeDialog());
 
@@ -260,17 +260,17 @@ public final class AccountMenu {
     public void open() {
         SelfView self = this.session.getSelf();
         ListItem heading = new ListItem(this.taggedName).setMarker(PlayerTexts.getTone(self)).addCaption(this.playerTexts.describe(self));
-        Button friends = ComponentUtils.menuButton(this.texts.get("session.menu.friends"));
-        Button status = ComponentUtils.menuButton(this.texts.get("session.menu.status"));
-        Button signOut = ComponentUtils.menuButton(this.texts.get("session.menu.sign.out"));
-        Button logOutButton = ComponentUtils.menuButton(this.texts.get("session.menu.log.out"));
+        Button friends = ComponentUtils.createMenuButton(this.texts.get("session.menu.friends"));
+        Button status = ComponentUtils.createMenuButton(this.texts.get("session.menu.status"));
+        Button signOut = ComponentUtils.createMenuButton(this.texts.get("session.menu.sign.out"));
+        Button logOutButton = ComponentUtils.createMenuButton(this.texts.get("session.menu.log.out"));
         VBox opened;
 
         if (self.getState() == SessionState.CONNECTED && self.getDeviceCount() > 1) {
             heading.addCaption(this.texts.format("session.devices", self.getDeviceCount()));
         }
 
-        opened = ComponentUtils.menuPanel(heading.createNode(), new Separator(), friends, status, signOut, new Separator(), logOutButton);
+        opened = ComponentUtils.createMenuPanel(heading.createNode(), new Separator(), friends, status, signOut, new Separator(), logOutButton);
 
         friends.setOnAction(event -> this.showDialog(new FriendsPanel()));
         status.setOnAction(event -> this.openStatus());
@@ -292,8 +292,8 @@ public final class AccountMenu {
         ToggleButton online = new ToggleButton(this.texts.get("session.status.online"));
         ToggleButton away = new ToggleButton(this.texts.get("session.status.away"));
         TextField awayText = new TextField(self.getAwayText());
-        Button cancel = ComponentUtils.button(this.texts.get("session.cancel"), ButtonRole.SECONDARY);
-        Button save = ComponentUtils.button(this.texts.get("session.save"), ButtonRole.PRIMARY);
+        Button cancel = ComponentUtils.createButton(this.texts.get("session.cancel"), ButtonRole.SECONDARY);
+        Button save = ComponentUtils.createButton(this.texts.get("session.save"), ButtonRole.PRIMARY);
 
         online.setToggleGroup(group);
         away.setToggleGroup(group);
@@ -308,8 +308,8 @@ public final class AccountMenu {
         awayText.textProperty().addListener((observable, previous, current) -> shown.showMessage(null));
 
         this.addConnectionNotice(shown);
-        shown.addContent(ComponentUtils.row(Spacing.S, online, away),
-                         ComponentUtils.field(this.texts.get("session.status.away.text"), awayText));
+        shown.addContent(ComponentUtils.createRow(Spacing.S, online, away),
+                         ComponentUtils.createField(this.texts.get("session.status.away.text"), awayText));
         shown.setButtons(cancel, save);
         cancel.setOnAction(event -> this.closeDialog());
         save.setOnAction(event -> {
@@ -331,10 +331,10 @@ public final class AccountMenu {
 
     private void openSignOut() {
         ModalDialog shown = new ModalDialog(this.texts.get("session.sign.out.title"));
-        Button cancel = ComponentUtils.button(this.texts.get("session.cancel"), ButtonRole.SECONDARY);
-        Button signOut = ComponentUtils.button(this.texts.get("session.sign.out"), ButtonRole.DANGER);
+        Button cancel = ComponentUtils.createButton(this.texts.get("session.cancel"), ButtonRole.SECONDARY);
+        Button signOut = ComponentUtils.createButton(this.texts.get("session.sign.out"), ButtonRole.DANGER);
 
-        shown.addContent(ComponentUtils.paragraph(this.texts.format("session.sign.out.text", this.taggedName), "text-body"));
+        shown.addContent(ComponentUtils.createParagraph(this.texts.format("session.sign.out.text", this.taggedName), "text-body"));
         shown.setButtons(cancel, signOut);
         cancel.setOnAction(event -> this.closeDialog());
         signOut.setOnAction(event -> {
@@ -348,7 +348,7 @@ public final class AccountMenu {
 
     private void addConnectionNotice(@NotNull ModalDialog shown) {
         if (this.session.getSelf().getState() != SessionState.CONNECTED) {
-            shown.addContent(ComponentUtils.notice(Tone.NEUTRAL, this.texts.get("session.not.connected")));
+            shown.addContent(ComponentUtils.createNotice(Tone.NEUTRAL, this.texts.get("session.not.connected")));
         }
     }
 

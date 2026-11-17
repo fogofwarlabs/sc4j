@@ -9,7 +9,7 @@ import java.util.Locale;
 
 /**
  * Shows the launcher the Beacon.Link session of the logged-in account and takes the commands of its account menu and its Chat screen. The
- * launcher opens one view when the user logs in and closes it when the user logs out or closes the launcher.
+ * launcher opens one view when the user logs in, runs its chat from then on, and closes it when the user logs out or quits the launcher.
  * <p>
  * The launcher calls every method on the JavaFX thread. The views it reads ({@link SelfView}, {@link FriendView}, {@link WhisperView},
  * {@link ChannelView}, {@link ChatEntryView}) never change; after the session published new views it calls the change listener, on the JavaFX
@@ -38,14 +38,14 @@ public interface LauncherSessionView {
     @NotNull List<@NotNull WhisperView> getWhispers();
 
     /**
-     * @return the channels the account's chat is in, in the order it joined them, with their members; empty until {@link #openChat} and while
+     * @return the channels the account's chat is in, in the order it joined them, with their members; empty until the chat opened and while
      * the session runs no connection
      */
     @NotNull List<@NotNull ChannelView> getChannels();
 
     /**
      * @return the channels the session knows of among the launcher users and the channels the chat is in, the most members first, without
-     * members; empty until {@link #openChat}
+     * members; empty until the chat opened
      */
     @NotNull List<@NotNull ChannelView> getKnownChannels();
 
@@ -101,8 +101,9 @@ public interface LauncherSessionView {
     void whisper(@NotNull FriendCode player, @NotNull String text);
 
     /**
-     * Opens the account's chat once: it joins the shared channel and keeps up to {@value CommunitySession#MAXIMUM_CHANNELS} channels; later
-     * calls do nothing. Does nothing while the session runs no connection.
+     * Runs the account's chat from now on: it joins the shared channel once the session is connected, keeps up to
+     * {@value CommunitySession#MAXIMUM_CHANNELS} channels and, when the session connects again after its connection failed, joins again the
+     * channels it was in. Later calls do nothing.
      *
      * @param locale the locale of the chat's notices and command answers
      */

@@ -89,8 +89,8 @@ final class BeaconLinkPanel {
      */
     BeaconLinkPanel(@NotNull LauncherTexts texts, @NotNull LauncherNodeRunner runner, @NotNull Node advanced) {
         NodeSettings saved = runner.getSettings();
-        Button apply = ComponentUtils.button(texts.get("beaconlink.apply"), ButtonRole.PRIMARY);
-        Label help = ComponentUtils.paragraph(texts.get("beaconlink.node.help"), "text-caption");
+        Button apply = ComponentUtils.createButton(texts.get("beaconlink.apply"), ButtonRole.PRIMARY);
+        Label help = ComponentUtils.createParagraph(texts.get("beaconlink.node.help"), "text-caption");
         HBox portRow;
         VBox settings;
         VBox status;
@@ -101,12 +101,12 @@ final class BeaconLinkPanel {
 
         this.helping        = new CheckBox(texts.get("beaconlink.node"));
         this.port           = new TextField(Integer.toString(saved.getPort()));
-        this.message        = ComponentUtils.paragraph("", "field-message");
-        this.state          = ComponentUtils.paragraph("", "list-title");
-        this.reachability   = ComponentUtils.paragraph("", "text-caption");
-        this.addresses      = ComponentUtils.label("", "text-caption", "text-mono");
-        this.peers          = ComponentUtils.label("", "text-caption");
-        this.advancedToggle = ComponentUtils.smallButton(texts.get("beaconlink.advanced.show"), ButtonRole.SECONDARY);
+        this.message        = ComponentUtils.createParagraph("", "field-message");
+        this.state          = ComponentUtils.createParagraph("", "list-title");
+        this.reachability   = ComponentUtils.createParagraph("", "text-caption");
+        this.addresses      = ComponentUtils.createLabel("", "text-caption", "text-mono");
+        this.peers          = ComponentUtils.createLabel("", "text-caption");
+        this.advancedToggle = ComponentUtils.createSmallButton(texts.get("beaconlink.advanced.show"), ButtonRole.SECONDARY);
 
         this.helping.setSelected(saved.getRole() == NodeRole.AUTOMATIC);
         ComponentUtils.setControlWidth(this.port, ControlWidth.S);
@@ -115,14 +115,14 @@ final class BeaconLinkPanel {
         apply.setOnAction(event -> this.apply());
         this.advancedToggle.setOnAction(event -> this.toggleAdvanced());
 
-        portRow = ComponentUtils.row(Spacing.M, ComponentUtils.label(texts.get("beaconlink.port"), "field-label"), this.port, apply);
+        portRow = ComponentUtils.createRow(Spacing.M, ComponentUtils.createLabel(texts.get("beaconlink.port"), "field-label"), this.port, apply);
         portRow.setAlignment(Pos.CENTER_LEFT);
-        settings = ComponentUtils.column(Spacing.S, this.helping, help, portRow);
-        status   = ComponentUtils.column(Spacing.XS, this.state, this.reachability, this.addresses, this.peers);
+        settings = ComponentUtils.createColumn(Spacing.S, this.helping, help, portRow);
+        status   = ComponentUtils.createColumn(Spacing.XS, this.state, this.reachability, this.addresses, this.peers);
 
-        this.root = ComponentUtils.panel(texts.get("beaconlink.title"),
-                                         ComponentUtils.panelBody(settings, this.message, status),
-                                         this.advancedToggle);
+        this.root = ComponentUtils.createPanel(texts.get("beaconlink.title"),
+                                               ComponentUtils.createPanelBody(settings, this.message, status),
+                                               this.advancedToggle);
 
         this.refresh = new Timeline(new KeyFrame(REFRESH_INTERVAL, event -> this.showStatus()));
 

@@ -79,12 +79,10 @@ public final class SettingsFormView {
         this.texts        = texts;
         this.fieldViews   = new ArrayList<>();
         this.invalidCount = new ReadOnlyIntegerWrapper();
-        this.root         = new VBox();
-
-        this.root.getStyleClass().add("form");
+        this.root         = ComponentUtils.createForm();
 
         if (form.getFields().isEmpty()) {
-            this.root.getChildren().add(ComponentUtils.paragraph(texts.get("form.empty"), "text-caption"));
+            this.root.getChildren().add(ComponentUtils.createParagraph(texts.get("form.empty"), "text-caption"));
         }
 
         for (FormField field : form.getFields()) {
@@ -132,7 +130,7 @@ public final class SettingsFormView {
     private @NotNull VBox createField(@NotNull FormField field) {
         SettingDefinition definition = field.getDefinition();
         FieldControl control = FACTORIES.get(definition.getType()).create(field, this.texts, this::showValidation);
-        Label message = ComponentUtils.label("", "field-message");
+        Label message = ComponentUtils.createLabel("", "field-message");
         Region messageIcon = new Region();
         LocalizedText description = definition.getDescription();
         VBox fieldNode = new VBox();
@@ -143,10 +141,10 @@ public final class SettingsFormView {
         fieldNode.getStyleClass().add("field");
 
         if (!control.isLabelled()) {
-            HBox labelRow = new HBox(ComponentUtils.label(this.texts.localize(definition.getLabel()), "field-label"));
+            HBox labelRow = new HBox(ComponentUtils.createLabel(this.texts.localize(definition.getLabel()), "field-label"));
 
             if (definition.isRequired()) {
-                labelRow.getChildren().add(ComponentUtils.label(REQUIRED_MARK, "field-required"));
+                labelRow.getChildren().add(ComponentUtils.createLabel(REQUIRED_MARK, "field-required"));
             }
 
             fieldNode.getChildren().add(labelRow);
@@ -155,7 +153,7 @@ public final class SettingsFormView {
         fieldNode.getChildren().addAll(control.getNode(), message);
 
         if (description != null) {
-            fieldNode.getChildren().add(ComponentUtils.paragraph(this.texts.localize(description), "field-help"));
+            fieldNode.getChildren().add(ComponentUtils.createParagraph(this.texts.localize(description), "field-help"));
         }
 
         this.fieldViews.add(new FieldView(field, control, message));

@@ -23,7 +23,7 @@ public final class ModStatusUtils {
      * @return the created badge
      */
     public static @NotNull Label createBadge(@NotNull ModStatus status, @NotNull LauncherTexts texts) {
-        return ComponentUtils.badge(texts.get(STATUS_KEY_PREFIX + status.name().toLowerCase(Locale.ROOT)), getTone(status));
+        return ComponentUtils.createBadge(texts.get(STATUS_KEY_PREFIX + status.name().toLowerCase(Locale.ROOT)), getTone(status));
     }
 
     /**

@@ -2,6 +2,7 @@ package org.fogofwarlabs.sc4j.launcher.ui.options;
 
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -22,19 +23,16 @@ import java.util.*;
 import java.util.function.Consumer;
 
 /**
- * Shows the launcher's Settings screen: the UI language (the system language or an explicit choice) and the update ({@link UpdateView}),
- * the Beacon.Link panel
- * ({@link BeaconLinkPanel}: the node setting and the launcher node's status; keys are automatic and not shown) and, behind its Seeds button,
- * the seed list editor (the node list). The editor lists the seeds in the order the client contacts them and has the host and port fields
- * under the list: Add, Update and Remove change entries, Move up and Move down change the order. Field problems are shown with their
- * reasons; every change is saved at once through {@link Actions#onNodesChanged(List)}. Ping checks every listed seed and shows each result
- * in the seed's row: the round-trip delay, the node version and the address the node observed, or why it did not answer.
+ * Shows the launcher's Settings screen in two columns of equal width. The left column holds the launcher panel with Check now in its header
+ * and a form of one field per row: the version with the result of the last check, the UI language (the system language or an explicit
+ * choice), the chat sound switch and the update source (the update parts are {@link UpdateView}). The right column holds the Beacon.Link
+ * panel ({@link BeaconLinkPanel}: the node setting and the launcher node's status; keys are automatic and not shown) and, under it behind its
+ * Peers button, the seed list editor (the node list). The editor lists the seeds in the order the client contacts them and has the host and
+ * port fields under the list: Add, Update and Remove change entries, Move up and Move down change the order. Field problems are shown with
+ * their reasons; every change is saved at once through {@link Actions#onNodesChanged(List)}. Ping checks every listed seed and shows each
+ * result in the seed's row: the round-trip delay, the node version and the address the node observed, or why it did not answer.
  */
 public final class OptionsScreen {
-    /**
-     * The width of a port field.
-     */
-
     private static final @NotNull String LANGUAGE_NAME_KEY_PREFIX = "language.";
     private static final @NotNull String MESSAGE_SEPARATOR = " ";
 
@@ -48,6 +46,13 @@ public final class OptionsScreen {
          * @param language the chosen language, or {@code null} to follow the operating system
          */
         void onLanguageChanged(@Nullable UiLanguage language);
+
+        /**
+         * Called when the user mutes the chat notification sound or turns it on again.
+         *
+         * @param muted whether the chat notification sound is muted
+         */
+        void onChatSoundMutedChanged(boolean muted);
 
         /**
          * Called when the user changes the node list; the launcher saves it.
@@ -121,7 +126,7 @@ public final class OptionsScreen {
     private final @NotNull Label message;
     private final @NotNull Label nodeCount;
     private final @NotNull Button ping;
-    private final @NotNull VBox root;
+    private final @NotNull GridPane root;
 
     private final @NotNull Map<@NotNull ConfiguredNode, @NotNull NodePingResult> pingResults;
     private boolean pinging;
@@ -132,30 +137,34 @@ public final class OptionsScreen {
      * @param texts            the launcher texts of the display language
      * @param language         the language chosen in the launcher settings, or {@code null} when the launcher follows the
      *                         operating system
-     * @param updateView       the update part of the launcher panel
+     * @param chatSoundMuted   whether the launcher settings mute the chat notification sound
+     * @param updateView       the update parts of the launcher panel
      * @param nodes            the saved node list, or the shipped seed list while the user has saved none
      * @param nodesLoadProblem why that list could not be read, or {@code null}
      * @param nodeRunner       the launcher's Beacon.Link node
      * @param actions          receives the changes
      */
-    public OptionsScreen(@NotNull LauncherTexts texts, @Nullable UiLanguage language, @NotNull UpdateView updateView,
+    public OptionsScreen(@NotNull LauncherTexts texts, @Nullable UiLanguage language, boolean chatSoundMuted,
+                         @NotNull UpdateView updateView,
                          @NotNull List<@NotNull ConfiguredNode> nodes, @Nullable NodeListProblem nodesLoadProblem, @NotNull LauncherNodeRunner nodeRunner,
                          @NotNull Actions actions) {
         VBox nodesPanel;
+        VBox launcherColumn;
+        VBox beaconLinkColumn;
 
         this.texts     = texts;
         this.actions   = actions;
         this.editor    = new NodeListEditor(nodes);
-        this.nodeList  = ComponentUtils.listView(ListItemSize.REGULAR);
+        this.nodeList  = ComponentUtils.createListView(ListItemSize.REGULAR);
         this.host      = new TextField();
         this.port      = new TextField();
-        this.message   = ComponentUtils.label("", "field-message");
-        this.nodeCount = ComponentUtils.label(texts.formatCount("nodes.count", nodes.size()), "text-caption");
-        this.ping      = ComponentUtils.smallButton(texts.get("nodes.ping"), ButtonRole.SECONDARY);
+        this.message   = ComponentUtils.createLabel("", "field-message");
+        this.nodeCount = ComponentUtils.createLabel(texts.formatCount("nodes.count", nodes.size()), "text-caption");
+        this.ping      = ComponentUtils.createSmallButton(texts.get("nodes.ping"), ButtonRole.SECONDARY);
 
         this.nodeList.getItems().setAll(nodes);
         this.nodeList.setCellFactory(view -> new ListItemCell<>(this::createNodeItem));
-        this.nodeList.setPlaceholder(ComponentUtils.paragraph(texts.get("nodes.empty"), "text-caption"));
+        this.nodeList.setPlaceholder(ComponentUtils.createParagraph(texts.get("nodes.empty"), "text-caption"));
         this.nodeList.getSelectionModel().selectedItemProperty().addListener((observable, previous, current) -> {
             if (current != null) {
                 this.host.setText(current.getHost());
@@ -167,8 +176,9 @@ public final class OptionsScreen {
         nodesPanel = this.createNodesPanel(nodesLoadProblem);
         VBox.setVgrow(nodesPanel, Priority.ALWAYS);
 
-        this.root = ComponentUtils.column(Spacing.L, this.createLauncherPanel(language, updateView),
-                                          new BeaconLinkPanel(texts, nodeRunner, nodesPanel).getRoot(), nodesPanel);
+        launcherColumn   = ComponentUtils.createColumn(Spacing.L, this.createLauncherPanel(language, chatSoundMuted, updateView));
+        beaconLinkColumn = ComponentUtils.createColumn(Spacing.L, new BeaconLinkPanel(texts, nodeRunner, nodesPanel).getRoot(), nodesPanel);
+        this.root        = ComponentUtils.createEqualColumns(Spacing.L, launcherColumn, beaconLinkColumn);
 
         this.pingResults = new HashMap<>();
         this.pinging     = false;
@@ -177,7 +187,7 @@ public final class OptionsScreen {
     /**
      * @return the screen's root node
      */
-    public @NotNull VBox getRoot() {
+    public @NotNull GridPane getRoot() {
         return this.root;
     }
 
@@ -197,11 +207,12 @@ public final class OptionsScreen {
         this.nodeList.refresh();
     }
 
-    private @NotNull VBox createLauncherPanel(@Nullable UiLanguage language, @NotNull UpdateView updateView) {
-        ComboBox<LanguageOption> choice = ComponentUtils.comboBox(ControlWidth.M);
+    private @NotNull VBox createLauncherPanel(@Nullable UiLanguage language, boolean chatSoundMuted, @NotNull UpdateView updateView) {
+        ComboBox<LanguageOption> choice = ComponentUtils.createComboBox(ControlWidth.M);
+        CheckBox mute = new CheckBox(this.texts.get("settings.chat.sound.mute"));
         UiLanguage system = UiLanguage.select(null, Locale.getDefault());
         LanguageOption systemOption = new LanguageOption(null, this.texts.format("language.system", this.getLanguageName(system)));
-        HBox row;
+        VBox form;
 
         choice.getItems().add(systemOption);
         choice.setValue(systemOption);
@@ -222,10 +233,13 @@ public final class OptionsScreen {
             }
         });
 
-        row = ComponentUtils.row(Spacing.XL, ComponentUtils.field(this.texts.get("settings.language"), choice), updateView.getRoot());
-        row.setAlignment(Pos.BOTTOM_LEFT);
+        mute.setSelected(chatSoundMuted);
+        mute.selectedProperty().addListener((observable, previous, current) -> this.actions.onChatSoundMutedChanged(current));
 
-        return ComponentUtils.panel(this.texts.get("settings.launcher"), ComponentUtils.panelBody(row));
+        form = ComponentUtils.createForm(updateView.getVersionField(), ComponentUtils.createField(this.texts.get("settings.language"), choice),
+                                         ComponentUtils.createField(this.texts.get("settings.sound"), mute), updateView.getSourceField());
+
+        return ComponentUtils.createPanel(this.texts.get("settings.launcher"), ComponentUtils.createPanelBody(form), updateView.getCheckButton());
     }
 
     private @NotNull String getLanguageName(@NotNull UiLanguage language) {
@@ -233,35 +247,35 @@ public final class OptionsScreen {
     }
 
     private @NotNull VBox createNodesPanel(@Nullable NodeListProblem nodesLoadProblem) {
-        VBox body = ComponentUtils.flushPanelBody(this.nodeList);
+        VBox body = ComponentUtils.createFlushPanelBody(this.nodeList);
         VBox panel;
 
         if (nodesLoadProblem != null) {
             String problem = this.texts.describeNodeListProblem(nodesLoadProblem);
 
-            body.getChildren().addFirst(ComponentUtils.notice(Tone.DANGER, this.texts.format("nodes.load.failed", problem)));
+            body.getChildren().addFirst(ComponentUtils.createNotice(Tone.DANGER, this.texts.format("nodes.load.failed", problem)));
         }
 
         this.ping.setDisable(this.editor.getNodes().isEmpty());
         this.ping.setOnAction(event -> this.pingNodes());
-        panel = ComponentUtils.panelWithFooter(this.texts.get("nodes.title"), body, ComponentUtils.panelFooter(this.createEditor()),
-                                               this.nodeCount, this.ping);
+        panel = ComponentUtils.createPanelWithFooter(this.texts.get("nodes.title"), body, ComponentUtils.createPanelFooter(this.createEditor()),
+                                                     this.nodeCount, this.ping);
         ComponentUtils.fillHeight(panel);
 
         return panel;
     }
 
     private @NotNull VBox createEditor() {
-        VBox hostField = ComponentUtils.field(this.texts.get("nodes.host"), this.host);
-        VBox portField = ComponentUtils.field(this.texts.get("nodes.port"), this.port);
-        Button add = ComponentUtils.button(this.texts.get("nodes.add"), ButtonRole.PRIMARY);
-        Button update = ComponentUtils.button(this.texts.get("nodes.update"), ButtonRole.SECONDARY);
-        Button remove = ComponentUtils.button(this.texts.get("nodes.remove"), ButtonRole.DANGER);
-        Button moveUp = ComponentUtils.button(this.texts.get("nodes.move.up"), ButtonRole.SECONDARY);
-        Button moveDown = ComponentUtils.button(this.texts.get("nodes.move.down"), ButtonRole.SECONDARY);
-        HBox fields = ComponentUtils.row(Spacing.S, hostField, portField);
-        HBox buttons = ComponentUtils.row(Spacing.S, add, update, remove, ComponentUtils.growingSpacer(), moveUp, moveDown);
-        VBox editorView = ComponentUtils.column(Spacing.S, fields, buttons, this.message);
+        VBox hostField = ComponentUtils.createField(this.texts.get("nodes.host"), this.host);
+        VBox portField = ComponentUtils.createField(this.texts.get("nodes.port"), this.port);
+        Button add = ComponentUtils.createButton(this.texts.get("nodes.add"), ButtonRole.PRIMARY);
+        Button update = ComponentUtils.createButton(this.texts.get("nodes.update"), ButtonRole.SECONDARY);
+        Button remove = ComponentUtils.createButton(this.texts.get("nodes.remove"), ButtonRole.DANGER);
+        Button moveUp = ComponentUtils.createButton(this.texts.get("nodes.move.up"), ButtonRole.SECONDARY);
+        Button moveDown = ComponentUtils.createButton(this.texts.get("nodes.move.down"), ButtonRole.SECONDARY);
+        HBox fields = ComponentUtils.createRow(Spacing.S, hostField, portField);
+        HBox buttons = ComponentUtils.createRow(Spacing.S, add, update, remove, ComponentUtils.createGrowingSpacer(), moveUp, moveDown);
+        VBox editorView = ComponentUtils.createColumn(Spacing.S, fields, buttons, this.message);
 
         ComponentUtils.setControlWidth(this.port, ControlWidth.S);
         this.message.setWrapText(true);

@@ -96,17 +96,17 @@ public final class RunScreen {
         this.texts   = texts;
         this.actions = actions;
 
-        this.root        = ComponentUtils.column(Spacing.L);
-        this.summarySlot = new VBox();
-        this.reportSlot  = new VBox();
-        this.log         = ComponentUtils.codeArea(run == null ? "" : String.join(LINE_SEPARATOR, run.getOutput().getLines()), "log-area");
+        this.root        = ComponentUtils.createColumn(Spacing.L);
+        this.summarySlot = ComponentUtils.createSlot();
+        this.reportSlot  = ComponentUtils.createSlot();
+        this.log         = ComponentUtils.createCodeArea(run == null ? "" : String.join(LINE_SEPARATOR, run.getOutput().getLines()), "log-area");
 
         this.shownLineCount = run == null ? 0 : run.getOutput().getLines().size();
 
         if (run == null) {
-            HBox notice = ComponentUtils.notice(Tone.ACCENT, texts.get("run.none"));
+            HBox notice = ComponentUtils.createNotice(Tone.ACCENT, texts.get("run.none"));
 
-            this.root.getChildren().add(ComponentUtils.panel(ComponentUtils.panelBody(notice)));
+            this.root.getChildren().add(ComponentUtils.createPanel(ComponentUtils.createPanelBody(notice)));
 
             return;
         }
@@ -166,36 +166,36 @@ public final class RunScreen {
         String duration = String.format(Locale.ROOT, DURATION_FORMAT, shown.getDuration(Instant.now()).toMillis() / MILLISECONDS_PER_SECOND);
         String captionText = this.texts.format("run.caption", shown.getModId(), shown.getModVersion(), START_TIME_FORMAT.format(startTime), duration,
                                                processText);
-        Label caption = ComponentUtils.label(captionText, "text-caption");
+        Label caption = ComponentUtils.createLabel(captionText, "text-caption");
         Label badge;
-        Button openLog = ComponentUtils.button(this.texts.get("run.open.log"), ButtonRole.SECONDARY);
-        Button copy = ComponentUtils.button(this.texts.get("run.copy.report"), ButtonRole.SECONDARY);
+        Button openLog = ComponentUtils.createButton(this.texts.get("run.open.log"), ButtonRole.SECONDARY);
+        Button copy = ComponentUtils.createButton(this.texts.get("run.copy.report"), ButtonRole.SECONDARY);
         Button action;
 
         if (shown.isRunning()) {
-            badge  = ComponentUtils.badge(this.texts.get("run.state.running"), Tone.ACCENT);
-            action = ComponentUtils.button(this.texts.get("run.stop"), ButtonRole.DANGER);
+            badge  = ComponentUtils.createBadge(this.texts.get("run.state.running"), Tone.ACCENT);
+            action = ComponentUtils.createButton(this.texts.get("run.stop"), ButtonRole.DANGER);
             action.setOnAction(event -> this.actions.onStop(shown));
         } else {
             if (report == null) {
-                badge = ComponentUtils.badge(this.texts.get("run.state.not.started"), Tone.DANGER);
+                badge = ComponentUtils.createBadge(this.texts.get("run.state.not.started"), Tone.DANGER);
             } else if (report.isFailure()) {
-                badge = ComponentUtils.badge(this.texts.format("run.state.exit", report.getStatus()), Tone.DANGER);
+                badge = ComponentUtils.createBadge(this.texts.format("run.state.exit", report.getStatus()), Tone.DANGER);
             } else {
-                badge = ComponentUtils.badge(this.texts.get("run.state.ended"), Tone.SUCCESS);
+                badge = ComponentUtils.createBadge(this.texts.get("run.state.ended"), Tone.SUCCESS);
             }
 
-            action = ComponentUtils.button(this.texts.get("run.again"), ButtonRole.PRIMARY);
+            action = ComponentUtils.createButton(this.texts.get("run.again"), ButtonRole.PRIMARY);
             action.setOnAction(event -> this.actions.onRunAgain(shown));
         }
 
         openLog.setOnAction(event -> this.actions.onOpenLogFolder(shown));
         copy.setOnAction(event -> this.actions.onCopy(this.formatReport(shown)));
 
-        VBox heading = ComponentUtils.column(Spacing.XS, ComponentUtils.label(shown.getModName(), "text-title"), caption);
+        VBox heading = ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createLabel(shown.getModName(), "text-title"), caption);
 
-        return ComponentUtils.panel(ComponentUtils.panelBody(ComponentUtils.row(Spacing.L, heading, badge,
-                                                                                ComponentUtils.growingSpacer(), openLog, copy, action)));
+        return ComponentUtils.createPanel(ComponentUtils.createPanelBody(ComponentUtils.createRow(Spacing.L, heading, badge,
+                                                                                                  ComponentUtils.createGrowingSpacer(), openLog, copy, action)));
     }
 
     private @NotNull List<@NotNull Region> createReport(@NotNull RuntimeRun shown) {
@@ -203,10 +203,10 @@ public final class RunScreen {
         String startFailure = shown.getStartFailure();
 
         if (startFailure != null) {
-            HBox headline = ComponentUtils.row(Spacing.S, ComponentUtils.statusMarker(Tone.DANGER),
-                                               ComponentUtils.label(this.texts.get("run.start.failed"), "text-subtitle", "text-danger"));
+            HBox headline = ComponentUtils.createRow(Spacing.S, ComponentUtils.createStatusMarker(Tone.DANGER),
+                                                     ComponentUtils.createLabel(this.texts.get("run.start.failed"), "text-subtitle", "text-danger"));
 
-            return List.of(ComponentUtils.dangerPanel(headline, ComponentUtils.paragraph(startFailure, "text-caption")));
+            return List.of(ComponentUtils.createDangerPanel(headline, ComponentUtils.createParagraph(startFailure, "text-caption")));
         }
 
         if (report == null) {
@@ -214,18 +214,18 @@ public final class RunScreen {
         }
 
         if (!report.isFailure()) {
-            return List.of(ComponentUtils.notice(Tone.SUCCESS, report.getHeadline(this.texts)));
+            return List.of(ComponentUtils.createNotice(Tone.SUCCESS, report.getHeadline(this.texts)));
         }
 
         VBox excerpt = new VBox();
-        HBox headline = ComponentUtils.row(Spacing.S, ComponentUtils.statusMarker(Tone.DANGER),
-                                           ComponentUtils.label(report.getHeadline(this.texts), "text-subtitle", "text-danger"));
-        VBox failure = ComponentUtils.dangerPanel(headline, ComponentUtils.paragraph(report.getExplanation(this.texts), "text-body"), excerpt);
+        HBox headline = ComponentUtils.createRow(Spacing.S, ComponentUtils.createStatusMarker(Tone.DANGER),
+                                                 ComponentUtils.createLabel(report.getHeadline(this.texts), "text-subtitle", "text-danger"));
+        VBox failure = ComponentUtils.createDangerPanel(headline, ComponentUtils.createParagraph(report.getExplanation(this.texts), "text-body"), excerpt);
 
         excerpt.getStyleClass().add("log-excerpt");
 
         for (String line : report.getLastLines()) {
-            excerpt.getChildren().add(ComponentUtils.label(line));
+            excerpt.getChildren().add(ComponentUtils.createLabel(line));
         }
 
         return List.of(failure);
@@ -233,14 +233,14 @@ public final class RunScreen {
 
     private @NotNull VBox createOutputPanel(@NotNull RuntimeRun shown) {
         TabPane tabs = new TabPane(new Tab(this.texts.get("run.tab.log"), this.log),
-                                   new Tab(this.texts.get("run.tab.command"), ComponentUtils.codeArea(shown.getCommandLine().describe(), "code-area")),
-                                   new Tab(this.texts.get("run.tab.settings"), ComponentUtils.codeArea(shown.getSettingsText(), "code-area")));
+                                   new Tab(this.texts.get("run.tab.command"), ComponentUtils.createCodeArea(shown.getCommandLine().describe(), "code-area")),
+                                   new Tab(this.texts.get("run.tab.settings"), ComponentUtils.createCodeArea(shown.getSettingsText(), "code-area")));
         VBox panel;
 
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         VBox.setVgrow(tabs, Priority.ALWAYS);
 
-        panel = ComponentUtils.panel(this.texts.get("run.output"), ComponentUtils.panelBody(tabs));
+        panel = ComponentUtils.createPanel(this.texts.get("run.output"), ComponentUtils.createPanelBody(tabs));
         VBox.setVgrow(panel, Priority.ALWAYS);
         HBox.setHgrow(panel, Priority.ALWAYS);
 

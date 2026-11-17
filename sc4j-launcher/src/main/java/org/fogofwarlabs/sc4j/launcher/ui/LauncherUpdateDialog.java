@@ -68,12 +68,12 @@ public final class LauncherUpdateDialog {
                                 @NotNull LauncherUpdater updater, @NotNull LauncherRelease release, @NotNull String runningVersion,
                                 @NotNull ObservableBooleanValue running, @NotNull Runnable skip, @NotNull Runnable close) {
         double logoSize = IconSize.L.getSize();
-        Label title = ComponentUtils.label(texts.get("update.offer"), "text-title");
-        Label versions = ComponentUtils.label(texts.format("update.versions", runningVersion, release.getVersion()), "text-subtitle");
-        HBox header = ComponentUtils.row(Spacing.L,
-                                         ComponentUtils.imageView(ThemeUtils.loadImage(ThemeUtils.SC4J_LOGO, logoSize, imageScale), logoSize),
-                                         ComponentUtils.column(Spacing.XS, title, versions));
-        GridPane facts = ComponentUtils.metaGrid();
+        Label title = ComponentUtils.createLabel(texts.get("update.offer"), "text-title");
+        Label versions = ComponentUtils.createLabel(texts.format("update.versions", runningVersion, release.getVersion()), "text-subtitle");
+        HBox header = ComponentUtils.createRow(Spacing.L,
+                                               ComponentUtils.createImageView(ThemeUtils.loadImage(ThemeUtils.SC4J_LOGO, logoSize, imageScale), logoSize),
+                                               ComponentUtils.createColumn(Spacing.XS, title, versions));
+        GridPane facts = ComponentUtils.createMetaGrid();
         Instant publishedAt = release.getPublishedAt();
         long size = release.getPackageFile().getSize();
         String notes = ReleaseNotesUtils.toPlainText(release.getNotes());
@@ -87,7 +87,7 @@ public final class LauncherUpdateDialog {
         this.close   = close;
 
         this.dialog    = new ModalDialog(texts.get("update.title"), ModalDialog.Width.WIDE);
-        this.note      = ComponentUtils.paragraph(texts.get("update.note"), "text-caption");
+        this.note      = ComponentUtils.createParagraph(texts.get("update.note"), "text-caption");
         this.cancelled = new AtomicBoolean(false);
         this.work      = null;
 
@@ -108,11 +108,11 @@ public final class LauncherUpdateDialog {
         }
 
         if (!notes.isEmpty()) {
-            TextArea notesArea = ComponentUtils.textArea(notes);
+            TextArea notesArea = ComponentUtils.createTextArea(notes);
 
             VBox.setVgrow(notesArea, Priority.ALWAYS);
-            this.dialog.addGrowingContent(ComponentUtils.column(Spacing.XS, ComponentUtils.label(texts.get("update.notes"), "text-heading"),
-                                                                notesArea));
+            this.dialog.addGrowingContent(ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createLabel(texts.get("update.notes"), "text-heading"),
+                                                                      notesArea));
         }
 
         this.dialog.addContent(this.note);
@@ -127,9 +127,9 @@ public final class LauncherUpdateDialog {
     }
 
     private void showOffer() {
-        Button skipButton = ComponentUtils.button(this.texts.get("update.skip"), ButtonRole.SECONDARY);
-        Button later = ComponentUtils.button(this.texts.get("update.later"), ButtonRole.SECONDARY);
-        Button update = ComponentUtils.button(this.texts.get("update.start"), ButtonRole.PRIMARY);
+        Button skipButton = ComponentUtils.createButton(this.texts.get("update.skip"), ButtonRole.SECONDARY);
+        Button later = ComponentUtils.createButton(this.texts.get("update.later"), ButtonRole.SECONDARY);
+        Button update = ComponentUtils.createButton(this.texts.get("update.start"), ButtonRole.PRIMARY);
 
         this.dialog.setButtons(List.of(skipButton), later, update);
         skipButton.setOnAction(event -> {
@@ -143,7 +143,7 @@ public final class LauncherUpdateDialog {
 
     private void download() {
         AtomicBoolean downloadCancelled = new AtomicBoolean(false);
-        Button cancel = ComponentUtils.button(this.texts.get("update.cancel"), ButtonRole.SECONDARY);
+        Button cancel = ComponentUtils.createButton(this.texts.get("update.cancel"), ButtonRole.SECONDARY);
         long size = this.release.getPackageFile().getSize();
 
         this.cancelled = downloadCancelled;
@@ -184,8 +184,8 @@ public final class LauncherUpdateDialog {
     }
 
     private void showRetry() {
-        Button later = ComponentUtils.button(this.texts.get("update.later"), ButtonRole.SECONDARY);
-        Button retry = ComponentUtils.button(this.texts.get("update.retry"), ButtonRole.PRIMARY);
+        Button later = ComponentUtils.createButton(this.texts.get("update.later"), ButtonRole.SECONDARY);
+        Button retry = ComponentUtils.createButton(this.texts.get("update.retry"), ButtonRole.PRIMARY);
 
         this.work = null;
         this.dialog.setButtons(later, retry);
@@ -195,8 +195,8 @@ public final class LauncherUpdateDialog {
     }
 
     private void showReady(@NotNull Path packageRoot) {
-        Button later = ComponentUtils.button(this.texts.get("update.later"), ButtonRole.SECONDARY);
-        Button restart = ComponentUtils.button(this.texts.get("update.restart"), ButtonRole.PRIMARY);
+        Button later = ComponentUtils.createButton(this.texts.get("update.later"), ButtonRole.SECONDARY);
+        Button restart = ComponentUtils.createButton(this.texts.get("update.restart"), ButtonRole.PRIMARY);
 
         this.work = null;
         this.note.setText(this.texts.format("update.ready", this.release.getVersion()));

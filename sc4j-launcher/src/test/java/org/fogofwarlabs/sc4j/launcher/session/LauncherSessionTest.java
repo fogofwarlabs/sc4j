@@ -32,9 +32,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * friends added by friend code see each other in the launcher, with the status and away text each sets, and whisper both ways (an ignored
  * player's whispers are not shown); a game of the same account shows the account in a game on two devices and then back in the launcher,
  * never offline; sign out everywhere else ends the game while the launcher stays online; log out ends the connection, frees the account
- * and shows the friend offline; a session without nodes stays offline with its failure. The chats of both launchers meet in the shared
- * channel, exchange lines and a whisper typed as a command, keep a second channel until they leave one, and list the channels of the
- * launcher users.
+ * and shows the friend offline; a session without nodes stays offline with its failure. The chats of both launchers join the shared channel
+ * once connected, also when the chat runs from before the connection, exchange lines and a whisper typed as a command, keep a second channel
+ * until they leave one, and list the channels of the launcher users.
  */
 final class LauncherSessionTest {
     private static final long TEST_SECONDS = 180L;
@@ -327,8 +327,8 @@ final class LauncherSessionTest {
 
     @Test
     @Timeout(TEST_SECONDS)
-    void launcher_chats_meet_in_the_shared_channel_and_exchange_lines_and_a_whisper(@TempDir @NotNull Path directory) throws IOException,
-                                                                                                                             InterruptedException {
+    void launcher_chats_join_the_shared_channel_at_connect_and_exchange_lines_and_a_whisper(@TempDir @NotNull Path directory) throws IOException,
+                                                                                                                                     InterruptedException {
         try (Launchers launchers = new Launchers(directory)) {
             LauncherSession alice = launchers.aliceSession;
             LauncherSession bob = launchers.bobSession;
@@ -336,13 +336,14 @@ final class LauncherSessionTest {
             FriendCode bobCode = launchers.getBobCode();
             String aliceName = launchers.alice.getTaggedName();
 
+            // Bob's chat runs from the start, Alice's from after the connection; either joins the shared channel once connected.
+            bob.openChat(Locale.ENGLISH);
+            bob.openChat(Locale.ENGLISH);
             LauncherSessionScenario.await(() -> isConnected(alice) && isConnected(bob), "both launchers connect");
 
-            Assertions.assertTrue(alice.getChannels().isEmpty(), "the launcher joins no channel before its chat opens");
+            Assertions.assertTrue(alice.getChannels().isEmpty(), "the launcher joins no channel before its chat runs");
 
             alice.openChat(Locale.ENGLISH);
-            bob.openChat(Locale.ENGLISH);
-            bob.openChat(Locale.ENGLISH);
             LauncherSessionScenario.await(() -> hasMembers(alice, ChannelChat.SHARED_CHANNEL, aliceCode, bobCode) &&
                                                 hasMembers(bob, ChannelChat.SHARED_CHANNEL, aliceCode, bobCode),
                                           "both launchers see each other in the shared channel");

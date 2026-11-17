@@ -2,6 +2,8 @@ package org.fogofwarlabs.sc4j.launcher.ui;
 
 import javafx.application.Platform;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.geometry.Bounds;
+import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -43,9 +45,12 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Tests the launcher window's content at display scales of 100%, 150% and 200%: the layout keeps its logical size, every image is decoded at
  * its logical size times the scale (so it stays sharp), and the window renders at the scale; each rendering is saved as a sample picture.
  * Before the login the app bar shows neither the navigation nor an account; after it, it lists Mods, Run log, Chat and Settings (no Accounts tab)
- * and ends with the account button with its status, which opens the account menu, at 100% and 200% in English and Korean. In a window of the
+ * and ends with the account button with its status, which opens the account menu, at 100% and 200% in English and Korean; every entry's
+ * text is centred in the entry, and the Chat entry shows its dot over the text's top right corner without moving or widening the entries.
+ * In a window of the
  * launcher's minimum size, a screen taller than the space between the app bar and the status bar scrolls and leaves both bars in the window; a
- * shorter screen fills that space. The Mods screen's mod list keeps the regular list item.
+ * shorter screen fills that space. The Mods screen's mod list keeps the regular list item, and its footers keep the same room on every side of
+ * their buttons; an empty mod list shows its text centred, also on several lines, with the room of a panel body on its sides.
  */
 final class LauncherShellTest {
     private static final @NotNull String MANIFEST = """
@@ -74,18 +79,22 @@ final class LauncherShellTest {
                                                            }
                                                            """;
     private static final double REGULAR_CELL_PADDING = 10;
+    private static final @NotNull String LONG_FOLDER_NAME = "a-folder-with-a-rather-long-name-for-the-launcher-install";
     private static final double SCENE_WIDTH = 1280;
     private static final double SCENE_HEIGHT = 800;
     private static final double PERCENT_SCALE = 100;
     private static final @NotNull String TAGGED_NAME = "Raynor#60bf07";
     private static final @NotNull String APP_BAR_SELECTOR = ".app-bar";
     private static final @NotNull String NAVIGATION_SELECTOR = ".nav-button";
+    private static final @NotNull String DOT_BADGE_SELECTOR = ".dot-badge";
+    private static final @NotNull String TEXT_SELECTOR = ".text";
     private static final @NotNull String ACCOUNT_SELECTOR = ".account-button";
     private static final @NotNull String STATUS_BAR_SELECTOR = ".status-bar";
     private static final double MINIMUM_SCENE_WIDTH = 1100;
     private static final double MINIMUM_SCENE_HEIGHT = 720;
     private static final double TALL_SCREEN_HEIGHT = 2000;
     private static final double TOLERANCE = 1;
+    private static final double DOT_DISTANCE = 4;
     private static final @NotNull String COMPACT_LIST_STYLE_CLASS = "compact";
     private static final long FX_TIMEOUT_SECONDS = 60;
 
@@ -143,6 +152,37 @@ final class LauncherShellTest {
         Assertions.assertEquals(bar.getWidth() - bar.getPadding().getRight(), account.getBoundsInParent().getMaxX(), TOLERANCE);
     }
 
+    /**
+     * Checks that a navigation entry's text is centred in the entry and that the entry is as wide as its text and padding, so its dot badge
+     * takes no room.
+     */
+    private static void assertTextCentred(@NotNull ToggleButton button) {
+        Bounds text = button.lookup(TEXT_SELECTOR).getBoundsInParent();
+        Insets insets = button.getInsets();
+
+        Assertions.assertEquals(insets.getLeft() + (button.getWidth() - insets.getLeft() - insets.getRight()) / 2, text.getCenterX(), TOLERANCE,
+                                button.getText() + " is centred horizontally");
+        Assertions.assertEquals(insets.getTop() + (button.getHeight() - insets.getTop() - insets.getBottom()) / 2, text.getCenterY(), TOLERANCE,
+                                button.getText() + " is centred vertically");
+        Assertions.assertEquals(text.getWidth() + insets.getLeft() + insets.getRight(), button.getWidth(), TOLERANCE,
+                                button.getText() + " has no room for the dot");
+    }
+
+    /**
+     * Checks that the shown dot of a navigation entry sits at the top right corner of the entry's text, at most {@link #DOT_DISTANCE} away.
+     */
+    private static void assertDotAtTextCorner(@NotNull ToggleButton button) {
+        Node textNode = button.lookup(TEXT_SELECTOR);
+        Region dotNode = (Region) button.lookup(DOT_BADGE_SELECTOR);
+        Bounds text = textNode.localToScene(textNode.getLayoutBounds());
+        Bounds dot = dotNode.localToScene(dotNode.getLayoutBounds());
+        double outsideX = Math.max(0, Math.max(dot.getMinX() - text.getMaxX(), text.getMaxX() - dot.getMaxX()));
+        double outsideY = Math.max(0, Math.max(dot.getMinY() - text.getMinY(), text.getMinY() - dot.getMaxY()));
+
+        Assertions.assertTrue(dotNode.getWidth() > 0 && dotNode.getHeight() > 0, "the dot has its size");
+        Assertions.assertTrue(outsideX <= DOT_DISTANCE && outsideY <= DOT_DISTANCE, () -> "the dot " + dot + " sits at the text corner of " + text);
+    }
+
     @ParameterizedTest
     @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
     void app_bar_has_no_accounts_tab_and_its_account_button_opens_the_account_menu(double scale, @NotNull String languageCode,
@@ -191,7 +231,33 @@ final class LauncherShellTest {
             Assertions.assertSame(account, LauncherFxScenario.findButton(bar, TAGGED_NAME));
             Assertions.assertNotNull(account.getGraphic(), "the account shows its status");
             assertAtRightEnd(bar, account);
+
+            for (Node button : bar.lookupAll(NAVIGATION_SELECTOR)) {
+                assertTextCentred((ToggleButton) button);
+            }
+
             LauncherFxScenario.saveSample(bar, scale, "top-bar-account-" + suffix);
+
+            // The dot of the Chat entry: shown on that entry only, and the entries keep their place.
+            List<Double> places = bar.lookupAll(NAVIGATION_SELECTOR).stream().map(Node::getLayoutX).toList();
+
+            shell.setNavigationDotShown(LauncherShell.Section.CHAT, true);
+            shell.getRoot().applyCss();
+            shell.getRoot().layout();
+
+            for (Node button : bar.lookupAll(NAVIGATION_SELECTOR)) {
+                boolean chat = ((ToggleButton) button).getText().equals(texts.get("nav.chat"));
+
+                Assertions.assertEquals(chat, button.lookup(DOT_BADGE_SELECTOR).isVisible(), ((ToggleButton) button).getText());
+                assertTextCentred((ToggleButton) button);
+
+                if (chat) {
+                    assertDotAtTextCorner((ToggleButton) button);
+                }
+            }
+
+            Assertions.assertEquals(places, bar.lookupAll(NAVIGATION_SELECTOR).stream().map(Node::getLayoutX).toList(), "the entries do not move");
+            LauncherFxScenario.saveSample(bar, scale, "top-bar-chat-dot-" + suffix);
             account.fire();
 
             return null;
@@ -345,7 +411,40 @@ final class LauncherShellTest {
 
             Assertions.assertFalse(list.getStyleClass().contains(COMPACT_LIST_STYLE_CLASS));
             Assertions.assertEquals(REGULAR_CELL_PADDING, cell.getPadding().getTop(), TOLERANCE);
+            Assertions.assertTrue(LauncherFxScenario.assertFooterInsets(shell.getRoot()) >= 2, "the list and the detail footers are checked");
             LauncherFxScenario.saveSample(shell.getRoot(), scale, "mods-list-" + Math.round(scale * PERCENT_SCALE) + "-" + language.getCode());
+
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1.0, en", "1.0, ko"})
+    void empty_mod_list_centres_its_wrapped_text(double scale, @NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
+        UiLanguage language = languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
+        InstallLayout install = InstallLayout.of(directory.resolve(LONG_FOLDER_NAME).resolve(LONG_FOLDER_NAME));
+
+        Files.createDirectories(install.getModsDirectory());
+
+        ModCatalog catalog = ModCatalog.scan(install, InstallationRecords.NONE);
+
+        LauncherFxScenario.run(() -> {
+            LauncherTexts texts = LauncherTexts.of(language);
+            LauncherShell shell = new LauncherShell(texts, install, scale, section -> {
+            }, () -> {
+            }, () -> {
+            });
+            ModsScreen screen = new ModsScreen(install, catalog, texts, scale, new SimpleBooleanProperty(false), new NoActions());
+            Scene scene = new Scene(shell.getRoot(), SCENE_WIDTH, SCENE_HEIGHT);
+
+            shell.show(LauncherShell.Section.MODS, screen.getRoot());
+            ThemeUtils.apply(scene, language);
+            shell.getRoot().applyCss();
+            shell.getRoot().layout();
+
+            LauncherFxScenario.assertPlaceholderCentred((ListView<?>) shell.getRoot().lookup(".list-view"));
+            Assertions.assertTrue(LauncherFxScenario.assertFooterInsets(shell.getRoot()) >= 1, "the list footer is checked");
+            LauncherFxScenario.saveSample(shell.getRoot(), scale, "mods-empty-" + Math.round(scale * PERCENT_SCALE) + "-" + language.getCode());
 
             return null;
         });

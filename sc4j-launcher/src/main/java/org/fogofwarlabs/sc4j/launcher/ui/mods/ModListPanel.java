@@ -40,17 +40,17 @@ public final class ModListPanel {
      */
     public ModListPanel(@NotNull ModCatalog catalog, @NotNull LauncherTexts texts, @NotNull ModArt art, @NotNull Consumer<@NotNull ModEntry> onSelect,
                         @NotNull Runnable onOpenFolder, @NotNull Runnable onRefresh, @NotNull Runnable onInstall) {
-        Button openFolder = ComponentUtils.smallButton(texts.get("mods.open.folder"), ButtonRole.SECONDARY);
-        Button refresh = ComponentUtils.smallButton(texts.get("mods.refresh"), ButtonRole.SECONDARY);
-        Button install = ComponentUtils.smallButton(texts.get("mods.install"), ButtonRole.SECONDARY);
+        Button openFolder = ComponentUtils.createSmallButton(texts.get("mods.open.folder"), ButtonRole.SECONDARY);
+        Button refresh = ComponentUtils.createSmallButton(texts.get("mods.refresh"), ButtonRole.SECONDARY);
+        Button install = ComponentUtils.createSmallButton(texts.get("mods.install"), ButtonRole.SECONDARY);
 
         this.texts = texts;
         this.art   = art;
-        this.list  = ComponentUtils.listView(ListItemSize.REGULAR);
+        this.list  = ComponentUtils.createListView(ListItemSize.REGULAR);
 
         this.list.getItems().setAll(catalog.getEntries());
         this.list.setCellFactory(view -> new ListItemCell<>(this::createItem));
-        this.list.setPlaceholder(ComponentUtils.paragraph(texts.format("mods.empty", catalog.getModsDirectory()), "text-caption"));
+        this.list.setPlaceholder(ComponentUtils.createParagraph(texts.format("mods.empty", catalog.getModsDirectory()), "text-caption"));
         this.list.getSelectionModel().selectedItemProperty().addListener((observable, previous, current) -> {
             if (current != null) {
                 onSelect.accept(current);
@@ -62,8 +62,8 @@ public final class ModListPanel {
         refresh.setOnAction(event -> onRefresh.run());
         install.setOnAction(event -> onInstall.run());
 
-        this.root = ComponentUtils.panelWithFooter(texts.get("mods.title"), ComponentUtils.flushPanelBody(this.list),
-                                                   ComponentUtils.panelFooter(openFolder, ComponentUtils.growingSpacer(), refresh, install));
+        this.root = ComponentUtils.createPanelWithFooter(texts.get("mods.title"), ComponentUtils.createFlushPanelBody(this.list),
+                                                         ComponentUtils.createPanelFooter(openFolder, ComponentUtils.createGrowingSpacer(), refresh, install));
         ComponentUtils.setColumnWidth(this.root, ColumnWidth.WIDE);
     }
 

@@ -1,16 +1,20 @@
 package org.fogofwarlabs.sc4j.launcher.ui;
 
 import javafx.application.Platform;
+import javafx.event.Event;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.control.Button;
-import javafx.scene.control.Hyperlink;
-import javafx.scene.control.ListView;
-import javafx.scene.control.ToggleButton;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.BackgroundFill;
+import javafx.scene.layout.BorderStroke;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.Account;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.AccountStore;
@@ -20,6 +24,8 @@ import org.fogofwarlabs.sc4j.catalog.ReleaseVersion;
 import org.fogofwarlabs.sc4j.catalog.github.ReleaseClient;
 import org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository;
 import org.fogofwarlabs.sc4j.catalog.test.ReleaseServerScenario;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChannelChat;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
 import org.fogofwarlabs.sc4j.launcher.peer.LauncherNodeRunner;
@@ -53,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -67,6 +74,10 @@ import java.util.concurrent.atomic.AtomicReference;
  * link goes to the document opener.
  * The Update dialog of a newer launcher version opens by itself once per run, once logged in, while no game runs and not for a skipped
  * version.
+ * The chat runs from the login on: the session joins the shared channel without the Chat screen. The Chat entry shows a dot while a line or
+ * a whisper is unread and the sound plays for it while the Chat screen is hidden; reading the conversation clears its part of the dot, and the
+ * Settings switch mutes the sound. Closing the window asks to minimize, quit or cancel, in a dialog whose footer has the same room on every
+ * side of its buttons.
  */
 final class LauncherWindowTest {
     private static final double SCREEN_WIDTH = 1920;
@@ -95,6 +106,18 @@ final class LauncherWindowTest {
     private static final @NotNull String HYPERLINK_SELECTOR = ".hyperlink";
     private static final @NotNull String LIST_SELECTOR = ".list-view";
     private static final @NotNull String TEXT_FIELD_SELECTOR = ".text-field";
+    private static final @NotNull String APP_BAR_SELECTOR = ".app-bar";
+    private static final @NotNull String DOT_BADGE_SELECTOR = ".dot-badge";
+    private static final @NotNull String CHECK_BOX_SELECTOR = ".check-box";
+    private static final @NotNull String TEXT_ONLY_STYLE_CLASS = "text-only";
+    private static final @NotNull String ENGLISH_CLOSE_TEXT = "Quit the SC4J launcher?";
+    private static final @NotNull String KOREAN_CLOSE_TEXT = "정말로 SC4J 런처를 종료하시겠습니까?";
+    private static final @NotNull Runnable NO_SOUND = () -> {
+    };
+    /**
+     * The place of the channel list among the lists of the Chat screen, from left to right.
+     */
+    private static final int CHANNEL_LIST = 0;
     /**
      * The place of the conversation list among the lists of the Chat screen, from left to right.
      */
@@ -208,6 +231,55 @@ final class LauncherWindowTest {
         Assertions.assertSame(root.lookup(TEXT_FIELD_SELECTOR), stage.getScene().getFocusOwner(), "the input is focused");
     }
 
+    private static @NotNull ToggleButton findNavigation(@NotNull Parent root, @NotNull String text) {
+        for (Node node : root.lookupAll(NAVIGATION_SELECTOR)) {
+            if (node instanceof ToggleButton button && button.getText().equals(text)) {
+                return button;
+            }
+        }
+
+        throw Exceptions.newAssertionError("No navigation entry {0}", text);
+    }
+
+    private static boolean isChatDotShown(@NotNull Stage stage, @NotNull LauncherTexts texts) {
+        Node dot = findNavigation(layRoot(stage), texts.get("nav.chat")).lookup(DOT_BADGE_SELECTOR);
+
+        Assertions.assertNotNull(dot, "the Chat entry has a dot badge");
+
+        return dot.isVisible();
+    }
+
+    private static @NotNull RecordingLauncherSession createConnectedSession() {
+        return new RecordingLauncherSession(createCode(1), new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null));
+    }
+
+    private static @NotNull ChatEntryView createLine(@NotNull String channel, @NotNull FriendCode author, @NotNull String text) {
+        return new ChatEntryView(ChatEntryKind.SAY, "Kerrigan#a1b2c3: ", text, channel, author, "Kerrigan#a1b2c3");
+    }
+
+    private static void requestClose(@NotNull Stage stage) {
+        stage.fireEvent(new WindowEvent(stage, WindowEvent.WINDOW_CLOSE_REQUEST));
+    }
+
+    /**
+     * Checks that a button has the text-only role: no visible background and no visible border.
+     */
+    private static void assertTextOnly(@NotNull Button button) {
+        Assertions.assertTrue(button.getStyleClass().contains(TEXT_ONLY_STYLE_CLASS));
+
+        if (button.getBackground() != null) {
+            for (BackgroundFill fill : button.getBackground().getFills()) {
+                Assertions.assertEquals(Color.TRANSPARENT, fill.getFill(), "no background");
+            }
+        }
+
+        if (button.getBorder() != null) {
+            for (BorderStroke stroke : button.getBorder().getStrokes()) {
+                Assertions.assertEquals(Color.TRANSPARENT, stroke.getTopStroke(), "no border");
+            }
+        }
+    }
+
     private static @NotNull Hyperlink findHyperlink(@NotNull Parent root, @NotNull String text) {
         for (Node node : root.lookupAll(HYPERLINK_SELECTOR)) {
             if (node instanceof Hyperlink link && link.getText().equals(text)) {
@@ -290,7 +362,7 @@ final class LauncherWindowTest {
                 Stage stage = new Stage();
                 LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
                 }, folder -> {
-                }, new LauncherNodeRunner(install), account -> LauncherSession.open(install, account, VERSION, Platform::runLater));
+                }, new LauncherNodeRunner(install), account -> LauncherSession.open(install, account, VERSION, Platform::runLater), NO_SOUND);
                 Rectangle2D firstScreen = createScreen(FIRST_SCALE);
                 Rectangle2D changedScreen = createScreen(CHANGED_SCALE);
 
@@ -342,7 +414,7 @@ final class LauncherWindowTest {
             Stage stage = new Stage();
             LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
             }, folder -> {
-            }, new LauncherNodeRunner(install), account -> LauncherSession.open(install, account, VERSION, Platform::runLater));
+            }, new LauncherNodeRunner(install), account -> LauncherSession.open(install, account, VERSION, Platform::runLater), NO_SOUND);
 
             window.fitDisplay(scale, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
 
@@ -384,7 +456,7 @@ final class LauncherWindowTest {
                     sessions.add(session);
 
                     return session;
-                });
+                }, NO_SOUND);
 
                 shown.set(stage);
                 window.fitDisplay(scale, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
@@ -410,6 +482,11 @@ final class LauncherWindowTest {
                                      "the account's session connects");
 
             Assertions.assertTrue(store.isInUse(raynor), "the logged-in launcher uses the account");
+
+            // The chat runs from the login on: the session joins the shared channel while the Mods screen is shown.
+            LauncherFxScenario.await(() -> sessions.getFirst().getChannels().stream()
+                                                   .anyMatch(channel -> channel.getName().equals(ChannelChat.SHARED_CHANNEL)),
+                                     "the session joins the shared channel without the Chat screen");
 
             LauncherFxScenario.run(() -> {
                 Parent root = layRoot(shown.get());
@@ -469,7 +546,7 @@ final class LauncherWindowTest {
                     sessions.add(session);
 
                     return session;
-                });
+                }, NO_SOUND);
 
                 window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
                 LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
@@ -515,7 +592,7 @@ final class LauncherWindowTest {
             Stage stage = new Stage();
             LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
             }, folder -> {
-            }, new LauncherNodeRunner(install), account -> session);
+            }, new LauncherNodeRunner(install), account -> session, NO_SOUND);
 
             window.fitDisplay(scale, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
             LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
@@ -531,6 +608,199 @@ final class LauncherWindowTest {
             // From the Chat screen: the screen shows Zeratul's conversation.
             whisperFromFriends(stage, texts, 1);
             assertChatShowsWhispers(stage, texts, "Zeratul#d4e5f6");
+
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
+    void chat_dot_shows_unread_lines_and_whispers_until_read_and_the_sound_plays_while_the_chat_is_hidden(double scale,
+                                                                                                          @NotNull String languageCode,
+                                                                                                          @TempDir @NotNull Path directory) throws Exception {
+        UiLanguage language = selectLanguage(languageCode);
+        LauncherTexts texts = LauncherTexts.of(language);
+        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+        InstallLayout install = InstallLayout.of(directory);
+        AccountStore store = AccountStore.of(install.getBeaconLinkDirectory());
+        RecordingLauncherSession session = createConnectedSession();
+        FriendCode kerrigan = createCode(2);
+        AtomicInteger sounds = new AtomicInteger();
+
+        store.create(raynorKey, raynorStamp, PlayerStamp.DEFAULT_DIFFICULTY, RAYNOR_USE_MILLIS);
+        new LauncherSettingsFile(install.getLauncherSettingsFile()).write(LauncherSettings.DEFAULT.withLanguage(language));
+        LauncherFxScenario.run(() -> {
+            Stage stage = new Stage();
+            LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
+            }, folder -> {
+            }, new LauncherNodeRunner(install), account -> session, sounds::incrementAndGet);
+            List<ChannelView> channels = List.of(new ChannelView(ChannelChat.SHARED_CHANNEL, 2, List.of()), new ChannelView("Ladder", 2, List.of()));
+            List<ChatEntryView> entries = new ArrayList<>();
+
+            window.fitDisplay(scale, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+            LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
+
+            // The login starts the chat in the display language; nothing is unread yet.
+            Assertions.assertEquals(List.of("open chat " + language.getCode()), session.getCommands());
+            Assertions.assertFalse(isChatDotShown(stage, texts));
+
+            // A line arrives while the Mods screen is shown: the dot shows and the sound plays.
+            entries.add(createLine(ChannelChat.SHARED_CHANNEL, kerrigan, "gg"));
+            session.setChat(channels, List.of(), entries);
+
+            Assertions.assertTrue(isChatDotShown(stage, texts));
+            Assertions.assertEquals(1, sounds.get(), "the sound plays while the Chat screen is hidden");
+            LauncherFxScenario.saveSample(layRoot(stage).lookup(APP_BAR_SELECTOR), scale, "window-chat-dot-" + suffix);
+
+            // The Chat screen shows the shared channel, which reads it.
+            findNavigation(layRoot(stage), texts.get("nav.chat")).fire();
+
+            Assertions.assertFalse(isChatDotShown(stage, texts), "reading the channel clears the dot");
+
+            // A line in the other channel shows the dot until that channel is shown.
+            entries.add(createLine("Ladder", kerrigan, "1v1?"));
+            session.setChat(channels, List.of(), entries);
+
+            Assertions.assertTrue(isChatDotShown(stage, texts));
+
+            ((ListView<?>) List.copyOf(layRoot(stage).lookupAll(LIST_SELECTOR)).get(CHANNEL_LIST)).getSelectionModel().select(1);
+
+            Assertions.assertFalse(isChatDotShown(stage, texts));
+
+            // A whisper shows the dot until its conversation is shown.
+            session.setWhispers(List.of(new WhisperView(kerrigan, "Kerrigan#a1b2c3", "Ready?", RAYNOR_USE_MILLIS, WhisperState.RECEIVED)));
+
+            Assertions.assertTrue(isChatDotShown(stage, texts));
+
+            ((ListView<?>) List.copyOf(layRoot(stage).lookupAll(LIST_SELECTOR)).get(CONVERSATION_LIST)).getSelectionModel().select(0);
+
+            Assertions.assertFalse(isChatDotShown(stage, texts));
+
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
+    void settings_switch_mutes_the_chat_sound_and_saves_it(double scale, @NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
+        UiLanguage language = selectLanguage(languageCode);
+        LauncherTexts texts = LauncherTexts.of(language);
+        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+        InstallLayout install = InstallLayout.of(directory);
+        AccountStore store = AccountStore.of(install.getBeaconLinkDirectory());
+        LauncherSettingsFile settingsFile = new LauncherSettingsFile(install.getLauncherSettingsFile());
+        RecordingLauncherSession session = createConnectedSession();
+        AtomicInteger sounds = new AtomicInteger();
+
+        store.create(raynorKey, raynorStamp, PlayerStamp.DEFAULT_DIFFICULTY, RAYNOR_USE_MILLIS);
+        settingsFile.write(LauncherSettings.DEFAULT.withLanguage(language));
+        LauncherFxScenario.run(() -> {
+            Stage stage = new Stage();
+            LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
+            }, folder -> {
+            }, new LauncherNodeRunner(install), account -> session, sounds::incrementAndGet);
+
+            window.fitDisplay(scale, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+            LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
+            findNavigation(layRoot(stage), texts.get("nav.settings")).fire();
+
+            CheckBox mute = (CheckBox) layRoot(stage).lookup(CHECK_BOX_SELECTOR);
+
+            Assertions.assertNotNull(mute);
+            Assertions.assertEquals(texts.get("settings.chat.sound.mute"), mute.getText());
+            Assertions.assertFalse(mute.isSelected(), "the chat sound is on by default");
+
+            mute.fire();
+
+            Assertions.assertTrue(settingsFile.read().isChatSoundMuted(), "the switch is saved in the launcher settings");
+
+            LauncherFxScenario.disableViewportCache(layRoot(stage));
+            LauncherFxScenario.saveSample(layRoot(stage), scale, "window-settings-sound-" + suffix);
+
+            // A muted sound does not play; the dot still shows.
+            session.setChat(List.of(new ChannelView(ChannelChat.SHARED_CHANNEL, 2, List.of())), List.of(),
+                            List.of(createLine(ChannelChat.SHARED_CHANNEL, createCode(2), "gg")));
+
+            Assertions.assertEquals(0, sounds.get());
+            Assertions.assertTrue(isChatDotShown(stage, texts));
+
+            return null;
+        });
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
+    void close_request_asks_to_minimize_quit_or_cancel(double scale, @NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
+        UiLanguage language = selectLanguage(languageCode);
+        LauncherTexts texts = LauncherTexts.of(language);
+        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+        InstallLayout install = InstallLayout.of(directory);
+        AccountStore store = AccountStore.of(install.getBeaconLinkDirectory());
+        LauncherSettingsFile settingsFile = new LauncherSettingsFile(install.getLauncherSettingsFile());
+        RecordingLauncherSession session = createConnectedSession();
+
+        store.create(raynorKey, raynorStamp, PlayerStamp.DEFAULT_DIFFICULTY, RAYNOR_USE_MILLIS);
+        settingsFile.write(LauncherSettings.DEFAULT.withLanguage(language));
+        LauncherFxScenario.run(() -> {
+            Stage stage = new Stage();
+            LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
+            }, folder -> {
+            }, new LauncherNodeRunner(install), account -> session, NO_SOUND);
+
+            window.fitDisplay(scale, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+            LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
+
+            // The dialog: Quit on the left, then Cancel (Escape) and Minimize, the default action; a second request opens no second dialog.
+            requestClose(stage);
+            requestClose(stage);
+
+            Parent root = layRoot(stage);
+            Parent dialog = (Parent) root.lookup(DIALOG_SELECTOR);
+            Button minimize = LauncherFxScenario.findButton(dialog, texts.get("close.minimize"));
+            Button cancel = LauncherFxScenario.findButton(dialog, texts.get("close.cancel"));
+
+            Assertions.assertEquals(1, root.lookupAll(DIALOG_SELECTOR).size());
+            Assertions.assertEquals(List.of(texts.get("close.quit"), texts.get("close.cancel"), texts.get("close.minimize")),
+                                    dialog.lookupAll(".button").stream().map(node -> ((Button) node).getText()).toList());
+            Assertions.assertTrue(minimize.isDefaultButton(), "Minimize is the default action");
+            Assertions.assertTrue(minimize.getStyleClass().contains("primary"));
+            Assertions.assertTrue(cancel.isCancelButton());
+            assertTextOnly(LauncherFxScenario.findButton(dialog, texts.get("close.quit")));
+            Assertions.assertEquals(language == UiLanguage.KOREAN ? KOREAN_CLOSE_TEXT : ENGLISH_CLOSE_TEXT, texts.get("close.text"));
+            Assertions.assertTrue(dialog.lookupAll(".label").stream().anyMatch(node -> ((Label) node).getText().equals(texts.get("close.text"))),
+                                  "the dialog asks whether to quit");
+            Assertions.assertTrue(LauncherFxScenario.assertFooterInsets(dialog) >= 1, "the dialog footer is checked");
+            LauncherFxScenario.saveSample(root, scale, "window-close-" + suffix);
+
+            // Cancel and Escape keep the window.
+            cancel.fire();
+
+            Assertions.assertNull(layRoot(stage).lookup(DIALOG_SELECTOR));
+            Assertions.assertFalse(stage.isIconified());
+
+            requestClose(stage);
+            Event.fireEvent(LauncherFxScenario.findButton(layRoot(stage), texts.get("close.minimize")),
+                            new KeyEvent(KeyEvent.KEY_PRESSED, "", "", KeyCode.ESCAPE, false, false, false, false));
+
+            Assertions.assertNull(layRoot(stage).lookup(DIALOG_SELECTOR), "Escape cancels");
+
+            // Minimize keeps the session.
+            requestClose(stage);
+            LauncherFxScenario.findButton(layRoot(stage), texts.get("close.minimize")).fire();
+
+            Assertions.assertNull(layRoot(stage).lookup(DIALOG_SELECTOR));
+            Assertions.assertTrue(stage.isIconified());
+            Assertions.assertFalse(session.isClosed(), "the chat keeps running");
+
+            // Quit closes the session and saves the window.
+            requestClose(stage);
+
+            Assertions.assertFalse(stage.isIconified(), "the request brings the window back");
+
+            LauncherFxScenario.findButton(layRoot(stage), texts.get("close.quit")).fire();
+
+            Assertions.assertTrue(session.isClosed());
+            Assertions.assertNotNull(settingsFile.read().getWindow());
 
             return null;
         });
