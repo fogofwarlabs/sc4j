@@ -5,8 +5,10 @@ import javafx.beans.binding.BooleanBinding;
 import javafx.css.PseudoClass;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.skin.ComboBoxListViewSkin;
+import javafx.scene.control.skin.VirtualFlow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -25,6 +27,7 @@ public final class ComponentUtils {
     private static final @NotNull String COMPACT_LIST_STYLE_CLASS = "compact";
     private static final @NotNull String SUNKEN_LIST_STYLE_CLASS = "sunken";
     private static final @NotNull String LOG_LIST_STYLE_CLASS = "log-list";
+    private static final @NotNull String VIRTUAL_FLOW_SELECTOR = ".virtual-flow";
     private static final @NotNull PseudoClass FIRST_ROW = PseudoClass.getPseudoClass("first-row");
 
     /**
@@ -619,6 +622,43 @@ public final class ComponentUtils {
         list.getStyleClass().add(LOG_LIST_STYLE_CLASS);
 
         return list;
+    }
+
+    /**
+     * Scrolls a list view to its end, now and once more after the scene's next layout pass, in which the items' heights may change (for
+     * example when the scroll bar appears and narrows them).
+     *
+     * @param list the list view
+     */
+    public static void scrollToLast(@NotNull ListView<?> list) {
+        Scene scene = list.getScene();
+
+        if (list.getItems().isEmpty()) {
+            return;
+        }
+
+        scrollToEnd(list);
+
+        if (scene == null) {
+            return;
+        }
+
+        Runnable[] again = new Runnable[1];
+
+        again[0] = () -> {
+            scene.removePostLayoutPulseListener(again[0]);
+            scrollToEnd(list);
+        };
+        scene.addPostLayoutPulseListener(again[0]);
+    }
+
+    private static void scrollToEnd(@NotNull ListView<?> list) {
+        list.scrollTo(list.getItems().size() - 1);
+
+        // The list's flow estimates the positions of items it has not measured; scrolling by the rest of its length ends at its last pixel.
+        if (list.lookup(VIRTUAL_FLOW_SELECTOR) instanceof VirtualFlow<?> flow) {
+            flow.scrollPixels(Double.MAX_VALUE);
+        }
     }
 
     /**

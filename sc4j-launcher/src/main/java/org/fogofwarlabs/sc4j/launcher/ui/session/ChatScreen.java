@@ -454,7 +454,7 @@ public final class ChatScreen {
         if (!source.equals(this.shownSource)) {
             this.shownSource = source;
             this.log.getItems().setAll(lines);
-            this.log.scrollTo(lines.size() - 1);
+            ComponentUtils.scrollToLast(this.log);
         }
 
         if (!members.equals(this.memberList.getItems())) {
