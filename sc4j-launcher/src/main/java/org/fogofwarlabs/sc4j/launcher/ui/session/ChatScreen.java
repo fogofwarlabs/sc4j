@@ -179,7 +179,7 @@ public final class ChatScreen {
         this.root             = ComponentUtils.column(Spacing.L);
         this.channelList      = ComponentUtils.listView(ListItemSize.COMPACT);
         this.conversationList = ComponentUtils.listView(ListItemSize.COMPACT);
-        this.logTitle         = new Label();
+        this.logTitle         = ComponentUtils.label("");
         this.leave            = ComponentUtils.smallButton(texts.get("chat.leave"), ButtonRole.SECONDARY);
         this.log              = ComponentUtils.logListView();
         this.input            = new TextField();

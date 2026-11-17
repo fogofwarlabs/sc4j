@@ -1,5 +1,6 @@
 package org.fogofwarlabs.sc4j.launcher.ui;
 
+import javafx.beans.InvalidationListener;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.BooleanBinding;
 import javafx.css.PseudoClass;
@@ -12,6 +13,7 @@ import javafx.scene.control.skin.VirtualFlow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.util.Duration;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,10 +30,12 @@ public final class ComponentUtils {
     private static final @NotNull String SUNKEN_LIST_STYLE_CLASS = "sunken";
     private static final @NotNull String LOG_LIST_STYLE_CLASS = "log-list";
     private static final @NotNull String VIRTUAL_FLOW_SELECTOR = ".virtual-flow";
+    private static final @NotNull Duration FULL_TEXT_DELAY = Duration.millis(400);
+    private static final double CUT_TOLERANCE = 0.5;
     private static final @NotNull PseudoClass FIRST_ROW = PseudoClass.getPseudoClass("first-row");
 
     /**
-     * Creates a label.
+     * Creates a label; while its text is cut short, hovering it shows the whole text ({@link #showFullTextWhenCut}).
      *
      * @param text         the text
      * @param styleClasses the style classes to add
@@ -41,8 +45,29 @@ public final class ComponentUtils {
         Label label = new Label(text);
 
         label.getStyleClass().addAll(styleClasses);
+        showFullTextWhenCut(label);
 
         return label;
+    }
+
+    /**
+     * Gives a labeled control a tooltip with its whole text while the text does not fit on one line and is cut short.
+     *
+     * @param labeled the labeled control
+     */
+    public static void showFullTextWhenCut(@NotNull Labeled labeled) {
+        Tooltip tooltip = new Tooltip();
+        InvalidationListener update = observable -> labeled.setTooltip(isCut(labeled) ? tooltip : null);
+
+        tooltip.textProperty().bind(labeled.textProperty());
+        tooltip.setShowDelay(FULL_TEXT_DELAY);
+        labeled.widthProperty().addListener(update);
+        labeled.textProperty().addListener(update);
+        labeled.fontProperty().addListener(update);
+    }
+
+    private static boolean isCut(@NotNull Labeled labeled) {
+        return !labeled.isWrapText() && labeled.getWidth() > 0 && labeled.getWidth() + CUT_TOLERANCE < labeled.prefWidth(-1);
     }
 
     /**

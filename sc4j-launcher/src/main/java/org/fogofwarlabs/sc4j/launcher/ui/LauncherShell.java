@@ -113,8 +113,8 @@ public final class LauncherShell {
         this.navigation        = new HBox();
         this.navigationButtons = new EnumMap<>(Section.class);
         this.accountButton     = ComponentUtils.smallButton("", ButtonRole.SECONDARY);
-        this.catalogStatus     = new Label();
-        this.nodeStatus        = new Label();
+        this.catalogStatus     = ComponentUtils.label("");
+        this.nodeStatus        = ComponentUtils.label("");
         this.appBar            = this.createAppBar(texts, imageScale, navigate, about, accountMenu);
 
         this.menuLayer = null;

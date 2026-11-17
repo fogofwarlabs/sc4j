@@ -250,7 +250,7 @@ public final class ModDetailView {
         VBox body = ComponentUtils.panelBody();
         Button reset = ComponentUtils.button(this.texts.get("detail.reset"), ButtonRole.SECONDARY);
         Button run = ComponentUtils.button(this.texts.get("detail.run"), ButtonRole.PRIMARY);
-        Label blocker = new Label();
+        Label blocker = ComponentUtils.label("");
         Region blockerIcon = new Region();
         VBox panel;
 
