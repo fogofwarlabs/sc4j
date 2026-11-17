@@ -51,7 +51,7 @@ final class ComponentUtilsScrollTest {
     @Test
     void scrollToLast_should_show_the_last_line_when_the_list_first_scrolls() throws Exception {
         ListView<String> list = LauncherFxScenario.run(() -> {
-            ListView<String> created = ComponentUtils.logListView();
+            ListView<String> created = ComponentUtils.createLogListView();
             Stage stage = new Stage();
 
             created.setCellFactory(view -> new ListCell<>() {

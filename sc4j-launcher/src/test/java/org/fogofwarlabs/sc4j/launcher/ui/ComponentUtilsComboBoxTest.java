@@ -30,7 +30,7 @@ final class ComponentUtilsComboBoxTest {
     @ValueSource(strings = {"a", "an item much longer than the combo box is wide, whose cell would widen the list"})
     void comboBox_should_open_a_list_as_wide_as_the_combo_box(@NotNull String item) throws Exception {
         double[] widths = LauncherFxScenario.run(() -> {
-            ComboBox<String> comboBox = ComponentUtils.comboBox(ControlWidth.M);
+            ComboBox<String> comboBox = ComponentUtils.createComboBox(ControlWidth.M);
             Stage stage = new Stage();
 
             comboBox.getItems().setAll("b", item);

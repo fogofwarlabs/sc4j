@@ -112,9 +112,9 @@ public final class LauncherShell {
         this.screenScroll      = new ScrollPane(this.screenArea);
         this.navigation        = new HBox();
         this.navigationButtons = new EnumMap<>(Section.class);
-        this.accountButton     = ComponentUtils.smallButton("", ButtonRole.SECONDARY);
-        this.catalogStatus     = ComponentUtils.label("");
-        this.nodeStatus        = ComponentUtils.label("");
+        this.accountButton     = ComponentUtils.createSmallButton("", ButtonRole.SECONDARY);
+        this.catalogStatus     = ComponentUtils.createLabel("");
+        this.nodeStatus        = ComponentUtils.createLabel("");
         this.appBar            = this.createAppBar(texts, imageScale, navigate, about, accountMenu);
 
         this.menuLayer = null;
@@ -178,7 +178,7 @@ public final class LauncherShell {
      */
     public void setAccount(@NotNull String taggedName, @NotNull Tone tone) {
         this.accountButton.setText(taggedName);
-        this.accountButton.setGraphic(ComponentUtils.statusMarker(tone));
+        this.accountButton.setGraphic(ComponentUtils.createStatusMarker(tone));
     }
 
     /**
@@ -290,10 +290,10 @@ public final class LauncherShell {
 
     private @NotNull HBox createAppBar(@NotNull LauncherTexts texts, double imageScale,
                                        @NotNull Consumer<@NotNull Section> navigate, @NotNull Runnable about, @NotNull Runnable accountMenu) {
-        VBox brand = new VBox(ComponentUtils.label(PRODUCT_NAME, "app-title"), ComponentUtils.label(texts.get("app.subtitle"), "app-subtitle"));
+        VBox brand = new VBox(ComponentUtils.createLabel(PRODUCT_NAME, "app-title"), ComponentUtils.createLabel(texts.get("app.subtitle"), "app-subtitle"));
         Region gap = new Region();
         ToggleGroup group = new ToggleGroup();
-        Button aboutButton = ComponentUtils.smallButton(texts.get("app.about"), ButtonRole.SECONDARY);
+        Button aboutButton = ComponentUtils.createSmallButton(texts.get("app.about"), ButtonRole.SECONDARY);
         HBox bar;
 
         brand.getStyleClass().add("app-brand");
@@ -317,9 +317,9 @@ public final class LauncherShell {
         this.accountButton.setMinWidth(Region.USE_PREF_SIZE);
         this.accountButton.setOnAction(event -> accountMenu.run());
 
-        bar = new HBox(ComponentUtils.imageView(ThemeUtils.loadImage(ThemeUtils.SC4J_LOGO, IconSize.M.getSize(), imageScale), IconSize.M.getSize()),
+        bar = new HBox(ComponentUtils.createImageView(ThemeUtils.loadImage(ThemeUtils.SC4J_LOGO, IconSize.M.getSize(), imageScale), IconSize.M.getSize()),
                        brand, gap, this.navigation,
-                       ComponentUtils.growingSpacer(), ComponentUtils.label(texts.format("app.engine", EngineVersion.CURRENT), "text-caption"),
+                       ComponentUtils.createGrowingSpacer(), ComponentUtils.createLabel(texts.format("app.engine", EngineVersion.CURRENT), "text-caption"),
                        aboutButton, this.accountButton);
         bar.getStyleClass().add("app-bar");
 
@@ -328,12 +328,12 @@ public final class LauncherShell {
 
     private @NotNull HBox createStatusBar(@NotNull LauncherTexts texts, @NotNull InstallLayout install, double imageScale) {
         double logoSize = IconSize.S.getSize();
-        HBox publisher = ComponentUtils.row(Spacing.XS,
-                                            ComponentUtils.imageView(ThemeUtils.loadImage(ThemeUtils.FOG_OF_WAR_LABS_LOGO, logoSize, imageScale),
+        HBox publisher = ComponentUtils.createRow(Spacing.XS,
+                                            ComponentUtils.createImageView(ThemeUtils.loadImage(ThemeUtils.FOG_OF_WAR_LABS_LOGO, logoSize, imageScale),
                                                                      logoSize),
-                                            ComponentUtils.label(PUBLISHER_NAME));
-        HBox bar = new HBox(ComponentUtils.label(texts.format("status.install", install.getRoot())), this.catalogStatus, this.nodeStatus,
-                            ComponentUtils.growingSpacer(), publisher);
+                                            ComponentUtils.createLabel(PUBLISHER_NAME));
+        HBox bar = new HBox(ComponentUtils.createLabel(texts.format("status.install", install.getRoot())), this.catalogStatus, this.nodeStatus,
+                            ComponentUtils.createGrowingSpacer(), publisher);
 
         bar.getStyleClass().add("status-bar");
 

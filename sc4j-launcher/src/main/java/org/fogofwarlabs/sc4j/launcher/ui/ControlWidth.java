@@ -1,7 +1,7 @@
 package org.fogofwarlabs.sc4j.launcher.ui;
 
 /**
- * Lists the widths of input controls in forms and dialogs ({@link ComponentUtils#setControlWidth}, {@link ComponentUtils#comboBox}).
+ * Lists the widths of input controls in forms and dialogs ({@link ComponentUtils#setControlWidth}, {@link ComponentUtils#createComboBox}).
  */
 public enum ControlWidth {
     /**

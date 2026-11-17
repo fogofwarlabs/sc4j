@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Describes one item of a list, the shared look of every list entry: a status marker or a thumbnail, the title over its captions, and a badge
- * at the right end. A list shows its items with {@link ListItemCell}; the item's size follows the list ({@link ComponentUtils#listView}).
+ * at the right end. A list shows its items with {@link ListItemCell}; the item's size follows the list ({@link ComponentUtils#createListView}).
  */
 public final class ListItem {
     /**
@@ -36,7 +36,7 @@ public final class ListItem {
      * @param title the title
      */
     public ListItem(@NotNull String title) {
-        this.title = ComponentUtils.label(title, TITLE_STYLE_CLASS);
+        this.title = ComponentUtils.createLabel(title, TITLE_STYLE_CLASS);
         this.text  = new VBox(this.title);
 
         this.text.getStyleClass().add(TEXT_STYLE_CLASS);
@@ -52,19 +52,19 @@ public final class ListItem {
      * @return this instance for chaining
      */
     public @NotNull ListItem setMarker(@NotNull Tone tone) {
-        this.leading = ComponentUtils.statusMarker(tone);
+        this.leading = ComponentUtils.createStatusMarker(tone);
 
         return this;
     }
 
     /**
-     * Sets the thumbnail before the title ({@link ComponentUtils#thumbnail}), {@link #THUMBNAIL_SIZE} wide and high.
+     * Sets the thumbnail before the title ({@link ComponentUtils#createThumbnail}), {@link #THUMBNAIL_SIZE} wide and high.
      *
      * @param image the image, or {@code null} for the placeholder
      * @return this instance for chaining
      */
     public @NotNull ListItem setThumbnail(@Nullable Image image) {
-        this.leading = ComponentUtils.thumbnail(image, THUMBNAIL_SIZE.getSize(), THUMBNAIL_SIZE.getSize());
+        this.leading = ComponentUtils.createThumbnail(image, THUMBNAIL_SIZE.getSize(), THUMBNAIL_SIZE.getSize());
 
         return this;
     }
@@ -88,7 +88,7 @@ public final class ListItem {
      * @return this instance for chaining
      */
     public @NotNull ListItem addCaption(@NotNull String caption, @NotNull String @NotNull ... styleClasses) {
-        Label label = ComponentUtils.label(caption, CAPTION_STYLE_CLASS);
+        Label label = ComponentUtils.createLabel(caption, CAPTION_STYLE_CLASS);
 
         label.getStyleClass().addAll(styleClasses);
         this.text.getChildren().add(label);
@@ -97,7 +97,7 @@ public final class ListItem {
     }
 
     /**
-     * Sets the badge at the right end ({@link ComponentUtils#badge}).
+     * Sets the badge at the right end ({@link ComponentUtils#createBadge}).
      *
      * @param badge the badge
      * @return this instance for chaining
@@ -123,7 +123,7 @@ public final class ListItem {
         row.getChildren().add(this.text);
 
         if (this.badge != null) {
-            row.getChildren().addAll(ComponentUtils.growingSpacer(), this.badge);
+            row.getChildren().addAll(ComponentUtils.createGrowingSpacer(), this.badge);
         }
 
         row.getStyleClass().add(ITEM_STYLE_CLASS);

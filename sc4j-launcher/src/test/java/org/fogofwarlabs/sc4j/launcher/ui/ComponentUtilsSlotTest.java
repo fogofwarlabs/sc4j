@@ -38,7 +38,7 @@ final class ComponentUtilsSlotTest {
     @Test
     void slot_should_take_no_room_while_empty() throws Exception {
         double[] heights = LauncherFxScenario.run(() -> {
-            VBox slot = ComponentUtils.slot();
+            VBox slot = ComponentUtils.createSlot();
             VBox column = new VBox(SPACING, createChild(), slot, createChild());
             double empty = layOut(column);
 

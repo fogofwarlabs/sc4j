@@ -54,22 +54,22 @@ public final class UpdateView {
 
         this.texts  = texts;
         this.source = new TextField(source);
-        this.check  = ComponentUtils.button(texts.get("update.check"), ButtonRole.SECONDARY);
-        this.status = ComponentUtils.label("", "text-caption");
-        this.update = ComponentUtils.button(texts.get("update.start"), ButtonRole.PRIMARY);
+        this.check  = ComponentUtils.createButton(texts.get("update.check"), ButtonRole.SECONDARY);
+        this.status = ComponentUtils.createLabel("", "text-caption");
+        this.update = ComponentUtils.createButton(texts.get("update.start"), ButtonRole.PRIMARY);
 
         ComponentUtils.setControlWidth(this.source, ControlWidth.L);
         this.check.setOnAction(event -> actions.onCheck(this.source.getText()));
         this.update.setOnAction(event -> actions.onUpdate());
 
-        state = ComponentUtils.column(Spacing.XS, ComponentUtils.label(texts.format("update.version", version), "text-caption"),
+        state = ComponentUtils.createColumn(Spacing.XS, ComponentUtils.createLabel(texts.format("update.version", version), "text-caption"),
                                       this.status);
         // The status lines take the row's height instead of setting it.
         state.setMinHeight(0);
         state.setPrefHeight(0);
         state.setAlignment(Pos.CENTER_LEFT);
-        this.root = ComponentUtils.field(texts.get("update.source"),
-                                         ComponentUtils.row(Spacing.M, this.source, this.check, state, this.update));
+        this.root = ComponentUtils.createField(texts.get("update.source"),
+                                         ComponentUtils.createRow(Spacing.M, this.source, this.check, state, this.update));
 
         this.showStatus(null, Tone.NEUTRAL, false);
     }

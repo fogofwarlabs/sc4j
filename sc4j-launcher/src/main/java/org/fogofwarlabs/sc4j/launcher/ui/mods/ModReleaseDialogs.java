@@ -77,9 +77,9 @@ public final class ModReleaseDialogs {
      */
     public void openInstall() {
         ModalDialog shown = new ModalDialog(this.texts.get("mods.install.title"));
-        ComboBox<String> repository = ComponentUtils.comboBox(ControlWidth.L);
-        Button cancel = ComponentUtils.button(this.texts.get("mods.cancel"), ButtonRole.SECONDARY);
-        Button next = ComponentUtils.button(this.texts.get("mods.install.next"), ButtonRole.PRIMARY);
+        ComboBox<String> repository = ComponentUtils.createComboBox(ControlWidth.L);
+        Button cancel = ComponentUtils.createButton(this.texts.get("mods.cancel"), ButtonRole.SECONDARY);
+        Button next = ComponentUtils.createButton(this.texts.get("mods.install.next"), ButtonRole.PRIMARY);
         AtomicBoolean cancelled = new AtomicBoolean(false);
 
         repository.setEditable(true);
@@ -88,7 +88,7 @@ public final class ModReleaseDialogs {
         repository.setCellFactory(view -> new ListItemCell<>(this::createRepositoryItem));
         this.readIndex(repository);
 
-        shown.addContent(ComponentUtils.field(this.texts.get("mods.install.repository"), repository));
+        shown.addContent(ComponentUtils.createField(this.texts.get("mods.install.repository"), repository));
         shown.setButtons(cancel, next);
         cancel.setOnAction(event -> {
             cancelled.set(true);
@@ -141,10 +141,10 @@ public final class ModReleaseDialogs {
      */
     public void openRemove(@NotNull ModEntry entry) {
         ModalDialog shown = new ModalDialog(this.texts.get("mods.remove.title"));
-        Button cancel = ComponentUtils.button(this.texts.get("mods.cancel"), ButtonRole.SECONDARY);
-        Button remove = ComponentUtils.button(this.texts.get("mods.remove"), ButtonRole.DANGER);
+        Button cancel = ComponentUtils.createButton(this.texts.get("mods.cancel"), ButtonRole.SECONDARY);
+        Button remove = ComponentUtils.createButton(this.texts.get("mods.remove"), ButtonRole.DANGER);
 
-        shown.addContent(ComponentUtils.paragraph(this.texts.format("mods.remove.text", ModArt.getName(entry, this.texts)), "text-body"));
+        shown.addContent(ComponentUtils.createParagraph(this.texts.format("mods.remove.text", ModArt.getName(entry, this.texts)), "text-body"));
         shown.setButtons(cancel, remove);
         cancel.setOnAction(event -> this.shell.closeDialog(shown));
         remove.setOnAction(event -> {
@@ -170,12 +170,12 @@ public final class ModReleaseDialogs {
     private void openConfirmation(@NotNull String title, @NotNull String text, @NotNull String actionText, @NotNull ModRelease release,
                                   @Nullable ModEntry replaced) {
         ModalDialog shown = new ModalDialog(title);
-        Button cancel = ComponentUtils.button(this.texts.get("mods.cancel"), ButtonRole.SECONDARY);
-        Button action = ComponentUtils.button(actionText, ButtonRole.PRIMARY);
+        Button cancel = ComponentUtils.createButton(this.texts.get("mods.cancel"), ButtonRole.SECONDARY);
+        Button action = ComponentUtils.createButton(actionText, ButtonRole.PRIMARY);
         AtomicBoolean cancelled = new AtomicBoolean(false);
 
-        shown.addContent(ComponentUtils.paragraph(text, "text-body"),
-                         ComponentUtils.notice(Tone.WARNING, this.texts.get("mods.install.code")));
+        shown.addContent(ComponentUtils.createParagraph(text, "text-body"),
+                         ComponentUtils.createNotice(Tone.WARNING, this.texts.get("mods.install.code")));
         shown.setButtons(cancel, action);
         cancel.setOnAction(event -> {
             cancelled.set(true);

@@ -35,7 +35,7 @@ public final class ChoiceControlFactory implements FieldControlFactory {
          */
         private ChoiceControl(@NotNull FormField field, @NotNull LauncherTexts texts, @NotNull Runnable onChange) {
             this.field    = field;
-            this.comboBox = ComponentUtils.comboBox(ControlWidth.M);
+            this.comboBox = ComponentUtils.createComboBox(ControlWidth.M);
 
             if (field.getDefinition() instanceof ChoiceSetting choice) {
                 this.comboBox.getItems().setAll(choice.getOptions());

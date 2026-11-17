@@ -43,7 +43,7 @@ final class ComponentUtilsLabelTest {
     @Test
     void label_should_show_its_whole_text_only_while_it_is_cut() throws Exception {
         String[] tooltips = LauncherFxScenario.run(() -> {
-            Label label = ComponentUtils.label(LONG_TEXT);
+            Label label = ComponentUtils.createLabel(LONG_TEXT);
             String cut = layOut(label);
 
             label.setText(SHORT_TEXT);

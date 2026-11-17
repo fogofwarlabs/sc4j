@@ -164,12 +164,12 @@ public final class ModalDialog {
     public ModalDialog(@NotNull String title, @NotNull Width width, @NotNull Height height) {
         VBox panel;
 
-        this.body         = ComponentUtils.panelBody();
-        this.message      = ComponentUtils.paragraph("", "field-message");
-        this.progressText = ComponentUtils.label("", "text-caption");
+        this.body         = ComponentUtils.createPanelBody();
+        this.message      = ComponentUtils.createParagraph("", "field-message");
+        this.progressText = ComponentUtils.createLabel("", "text-caption");
         this.progress     = new ProgressBar(0);
-        this.progressRow  = ComponentUtils.column(Spacing.XS, this.progressText, this.progress);
-        this.footer       = ComponentUtils.panelFooter();
+        this.progressRow  = ComponentUtils.createColumn(Spacing.XS, this.progressText, this.progress);
+        this.footer       = ComponentUtils.createPanelFooter();
         this.root         = new StackPane();
 
         this.progress.setMaxWidth(Double.MAX_VALUE);
@@ -178,7 +178,7 @@ public final class ModalDialog {
         setShown(this.progressRow, false);
         this.footer.setAlignment(Pos.CENTER_RIGHT);
 
-        panel = ComponentUtils.panelWithFooter(title, this.body, this.footer);
+        panel = ComponentUtils.createPanelWithFooter(title, this.body, this.footer);
         panel.setPrefWidth(width.getWidth());
         panel.setMaxWidth(width.getWidth());
         panel.setMaxHeight(height == Height.TALL ? Double.MAX_VALUE : Region.USE_PREF_SIZE);
@@ -244,7 +244,7 @@ public final class ModalDialog {
      */
     public void setButtons(@NotNull List<@NotNull Button> leading, @Nullable Button cancel, @Nullable Button action) {
         this.footer.getChildren().setAll(leading);
-        this.footer.getChildren().add(ComponentUtils.growingSpacer());
+        this.footer.getChildren().add(ComponentUtils.createGrowingSpacer());
 
         if (cancel != null) {
             cancel.setCancelButton(true);

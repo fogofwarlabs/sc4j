@@ -79,7 +79,7 @@ public final class ModCatalog {
         Path modsDirectory = install.getModsDirectory();
 
         if (!Files.isDirectory(modsDirectory)) {
-            return empty(modsDirectory);
+            return createEmpty(modsDirectory);
         }
 
         List<JarScan> scans = new ArrayList<>();
@@ -109,7 +109,7 @@ public final class ModCatalog {
      * @param modsDirectory the folder {@code <install>/mods}
      * @return the created {@link ModCatalog} instance
      */
-    public static @NotNull ModCatalog empty(@NotNull Path modsDirectory) {
+    public static @NotNull ModCatalog createEmpty(@NotNull Path modsDirectory) {
         return new ModCatalog(modsDirectory, List.of());
     }
 

@@ -41,7 +41,7 @@ public final class ComponentUtils {
      * @param styleClasses the style classes to add
      * @return the created label
      */
-    public static @NotNull Label label(@NotNull String text, @NotNull String @NotNull ... styleClasses) {
+    public static @NotNull Label createLabel(@NotNull String text, @NotNull String @NotNull ... styleClasses) {
         Label label = new Label(text);
 
         label.getStyleClass().addAll(styleClasses);
@@ -77,8 +77,8 @@ public final class ComponentUtils {
      * @param styleClasses the style classes to add
      * @return the created label
      */
-    public static @NotNull Label paragraph(@NotNull String text, @NotNull String @NotNull ... styleClasses) {
-        Label label = label(text, styleClasses);
+    public static @NotNull Label createParagraph(@NotNull String text, @NotNull String @NotNull ... styleClasses) {
+        Label label = createLabel(text, styleClasses);
 
         label.setWrapText(true);
         label.setMinHeight(Region.USE_PREF_SIZE);
@@ -93,7 +93,7 @@ public final class ComponentUtils {
      * @param role the role, which selects the look
      * @return the created button
      */
-    public static @NotNull Button button(@NotNull String text, @NotNull ButtonRole role) {
+    public static @NotNull Button createButton(@NotNull String text, @NotNull ButtonRole role) {
         Button button = new Button(text);
 
         switch (role) {
@@ -114,8 +114,8 @@ public final class ComponentUtils {
      * @param role the role, which selects the look
      * @return the created button
      */
-    public static @NotNull Button smallButton(@NotNull String text, @NotNull ButtonRole role) {
-        Button button = button(text, role);
+    public static @NotNull Button createSmallButton(@NotNull String text, @NotNull ButtonRole role) {
+        Button button = createButton(text, role);
 
         button.getStyleClass().add("small");
 
@@ -128,7 +128,7 @@ public final class ComponentUtils {
      * @param text the text
      * @return the created button
      */
-    public static @NotNull Button menuButton(@NotNull String text) {
+    public static @NotNull Button createMenuButton(@NotNull String text) {
         Button button = new Button(text);
 
         button.getStyleClass().add("menu-item");
@@ -144,8 +144,8 @@ public final class ComponentUtils {
      * @param tone the colour role
      * @return the created badge
      */
-    public static @NotNull Label badge(@NotNull String text, @NotNull Tone tone) {
-        Label badge = label(text, "badge", BADGE_PREFIX + tone.getSuffix());
+    public static @NotNull Label createBadge(@NotNull String text, @NotNull Tone tone) {
+        Label badge = createLabel(text, "badge", BADGE_PREFIX + tone.getSuffix());
 
         badge.setMinWidth(Region.USE_PREF_SIZE);
 
@@ -158,7 +158,7 @@ public final class ComponentUtils {
      * @param tone the colour role
      * @return the created marker
      */
-    public static @NotNull Region statusMarker(@NotNull Tone tone) {
+    public static @NotNull Region createStatusMarker(@NotNull Tone tone) {
         Region marker = new Region();
 
         marker.getStyleClass().addAll("status-marker", STATUS_MARKER_PREFIX + tone.getSuffix());
@@ -174,8 +174,8 @@ public final class ComponentUtils {
      * @param trailing the nodes after the text
      * @return the created notice
      */
-    public static @NotNull HBox notice(@NotNull Tone tone, @NotNull String text, @NotNull Node @NotNull ... trailing) {
-        Label label = paragraph(text);
+    public static @NotNull HBox createNotice(@NotNull Tone tone, @NotNull String text, @NotNull Node @NotNull ... trailing) {
+        Label label = createParagraph(text);
         HBox notice = new HBox(label);
 
         notice.getChildren().addAll(trailing);
@@ -196,8 +196,8 @@ public final class ComponentUtils {
      * @param control the control
      * @return the created field
      */
-    public static @NotNull VBox field(@NotNull String label, @NotNull Node control) {
-        VBox field = new VBox(label(label, "field-label"), control);
+    public static @NotNull VBox createField(@NotNull String label, @NotNull Node control) {
+        VBox field = new VBox(createLabel(label, "field-label"), control);
 
         field.getStyleClass().add("field");
 
@@ -211,7 +211,7 @@ public final class ComponentUtils {
      * @param children the children
      * @return the created row
      */
-    public static @NotNull HBox row(@NotNull Spacing spacing, @NotNull Node @NotNull ... children) {
+    public static @NotNull HBox createRow(@NotNull Spacing spacing, @NotNull Node @NotNull ... children) {
         HBox row = new HBox(children);
 
         row.getStyleClass().add(spacing.getStyleClass());
@@ -225,7 +225,7 @@ public final class ComponentUtils {
      *
      * @return the created slot
      */
-    public static @NotNull VBox slot() {
+    public static @NotNull VBox createSlot() {
         VBox slot = new VBox();
         BooleanBinding filled = Bindings.isNotEmpty(slot.getChildren());
 
@@ -242,7 +242,7 @@ public final class ComponentUtils {
      * @param children the children
      * @return the created column
      */
-    public static @NotNull VBox column(@NotNull Spacing spacing, @NotNull Node @NotNull ... children) {
+    public static @NotNull VBox createColumn(@NotNull Spacing spacing, @NotNull Node @NotNull ... children) {
         VBox column = new VBox(children);
 
         column.getStyleClass().add(spacing.getStyleClass());
@@ -256,11 +256,11 @@ public final class ComponentUtils {
      *
      * @param spacing the spacing between the label and the text
      * @param label   the label
-     * @param text    the text, a paragraph ({@link #paragraph})
+     * @param text    the text, a paragraph ({@link #createParagraph})
      * @return the created row, its children aligned at the top
      */
-    public static @NotNull HBox textRow(@NotNull Spacing spacing, @NotNull Label label, @NotNull Label text) {
-        HBox row = row(spacing, label, text);
+    public static @NotNull HBox createTextRow(@NotNull Spacing spacing, @NotNull Label label, @NotNull Label text) {
+        HBox row = createRow(spacing, label, text);
 
         label.setMinWidth(Region.USE_PREF_SIZE);
         text.setMinWidth(0);
@@ -307,7 +307,7 @@ public final class ComponentUtils {
      *
      * @return the created spacer
      */
-    public static @NotNull Region growingSpacer() {
+    public static @NotNull Region createGrowingSpacer() {
         Region spacer = new Region();
 
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -323,7 +323,7 @@ public final class ComponentUtils {
      * @param size  the width and height in pixels
      * @return the created image view
      */
-    public static @NotNull ImageView imageView(@NotNull Image image, double size) {
+    public static @NotNull ImageView createImageView(@NotNull Image image, double size) {
         ImageView view = new ImageView(image);
 
         view.setFitWidth(size);
@@ -345,7 +345,7 @@ public final class ComponentUtils {
      * @param height the height of the frame in pixels
      * @return the created thumbnail
      */
-    public static @NotNull StackPane thumbnail(@Nullable Image image, double width, double height) {
+    public static @NotNull StackPane createThumbnail(@Nullable Image image, double width, double height) {
         StackPane frame = new StackPane();
 
         if (image != null && !image.isError()) {
@@ -359,7 +359,7 @@ public final class ComponentUtils {
             view.setSmooth(true);
             frame.getChildren().add(view);
         } else {
-            frame.getChildren().add(label("?", "text-title", "text-muted"));
+            frame.getChildren().add(createLabel("?", "text-title", "text-muted"));
         }
 
         frame.getStyleClass().add("thumbnail");
@@ -378,8 +378,8 @@ public final class ComponentUtils {
      * @param headerTrailing the nodes at the right end of the header
      * @return the created panel
      */
-    public static @NotNull VBox panel(@NotNull String title, @NotNull Node body, @NotNull Node @NotNull ... headerTrailing) {
-        return panel(label(title), body, headerTrailing);
+    public static @NotNull VBox createPanel(@NotNull String title, @NotNull Node body, @NotNull Node @NotNull ... headerTrailing) {
+        return createPanel(createLabel(title), body, headerTrailing);
     }
 
     /**
@@ -391,8 +391,8 @@ public final class ComponentUtils {
      * @param headerTrailing the nodes at the right end of the header
      * @return the created panel
      */
-    public static @NotNull VBox panel(@NotNull Label title, @NotNull Node body, @NotNull Node @NotNull ... headerTrailing) {
-        HBox header = new HBox(title, growingSpacer());
+    public static @NotNull VBox createPanel(@NotNull Label title, @NotNull Node body, @NotNull Node @NotNull ... headerTrailing) {
+        HBox header = new HBox(title, createGrowingSpacer());
         VBox panel;
 
         title.getStyleClass().add("panel-title");
@@ -408,7 +408,7 @@ public final class ComponentUtils {
     }
 
     /**
-     * Creates a raised metal panel with a title header, a body that grows to fill the panel and a footer strip ({@link #panelFooter}).
+     * Creates a raised metal panel with a title header, a body that grows to fill the panel and a footer strip ({@link #createPanelFooter}).
      *
      * @param title          the title, shown in capitals by the stylesheet
      * @param body           the body
@@ -416,14 +416,14 @@ public final class ComponentUtils {
      * @param headerTrailing the nodes at the right end of the header
      * @return the created panel
      */
-    public static @NotNull VBox panelWithFooter(@NotNull String title, @NotNull Node body, @NotNull HBox footer,
+    public static @NotNull VBox createPanelWithFooter(@NotNull String title, @NotNull Node body, @NotNull HBox footer,
                                                 @NotNull Node @NotNull ... headerTrailing) {
-        return panelWithFooter(label(title), body, footer, headerTrailing);
+        return createPanelWithFooter(createLabel(title), body, footer, headerTrailing);
     }
 
     /**
      * Creates a raised metal panel with a title header whose title label the caller keeps to change its text, a body that grows to fill the
-     * panel and a footer strip ({@link #panelFooter}).
+     * panel and a footer strip ({@link #createPanelFooter}).
      *
      * @param title          the title label, shown in capitals by the stylesheet
      * @param body           the body
@@ -431,9 +431,9 @@ public final class ComponentUtils {
      * @param headerTrailing the nodes at the right end of the header
      * @return the created panel
      */
-    public static @NotNull VBox panelWithFooter(@NotNull Label title, @NotNull Node body, @NotNull HBox footer,
+    public static @NotNull VBox createPanelWithFooter(@NotNull Label title, @NotNull Node body, @NotNull HBox footer,
                                                 @NotNull Node @NotNull ... headerTrailing) {
-        VBox panel = panel(title, body, headerTrailing);
+        VBox panel = createPanel(title, body, headerTrailing);
 
         panel.getChildren().add(footer);
 
@@ -446,7 +446,7 @@ public final class ComponentUtils {
      * @param body the body
      * @return the created panel
      */
-    public static @NotNull VBox panel(@NotNull Node body) {
+    public static @NotNull VBox createPanel(@NotNull Node body) {
         VBox panel = new VBox(body);
 
         VBox.setVgrow(body, Priority.ALWAYS);
@@ -461,7 +461,7 @@ public final class ComponentUtils {
      * @param children the children
      * @return the created body
      */
-    public static @NotNull VBox panelBody(@NotNull Node @NotNull ... children) {
+    public static @NotNull VBox createPanelBody(@NotNull Node @NotNull ... children) {
         VBox body = new VBox(children);
 
         body.getStyleClass().add("panel-body");
@@ -475,8 +475,8 @@ public final class ComponentUtils {
      * @param children the children
      * @return the created body
      */
-    public static @NotNull VBox flushPanelBody(@NotNull Node @NotNull ... children) {
-        VBox body = panelBody(children);
+    public static @NotNull VBox createFlushPanelBody(@NotNull Node @NotNull ... children) {
+        VBox body = createPanelBody(children);
 
         body.getStyleClass().add("flush");
 
@@ -489,7 +489,7 @@ public final class ComponentUtils {
      * @param children the children
      * @return the created footer
      */
-    public static @NotNull HBox panelFooter(@NotNull Node @NotNull ... children) {
+    public static @NotNull HBox createPanelFooter(@NotNull Node @NotNull ... children) {
         HBox footer = new HBox(children);
 
         footer.getStyleClass().add("panel-footer");
@@ -503,7 +503,7 @@ public final class ComponentUtils {
      * @param children the children, such as a headline and the details
      * @return the created panel
      */
-    public static @NotNull VBox dangerPanel(@NotNull Node @NotNull ... children) {
+    public static @NotNull VBox createDangerPanel(@NotNull Node @NotNull ... children) {
         VBox panel = new VBox(children);
 
         panel.getStyleClass().add("panel-danger");
@@ -512,13 +512,13 @@ public final class ComponentUtils {
     }
 
     /**
-     * Creates a menu: a panel of flat entries ({@link #menuButton}) under a header, such as a {@link ListItem} of the player the menu is about.
+     * Creates a menu: a panel of flat entries ({@link #createMenuButton}) under a header, such as a {@link ListItem} of the player the menu is about.
      *
      * @param header  the header
      * @param entries the entries and the separators between their groups
      * @return the created menu
      */
-    public static @NotNull VBox menuPanel(@NotNull Region header, @NotNull Node @NotNull ... entries) {
+    public static @NotNull VBox createMenuPanel(@NotNull Region header, @NotNull Node @NotNull ... entries) {
         VBox menu = new VBox(header);
 
         header.getStyleClass().add("menu-header");
@@ -535,7 +535,7 @@ public final class ComponentUtils {
      * @param styleClass {@code log-area} or {@code code-area}
      * @return the created text area
      */
-    public static @NotNull TextArea codeArea(@NotNull String text, @NotNull String styleClass) {
+    public static @NotNull TextArea createCodeArea(@NotNull String text, @NotNull String styleClass) {
         TextArea area = new TextArea(text);
 
         area.getStyleClass().add(styleClass);
@@ -551,7 +551,7 @@ public final class ComponentUtils {
      * @param text the text
      * @return the created text area
      */
-    public static @NotNull TextArea textArea(@NotNull String text) {
+    public static @NotNull TextArea createTextArea(@NotNull String text) {
         TextArea area = new TextArea(text);
 
         area.setEditable(false);
@@ -565,7 +565,7 @@ public final class ComponentUtils {
      *
      * @return the created grid
      */
-    public static @NotNull GridPane metaGrid() {
+    public static @NotNull GridPane createMetaGrid() {
         GridPane grid = new GridPane();
 
         grid.getStyleClass().addAll("panel-sunken", "spacing-s");
@@ -574,28 +574,28 @@ public final class ComponentUtils {
     }
 
     /**
-     * Adds a row of text to a metadata grid ({@link #metaGrid}); a long value wraps.
+     * Adds a row of text to a metadata grid ({@link #createMetaGrid}); a long value wraps.
      *
      * @param grid  the grid
      * @param key   the key, in the faint colour
      * @param value the value
      */
     public static void addMetaRow(@NotNull GridPane grid, @NotNull String key, @NotNull String value) {
-        Label valueLabel = label(value, "meta-value");
+        Label valueLabel = createLabel(value, "meta-value");
 
         valueLabel.setWrapText(true);
         addMetaRow(grid, key, valueLabel);
     }
 
     /**
-     * Adds a row to a metadata grid ({@link #metaGrid}) under its last row.
+     * Adds a row to a metadata grid ({@link #createMetaGrid}) under its last row.
      *
      * @param grid  the grid
      * @param key   the key, in the faint colour
      * @param value the value node, such as a link
      */
     public static void addMetaRow(@NotNull GridPane grid, @NotNull String key, @NotNull Node value) {
-        Label keyLabel = label(key, "meta-key");
+        Label keyLabel = createLabel(key, "meta-key");
 
         keyLabel.setMinWidth(Region.USE_PREF_SIZE);
         grid.addRow(grid.getRowCount(), keyLabel, value);
@@ -608,7 +608,7 @@ public final class ComponentUtils {
      * @param <T>  the item type
      * @return the created list view
      */
-    public static <T> @NotNull ListView<T> listView(@NotNull ListItemSize size) {
+    public static <T> @NotNull ListView<T> createListView(@NotNull ListItemSize size) {
         ListView<T> list = new ListView<>();
 
         if (size == ListItemSize.COMPACT) {
@@ -625,8 +625,8 @@ public final class ComponentUtils {
      * @param <T>  the item type
      * @return the created list view
      */
-    public static <T> @NotNull ListView<T> sunkenListView(@NotNull ListItemSize size) {
-        ListView<T> list = listView(size);
+    public static <T> @NotNull ListView<T> createSunkenListView(@NotNull ListItemSize size) {
+        ListView<T> list = createListView(size);
 
         list.getStyleClass().add(SUNKEN_LIST_STYLE_CLASS);
 
@@ -634,14 +634,14 @@ public final class ComponentUtils {
     }
 
     /**
-     * Creates a list view of log lines that run edge to edge in a flush panel body ({@link #flushPanelBody}): the lines sit close together and
+     * Creates a list view of log lines that run edge to edge in a flush panel body ({@link #createFlushPanelBody}): the lines sit close together and
      * are not selected, the first line ({@link #markFirstRow}) starts below the header by the room left of the lines, and the room below the
      * last line is the same.
      *
      * @param <T> the item type
      * @return the created list view
      */
-    public static <T> @NotNull ListView<T> logListView() {
+    public static <T> @NotNull ListView<T> createLogListView() {
         ListView<T> list = new ListView<>();
 
         list.getStyleClass().add(LOG_LIST_STYLE_CLASS);
@@ -716,7 +716,7 @@ public final class ComponentUtils {
      * @param <T>   the item type
      * @return the combo box
      */
-    public static <T> @NotNull ComboBox<T> comboBox(@NotNull ControlWidth width) {
+    public static <T> @NotNull ComboBox<T> createComboBox(@NotNull ControlWidth width) {
         ComboBox<T> comboBox = new ComboBox<>();
 
         comboBox.setPrefWidth(width.getWidth());

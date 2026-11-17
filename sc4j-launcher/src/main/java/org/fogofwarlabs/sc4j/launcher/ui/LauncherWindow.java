@@ -331,7 +331,7 @@ public final class LauncherWindow {
         this.modInstaller    = new ModInstaller(install, releaseClient);
         this.modIndex        = new ModIndex(releaseClient, ModIndex.DEFAULT_ADDRESS);
         this.scene           = new Scene(new StackPane(), DEFAULT_WIDTH, DEFAULT_HEIGHT);
-        this.notices         = ComponentUtils.column(Spacing.M);
+        this.notices         = ComponentUtils.createColumn(Spacing.M);
         this.running         = new SimpleBooleanProperty(false);
 
         this.imageScale = ThemeUtils.getImageScale();
@@ -491,7 +491,7 @@ public final class LauncherWindow {
         } catch (IOException exception) {
             this.catalogProblem = exception.getMessage();
 
-            return ModCatalog.empty(this.install.getModsDirectory());
+            return ModCatalog.createEmpty(this.install.getModsDirectory());
         }
     }
 
@@ -1035,7 +1035,7 @@ public final class LauncherWindow {
      * Puts the launcher's notices above a view's content ({@link #updateNotices}).
      */
     private @NotNull Node addNotices(@NotNull Node content) {
-        VBox column = ComponentUtils.column(Spacing.M, this.notices, content);
+        VBox column = ComponentUtils.createColumn(Spacing.M, this.notices, content);
 
         VBox.setVgrow(content, Priority.ALWAYS);
         this.updateNotices();
@@ -1053,22 +1053,22 @@ public final class LauncherWindow {
         LauncherRelease available = this.launcherUpdate;
 
         if (this.settingsProblem != null) {
-            shown.add(ComponentUtils.notice(Tone.WARNING, this.texts.format("notice.settings", this.settingsProblem)));
+            shown.add(ComponentUtils.createNotice(Tone.WARNING, this.texts.format("notice.settings", this.settingsProblem)));
         }
 
         if (this.updateFailure != null) {
-            shown.add(ComponentUtils.notice(Tone.DANGER, this.texts.format("notice.update.failed", this.updateFailure)));
+            shown.add(ComponentUtils.createNotice(Tone.DANGER, this.texts.format("notice.update.failed", this.updateFailure)));
         }
 
         if (available != null && loggedIn && !this.settings.isSkipped(available.getVersion())) {
-            Button update = ComponentUtils.smallButton(this.texts.get("update.start"), ButtonRole.PRIMARY);
+            Button update = ComponentUtils.createSmallButton(this.texts.get("update.start"), ButtonRole.PRIMARY);
 
             update.setOnAction(event -> this.openLauncherUpdate());
-            shown.add(ComponentUtils.notice(Tone.ACCENT, this.texts.format("update.available", available.getVersion()), update));
+            shown.add(ComponentUtils.createNotice(Tone.ACCENT, this.texts.format("update.available", available.getVersion()), update));
         }
 
         if (this.catalogProblem != null && loggedIn && this.section == LauncherShell.Section.MODS) {
-            shown.add(ComponentUtils.notice(Tone.DANGER, this.texts.format("notice.catalog", this.catalogProblem)));
+            shown.add(ComponentUtils.createNotice(Tone.DANGER, this.texts.format("notice.catalog", this.catalogProblem)));
         }
 
         this.notices.getChildren().setAll(shown);
