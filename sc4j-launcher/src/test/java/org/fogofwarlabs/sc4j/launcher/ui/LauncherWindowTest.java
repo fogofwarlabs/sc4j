@@ -615,8 +615,8 @@ final class LauncherWindowTest {
     @ParameterizedTest
     @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
     void chat_dot_shows_unread_lines_and_whispers_until_read_and_the_sound_plays_while_the_chat_is_hidden(double scale,
-                                                                                                         @NotNull String languageCode,
-                                                                                                         @TempDir @NotNull Path directory) throws Exception {
+                                                                                                          @NotNull String languageCode,
+                                                                                                          @TempDir @NotNull Path directory) throws Exception {
         UiLanguage language = selectLanguage(languageCode);
         LauncherTexts texts = LauncherTexts.of(language);
         String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();

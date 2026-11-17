@@ -527,7 +527,7 @@ final class ChatScreenTest {
     @ParameterizedTest
     @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
     void chat_screen_says_why_the_session_is_offline(double scale, @NotNull String languageCode,
-                                                                       @TempDir @NotNull Path directory) throws Exception {
+                                                     @TempDir @NotNull Path directory) throws Exception {
         UiLanguage language = selectLanguage(languageCode);
         LauncherTexts texts = LauncherTexts.of(language);
         String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();

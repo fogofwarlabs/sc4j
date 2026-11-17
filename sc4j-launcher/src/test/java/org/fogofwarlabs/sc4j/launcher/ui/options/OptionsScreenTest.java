@@ -1,10 +1,10 @@
 package org.fogofwarlabs.sc4j.launcher.ui.options;
 
+import javafx.geometry.Bounds;
 import javafx.scene.Node;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
-import javafx.geometry.Bounds;
-import javafx.scene.Parent;
 import javafx.scene.layout.GridPane;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.file.ConfiguredNode;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;

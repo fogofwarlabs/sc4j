@@ -328,7 +328,7 @@ final class LauncherSessionTest {
     @Test
     @Timeout(TEST_SECONDS)
     void launcher_chats_join_the_shared_channel_at_connect_and_exchange_lines_and_a_whisper(@TempDir @NotNull Path directory) throws IOException,
-                                                                                                                             InterruptedException {
+                                                                                                                                     InterruptedException {
         try (Launchers launchers = new Launchers(directory)) {
             LauncherSession alice = launchers.aliceSession;
             LauncherSession bob = launchers.bobSession;

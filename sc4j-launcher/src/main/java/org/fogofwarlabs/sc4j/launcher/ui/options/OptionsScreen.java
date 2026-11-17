@@ -175,9 +175,9 @@ public final class OptionsScreen {
         nodesPanel = this.createNodesPanel(nodesLoadProblem);
         VBox.setVgrow(nodesPanel, Priority.ALWAYS);
 
-        launcherColumn = ComponentUtils.createColumn(Spacing.L, this.createLauncherPanel(language, chatSoundMuted, updateView));
+        launcherColumn   = ComponentUtils.createColumn(Spacing.L, this.createLauncherPanel(language, chatSoundMuted, updateView));
         beaconLinkColumn = ComponentUtils.createColumn(Spacing.L, new BeaconLinkPanel(texts, nodeRunner, nodesPanel).getRoot(), nodesPanel);
-        this.root = ComponentUtils.createEqualColumns(Spacing.L, launcherColumn, beaconLinkColumn);
+        this.root        = ComponentUtils.createEqualColumns(Spacing.L, launcherColumn, beaconLinkColumn);
 
         this.pingResults = new HashMap<>();
         this.pinging     = false;
