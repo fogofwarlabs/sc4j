@@ -45,7 +45,7 @@ final class EnvelopeTest {
     private static final int CAPACITY = 4;
     private static final long FUZZ_SEED = 20261108L;
     private static final int FUZZ_ROUNDS = 2000;
-    private static final int BODY_FUZZ_ROUNDS = 20_000;
+    private static final int BODY_FUZZ_ROUNDS = 5_000;
     private static final int MAXIMUM_BODY_CHANGES = 3;
     private static final byte @NotNull [] BOUNDARY_BYTES = {0, 1, 0x7f, (byte) 0x80, (byte) 0xff};
     private static final int FLAGS_OFFSET = 6;

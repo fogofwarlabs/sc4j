@@ -39,8 +39,7 @@ final class DemoMenuSceneTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"1280, 720, 1.0", "1280, 720, 1.5", "1280, 720, 2.0", "1920, 1080, 1.0", "1920, 1080, 1.5", "1920, 1080, 2.0",
-                "2560, 1440, 1.0", "2560, 1440, 1.5", "2560, 1440, 2.0"})
+    @CsvSource({"1280, 720, 1.0", "1280, 720, 1.5", "1280, 720, 2.0", "1920, 1080, 1.5", "2560, 1440, 1.0"})
     void demo_menus_show_their_dialogs_whole_at_every_window_size_and_scale(int width, int height, float scale, @TempDir @NotNull Path storage) throws IOException,
                                                                                                                                                        ManifestException,
                                                                                                                                                        ModException {

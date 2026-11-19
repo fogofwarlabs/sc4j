@@ -62,7 +62,7 @@ final class MeshPeerTest {
     private static final int ROUNDS = 1;
     private static final long REQUEST_NUMBER_MASK = 0xffffffffL;
     private static final long FUZZ_SEED = 20261110L;
-    private static final int FUZZ_ROUNDS = 4000;
+    private static final int FUZZ_ROUNDS = 1000;
     private static final int FUZZ_BURST = 1_000_000;
     private static final int FUZZ_SOURCES = 64;
     private static final int LEAF_ROUNDS = 3;

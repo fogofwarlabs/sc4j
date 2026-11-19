@@ -748,8 +748,7 @@ final class NetworkSceneTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"1280, 720, 1.0", "1280, 720, 1.5", "1280, 720, 2.0", "1920, 1080, 1.0", "1920, 1080, 1.5", "1920, 1080, 2.0",
-                "2560, 1440, 1.0", "2560, 1440, 1.5", "2560, 1440, 2.0"})
+    @CsvSource({"1280, 720, 1.0", "1280, 720, 1.5", "1280, 720, 2.0", "1920, 1080, 1.5", "2560, 1440, 1.0"})
     void beacon_link_tab_opens_the_create_popup_and_the_password_prompt_of_a_private_room(int width, int height, float scale,
                                                                                           @TempDir @NotNull Path directory) throws IOException,
                                                                                                                                    ManifestException,

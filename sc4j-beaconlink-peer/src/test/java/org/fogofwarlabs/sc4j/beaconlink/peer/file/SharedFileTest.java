@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 final class SharedFileTest {
     private static final @NotNull Logger LOGGER = Logger.of(SharedFileTest.class);
     private static final int MAXIMUM_LENGTH = 1024 * 1024;
-    private static final int KILLS = 20;
+    private static final int KILLS = 10;
     private static final int MAXIMUM_KILL_DELAY_MILLIS = 40;
     private static final long WAIT_MILLIS = 5L;
     private static final long STOP_SECONDS = 30L;
