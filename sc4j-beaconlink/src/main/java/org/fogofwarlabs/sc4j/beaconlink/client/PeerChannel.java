@@ -330,6 +330,13 @@ final class PeerChannel implements ParticipantChannel, RequestOwner {
     }
 
     /**
+     * Ends the channel because the other participant started a new channel to this side: it closes without telling the other participant.
+     */
+    void replace() {
+        this.fail(ChannelFailure.CLOSED_BY_PEER);
+    }
+
+    /**
      * @return {@code true} if the channel waits for the other participant's offer, {@code false} otherwise
      */
     boolean isAwaitingOffer() {
