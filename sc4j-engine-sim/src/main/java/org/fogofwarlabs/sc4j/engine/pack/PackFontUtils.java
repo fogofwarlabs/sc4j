@@ -100,7 +100,7 @@ final class PackFontUtils {
                                             image.getWidth(), image.getHeight(), cellWidth, cellHeight, characters.length);
         }
 
-        int[] colors = image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
+        int[] colors = PackSpriteSheetUtils.readArgbPixels(image);
         byte[] coverage = new byte[colors.length];
         List<FontGlyph> glyphs = new ArrayList<>(characters.length);
 

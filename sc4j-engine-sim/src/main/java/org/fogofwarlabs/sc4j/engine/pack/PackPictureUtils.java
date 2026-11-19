@@ -107,7 +107,7 @@ final class PackPictureUtils {
     }
 
     private static int @NotNull [] readColors(@NotNull BufferedImage image) {
-        return image.getRGB(0, 0, image.getWidth(), image.getHeight(), null, 0, image.getWidth());
+        return PackSpriteSheetUtils.readArgbPixels(image);
     }
 
     private static @NotNull PixelLayer readTeamMask(@NotNull PackSource source, @NotNull String definitionPath, @NotNull String path,
