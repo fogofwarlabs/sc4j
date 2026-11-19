@@ -280,6 +280,15 @@ final class PeerChannel implements ParticipantChannel, RequestOwner {
     }
 
     /**
+     * @return {@code true} if the channel's datagrams go through a third participant, {@code false} if they go directly or the channel has no
+     * path
+     */
+    @Override
+    public boolean isRelayed() {
+        return this.directAddress == null && this.relay != null;
+    }
+
+    /**
      * Makes the channel an offer to join a room of the other participant; called before the first maintenance. The offer to a private room
      * carries the proof of the password, made with this side's ephemeral key and the room's join key ({@link JoinProofUtils}).
      *

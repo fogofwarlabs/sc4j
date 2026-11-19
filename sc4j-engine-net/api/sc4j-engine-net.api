@@ -63,6 +63,7 @@ public final class org.fogofwarlabs.sc4j.engine.net.UdpDatagramEndpoint implemen
   public java.lang.Object receive(java.nio.ByteBuffer) throws java.io.IOException;
   public java.net.InetSocketAddress getLocalAddress() throws java.io.IOException;
   public java.net.InetSocketAddress receive(java.nio.ByteBuffer) throws java.io.IOException;
+  public static final int SOCKET_BUFFER_SIZE = 4194304;
   public static org.fogofwarlabs.sc4j.engine.net.UdpDatagramEndpoint open(java.net.InetSocketAddress) throws java.io.IOException;
   public void close() throws java.io.IOException;
   public void send(java.nio.ByteBuffer, java.lang.Object) throws java.io.IOException;
@@ -239,6 +240,7 @@ public interface org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkOverlay extends
   public static final int LOBBY_PORT = 1;
   public static final int MAXIMUM_DATAGRAM_LENGTH = 1023;
   public static final int MAXIMUM_PORT = 255;
+  public static final int TRANSFER_PORT = 3;
 }
 
 public final class org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkParticipant {
@@ -274,7 +276,16 @@ public final class org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer {
   public static org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer of(byte[]);
 }
 
+public final class org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkTransferService extends org.fogofwarlabs.sc4j.engine.net.transfer.TransferService<org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkParticipant> {
+  protected int getDatagramRate(java.lang.Object);
+  protected int getDatagramRate(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkParticipant);
+  public org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkTransferService(org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkOverlay, org.fogofwarlabs.sc4j.engine.net.NetworkClock);
+  public static final int DIRECT_DATAGRAM_RATE = 8192;
+  public static final int RELAYED_DATAGRAM_RATE = 1024;
+}
+
 public interface org.fogofwarlabs.sc4j.engine.net.beaconlink.ParticipantChannel extends java.io.Closeable {
+  public abstract boolean isRelayed();
   public abstract boolean send(java.nio.ByteBuffer);
   public abstract int receive(java.nio.ByteBuffer);
   public abstract long getDelayMillis();
@@ -755,4 +766,110 @@ public final class org.fogofwarlabs.sc4j.engine.net.lobby.NetworkLobby implement
   public void setFaction(org.fogofwarlabs.sc4j.engine.content.faction.Faction) throws java.io.IOException;
   public void setMap(org.fogofwarlabs.sc4j.engine.game.MapReference) throws java.io.IOException;
   public void setReady(boolean) throws java.io.IOException;
+}
+
+public final class org.fogofwarlabs.sc4j.engine.net.transfer.FileTransferSink implements org.fogofwarlabs.sc4j.engine.net.transfer.TransferSink,java.io.Closeable {
+  public long getLength() throws java.io.IOException;
+  public static org.fogofwarlabs.sc4j.engine.net.transfer.FileTransferSink open(java.nio.file.Path) throws java.io.IOException;
+  public void close() throws java.io.IOException;
+  public void read(long, java.nio.ByteBuffer) throws java.io.IOException;
+  public void truncate() throws java.io.IOException;
+  public void write(java.nio.ByteBuffer) throws java.io.IOException;
+}
+
+public final class org.fogofwarlabs.sc4j.engine.net.transfer.FileTransferSource implements org.fogofwarlabs.sc4j.engine.net.transfer.TransferSource,java.io.Closeable {
+  public long getSize();
+  public static org.fogofwarlabs.sc4j.engine.net.transfer.FileTransferSource open(java.nio.file.Path) throws java.io.IOException;
+  public void close() throws java.io.IOException;
+  public void read(long, java.nio.ByteBuffer) throws java.io.IOException;
+}
+
+public final class org.fogofwarlabs.sc4j.engine.net.transfer.TransferDownload<A> {
+  public A getPeer();
+  public boolean isDone();
+  public long getReceivedBytes();
+  public org.fogofwarlabs.sc4j.engine.net.transfer.TransferFailure getFailure();
+  public org.fogofwarlabs.sc4j.engine.net.transfer.TransferKey getKey();
+  public org.fogofwarlabs.sc4j.engine.net.transfer.TransferPayload getPayload();
+  public org.fogofwarlabs.sc4j.engine.net.transfer.TransferState getState();
+  public void cancel();
+}
+
+public final class org.fogofwarlabs.sc4j.engine.net.transfer.TransferFailure extends java.lang.Enum<org.fogofwarlabs.sc4j.engine.net.transfer.TransferFailure> {
+  public static final org.fogofwarlabs.sc4j.engine.net.transfer.TransferFailure CANCELED_BY_PEER;
+  public static final org.fogofwarlabs.sc4j.engine.net.transfer.TransferFailure CLOSED;
+  public static final org.fogofwarlabs.sc4j.engine.net.transfer.TransferFailure REFUSED;
+  public static final org.fogofwarlabs.sc4j.engine.net.transfer.TransferFailure STORAGE_FAILED;
+  public static final org.fogofwarlabs.sc4j.engine.net.transfer.TransferFailure TIMED_OUT;
+  public static final org.fogofwarlabs.sc4j.engine.net.transfer.TransferFailure VERIFICATION_FAILED;
+  public static org.fogofwarlabs.sc4j.engine.net.transfer.TransferFailure valueOf(java.lang.String);
+  public static org.fogofwarlabs.sc4j.engine.net.transfer.TransferFailure[] values();
+}
+
+public final class org.fogofwarlabs.sc4j.engine.net.transfer.TransferKey {
+  public boolean equals(java.lang.Object);
+  public byte[] getBytes();
+  public int getLength();
+  public int hashCode();
+  public java.lang.String toString();
+  public static final int MAXIMUM_LENGTH = 64;
+  public static org.fogofwarlabs.sc4j.engine.net.transfer.TransferKey of(byte[]);
+  public static org.fogofwarlabs.sc4j.engine.net.transfer.TransferKey of(java.lang.String);
+}
+
+public final class org.fogofwarlabs.sc4j.engine.net.transfer.TransferOffer {
+  public boolean isWithdrawn();
+  public org.fogofwarlabs.sc4j.engine.net.transfer.TransferKey getKey();
+  public org.fogofwarlabs.sc4j.engine.net.transfer.TransferPayload getPayload();
+  public void withdraw();
+}
+
+public final class org.fogofwarlabs.sc4j.engine.net.transfer.TransferPayload {
+  public boolean equals(java.lang.Object);
+  public byte[] getDigest();
+  public int hashCode();
+  public java.lang.String toString();
+  public long getSize();
+  public static final int DIGEST_LENGTH = 32;
+  public static org.fogofwarlabs.sc4j.engine.net.transfer.TransferPayload of(long, byte[]);
+  public static org.fogofwarlabs.sc4j.engine.net.transfer.TransferPayload of(org.fogofwarlabs.sc4j.engine.net.transfer.TransferSource) throws java.io.IOException;
+}
+
+public abstract class org.fogofwarlabs.sc4j.engine.net.transfer.TransferService<A> implements java.io.Closeable {
+  protected int getDatagramRate(A);
+  protected org.fogofwarlabs.sc4j.engine.net.transfer.TransferService(org.fogofwarlabs.sc4j.engine.net.DatagramLink<A>, int, org.fogofwarlabs.sc4j.engine.net.NetworkClock);
+  public int getChunkSize();
+  public int getUploadCount();
+  public java.util.List<org.fogofwarlabs.sc4j.engine.net.transfer.TransferDownload<A>> getDownloads();
+  public java.util.List<org.fogofwarlabs.sc4j.engine.net.transfer.TransferOffer> getOffers();
+  public org.fogofwarlabs.sc4j.engine.net.transfer.TransferDownload<A> request(A, org.fogofwarlabs.sc4j.engine.net.transfer.TransferKey, org.fogofwarlabs.sc4j.engine.net.transfer.TransferSink);
+  public org.fogofwarlabs.sc4j.engine.net.transfer.TransferOffer offer(org.fogofwarlabs.sc4j.engine.net.transfer.TransferKey, org.fogofwarlabs.sc4j.engine.net.transfer.TransferSource) throws java.io.IOException;
+  public static final int DEFAULT_DATAGRAM_RATE = 8192;
+  public static final int MAXIMUM_UPLOADS = 16;
+  public static final int MAXIMUM_WINDOW = 1024;
+  public static final long IDLE_MILLIS = 15000l;
+  public void close();
+  public void update() throws java.io.IOException;
+}
+
+public interface org.fogofwarlabs.sc4j.engine.net.transfer.TransferSink {
+  public abstract long getLength() throws java.io.IOException;
+  public abstract void read(long, java.nio.ByteBuffer) throws java.io.IOException;
+  public abstract void truncate() throws java.io.IOException;
+  public abstract void write(java.nio.ByteBuffer) throws java.io.IOException;
+}
+
+public interface org.fogofwarlabs.sc4j.engine.net.transfer.TransferSource {
+  public abstract long getSize();
+  public abstract void read(long, java.nio.ByteBuffer) throws java.io.IOException;
+}
+
+public final class org.fogofwarlabs.sc4j.engine.net.transfer.TransferState extends java.lang.Enum<org.fogofwarlabs.sc4j.engine.net.transfer.TransferState> {
+  public static final org.fogofwarlabs.sc4j.engine.net.transfer.TransferState CANCELED;
+  public static final org.fogofwarlabs.sc4j.engine.net.transfer.TransferState COMPLETE;
+  public static final org.fogofwarlabs.sc4j.engine.net.transfer.TransferState FAILED;
+  public static final org.fogofwarlabs.sc4j.engine.net.transfer.TransferState RECEIVING;
+  public static final org.fogofwarlabs.sc4j.engine.net.transfer.TransferState REQUESTING;
+  public static org.fogofwarlabs.sc4j.engine.net.transfer.TransferState valueOf(java.lang.String);
+  public static org.fogofwarlabs.sc4j.engine.net.transfer.TransferState[] values();
 }

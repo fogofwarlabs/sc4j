@@ -5,19 +5,22 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.PortUnreachableException;
-import java.net.SocketAddress;
-import java.net.StandardProtocolFamily;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 
 /**
  * Sends and receives UDP datagrams at one local IPv4 address: the engine network's default {@link DatagramEndpoint}, a non-blocking
  * {@link DatagramChannel}. A port unreachable notice of an earlier send (a participant that closed its endpoint) is not an error of the
- * receive.
+ * receive. The endpoint asks the system for send and receive buffers of {@value #SOCKET_BUFFER_SIZE} bytes, so that the datagrams arriving
+ * between two receives of its owner's loop are kept; the system may give less.
  */
 public final class UdpDatagramEndpoint implements DatagramEndpoint {
+    /**
+     * The size of the send and receive buffers the endpoint asks the system for, in bytes.
+     */
+    public static final int SOCKET_BUFFER_SIZE = 4 * 1024 * 1024;
+
     /**
      * Creates a {@link UdpDatagramEndpoint} instance bound to a local address.
      *
@@ -30,6 +33,8 @@ public final class UdpDatagramEndpoint implements DatagramEndpoint {
 
         try {
             channel.configureBlocking(false);
+            channel.setOption(StandardSocketOptions.SO_RCVBUF, SOCKET_BUFFER_SIZE);
+            channel.setOption(StandardSocketOptions.SO_SNDBUF, SOCKET_BUFFER_SIZE);
             channel.bind(address);
         } catch (IOException exception) {
             channel.close();
