@@ -1056,8 +1056,8 @@ public final class SortedEdgeIndex<U extends Unit> implements SnapshotContributo
             int previousUnitIndex = unitIndices[edgeIndex];
             int previousCoordinate = coordinates[edgeIndex];
 
-            unitIndices[edgeIndex] = unitIndices[neighborIndex];
-            coordinates[edgeIndex] = coordinates[neighborIndex];
+            unitIndices[edgeIndex]     = unitIndices[neighborIndex];
+            coordinates[edgeIndex]     = coordinates[neighborIndex];
             unitIndices[neighborIndex] = previousUnitIndex;
             coordinates[neighborIndex] = previousCoordinate;
 
