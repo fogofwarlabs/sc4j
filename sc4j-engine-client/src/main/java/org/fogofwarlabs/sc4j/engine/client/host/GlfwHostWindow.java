@@ -10,6 +10,7 @@ import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.*;
+import org.lwjgl.opengl.GL32C;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
@@ -31,7 +32,8 @@ import java.util.function.LongSupplier;
  * ({@link ClientHost#createWindow}); {@link #show} shows it.
  * <p>
  * The display mode keeps the windowed bounds while the window is fullscreen or borderless, so returning to windowed mode
- * restores them. The swap interval is only passed on when it changes.
+ * restores them. The swap interval is only passed on when it changes. A buffer swap waits until the previous frame's commands completed, so at most
+ * one presented frame is queued ahead of the display.
  */
 @ApiStatus.Internal
 public final class GlfwHostWindow implements HostWindow {
@@ -52,6 +54,10 @@ public final class GlfwHostWindow implements HostWindow {
     private static final @NotNull Logger LOGGER = Logger.of(GlfwHostWindow.class);
     private static final @NotNull String OPERATING_SYSTEM_PROPERTY = "os.name";
     private static final @NotNull String WINDOWS_PREFIX = "windows";
+    /**
+     * The longest wait for the previous frame's commands at a buffer swap.
+     */
+    private static final long FRAME_FENCE_TIMEOUT_NANOSECONDS = 1_000_000_000L;
 
     /**
      * Reads the gamma ramp of a monitor.
@@ -100,6 +106,10 @@ public final class GlfwHostWindow implements HostWindow {
     private int windowedWidth;
     private int windowedHeight;
     private @Nullable Integer swapInterval;
+    /**
+     * The fence after the previous buffer swap, or {@link MemoryUtil#NULL}.
+     */
+    private long frameFence;
 
     private long gammaMonitor;
     private short @Nullable [] appliedGammaRamp;
@@ -138,6 +148,7 @@ public final class GlfwHostWindow implements HostWindow {
         this.windowedWidth  = 0;
         this.windowedHeight = 0;
         this.swapInterval   = null;
+        this.frameFence     = MemoryUtil.NULL;
 
         this.gammaMonitor      = MemoryUtil.NULL;
         this.appliedGammaRamp  = null;
@@ -725,11 +736,25 @@ public final class GlfwHostWindow implements HostWindow {
     }
 
     /**
-     * Presents the drawn frame: swaps the window's buffers.
+     * Presents the drawn frame: swaps the window's buffers. While the window's context is current, it then waits until the commands before the
+     * previous swap completed, so that the next frame starts at most one frame ahead of the display.
      */
     @Override
     public void swapBuffers() {
         GLFW.glfwSwapBuffers(this.handle);
+
+        if (GLFW.glfwGetCurrentContext() != this.handle) {
+            return;
+        }
+
+        long previous = this.frameFence;
+
+        this.frameFence = GL32C.glFenceSync(GL32C.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+
+        if (previous != MemoryUtil.NULL) {
+            GL32C.glClientWaitSync(previous, GL32C.GL_SYNC_FLUSH_COMMANDS_BIT, FRAME_FENCE_TIMEOUT_NANOSECONDS);
+            GL32C.glDeleteSync(previous);
+        }
     }
 
     /**
@@ -822,6 +847,12 @@ public final class GlfwHostWindow implements HostWindow {
         if (this.gammaMonitor != MemoryUtil.NULL && this.originalGammaRamp != null) {
             writeGammaRamp(this.gammaMonitor, this.originalGammaRamp);
         }
+
+        if (this.frameFence != MemoryUtil.NULL && GLFW.glfwGetCurrentContext() == this.handle) {
+            GL32C.glDeleteSync(this.frameFence);
+        }
+
+        this.frameFence = MemoryUtil.NULL;
 
         Callbacks.glfwFreeCallbacks(this.handle);
         GLFW.glfwDestroyWindow(this.handle);

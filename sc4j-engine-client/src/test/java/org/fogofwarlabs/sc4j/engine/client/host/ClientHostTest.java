@@ -160,6 +160,27 @@ final class ClientHostTest {
     }
 
     @Test
+    void swap_buffers_should_wait_for_the_previous_frame_without_errors() {
+        Assumptions.assumeTrue(Boolean.getBoolean(RENDER_SMOKE_PROPERTY), RENDER_SMOKE_MESSAGE);
+
+        try (ClientHost host = ClientHost.initialize()) {
+            HostWindow window = host.createWindow(WindowSettings.builder(TITLE, WIDTH, HEIGHT).setDecorated(false).build());
+
+            window.makeContextCurrent();
+            host.createCapabilities();
+            window.setSwapInterval(HostWindow.SWAP_INTERVAL_OFF);
+
+            for (int frame = 0; frame < FRAME_LIMIT; frame++) {
+                GL11C.glClearColor(CLEAR_RED, CLEAR_GREEN, CLEAR_BLUE, 1);
+                GL11C.glClear(GL11C.GL_COLOR_BUFFER_BIT);
+                window.swapBuffers();
+            }
+
+            Assertions.assertEquals(GL11C.GL_NO_ERROR, GL11C.glGetError());
+        }
+    }
+
+    @Test
     void create_input_and_create_cursor_surface_should_serve_the_window() {
         Assumptions.assumeTrue(Boolean.getBoolean(RENDER_SMOKE_PROPERTY), RENDER_SMOKE_MESSAGE);
 
