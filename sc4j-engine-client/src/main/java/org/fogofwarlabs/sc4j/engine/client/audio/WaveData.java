@@ -106,7 +106,8 @@ public final class WaveData {
 
     /**
      * Creates a {@link WaveData} instance by reading mono or stereo 8-bit, 16-bit or 24-bit PCM from a RIFF WAVE container; 24-bit samples are
-     * reduced to {@code 16} bits.
+     * reduced to {@code 16} bits. Chunks are read in order up to the first {@code data} chunk after the {@code fmt } chunk; the bytes after it are
+     * not read.
      *
      * @param contents the complete file
      * @return the created {@link WaveData} instance
@@ -161,6 +162,11 @@ public final class WaveData {
             } else if (identifier == DATA_CHUNK_IDENTIFIER && sampleOffset < 0) {
                 sampleOffset = payload;
                 sampleLength = (int) length;
+
+                // The samples after the format end the reading: later bytes are not read as chunks.
+                if (channels != 0) {
+                    break;
+                }
             }
 
             offset = (int) (payload + length + (length & WORD_ALIGNMENT_MASK));
