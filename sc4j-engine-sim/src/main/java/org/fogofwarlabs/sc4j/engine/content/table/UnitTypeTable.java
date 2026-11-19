@@ -127,8 +127,9 @@ public final class UnitTypeTable extends TypeTable {
             this.traits[index]          = definition.getTraits();
 
             for (ControllerKind kind : ControllerKind.values()) {
-                this.idleOrder[index * this.controllerKindCount + kind.ordinal()] =
-                        content.getOrderTypes().getTypes().requireIndex(definition.getIdleOrder(kind));
+                int idleOrder = content.getOrderTypes().getTypes().requireIndex(definition.getIdleOrder(kind));
+
+                this.idleOrder[index * this.controllerKindCount + kind.ordinal()] = idleOrder;
             }
         }
 

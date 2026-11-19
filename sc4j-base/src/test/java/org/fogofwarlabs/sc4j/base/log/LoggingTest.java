@@ -20,8 +20,8 @@ final class LoggingTest {
     /**
      * The file line of the warning that {@link #logging_drops_messages_below_threshold_and_formats_arguments} writes.
      */
-    private static final @NotNull String WARNING_LINE_PATTERN =
-            "\\d{4}-\\d\\d-\\d\\d \\d\\d:\\d\\d:\\d\\d\\.\\d{3} WARN  \\[.+] LoggingTest - shown text and \\[1, 2]";
+    private static final @NotNull String WARNING_LINE_PATTERN = "\\d{4}-\\d\\d-\\d\\d \\d\\d:\\d\\d:\\d\\d\\.\\d{3} " +
+                                                                "WARN  \\[.+] LoggingTest - shown text and \\[1, 2]";
 
     @Test
     void logging_drops_messages_below_threshold_and_formats_arguments(@TempDir @NotNull Path directory) throws IOException {

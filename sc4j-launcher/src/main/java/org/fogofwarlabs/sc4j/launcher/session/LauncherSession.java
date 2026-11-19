@@ -63,9 +63,6 @@ public final class LauncherSession implements LauncherSessionView {
     private static final long RECONNECT_MILLIS = 10_000L;
     private static final int MAXIMUM_WHISPERS = 100;
     private static final @NotNull ModVersion DEVELOPMENT_VERSION = ModVersion.parse("0.0.0-development");
-    private static final @NotNull Comparator<@NotNull FriendView> FRIEND_ORDER =
-            Comparator.comparing((FriendView friend) -> friend.getState() == FriendState.OFFLINE)
-                      .thenComparing(FriendView::getTaggedName, String.CASE_INSENSITIVE_ORDER);
 
     /**
      * Holds a whisper the session shows while the session thread may still change its state.
@@ -827,7 +824,8 @@ public final class LauncherSession implements LauncherSessionView {
             created.add(this.createPlayerView(openedCommunity, presence));
         }
 
-        created.sort(FRIEND_ORDER);
+        created.sort(Comparator.comparing((FriendView friend) -> friend.getState() == FriendState.OFFLINE)
+                               .thenComparing(FriendView::getTaggedName, String.CASE_INSENSITIVE_ORDER));
 
         return List.copyOf(created);
     }

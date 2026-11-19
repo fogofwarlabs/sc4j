@@ -29,8 +29,8 @@ public final class EngineVersion {
     public static final @NotNull String SC4J_VERSION;
 
     private static final @NotNull Pattern VERSION_PATTERN = Pattern.compile("(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})");
-    private static final @NotNull Pattern SC4J_VERSION_PATTERN =
-            Pattern.compile("(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})(?:-[0-9A-Za-z]+(?:\\.[0-9A-Za-z]+)*)?");
+    private static final @NotNull Pattern SC4J_VERSION_PATTERN = Pattern.compile("(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})" +
+                                                                                 "(?:-[0-9A-Za-z]+(?:\\.[0-9A-Za-z]+)*)?");
     private static final int MAJOR_GROUP = 1;
     private static final int MINOR_GROUP = 2;
     private static final int HASH_MULTIPLIER = 31;

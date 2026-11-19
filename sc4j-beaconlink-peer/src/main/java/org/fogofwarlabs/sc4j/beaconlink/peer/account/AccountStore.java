@@ -49,10 +49,9 @@ public final class AccountStore {
     /**
      * Orders a listing: the most recently used account first, then by name.
      */
-    private static final @NotNull Comparator<@NotNull Account> LISTING_ORDER =
-            Comparator.comparingLong(Account::getLastUsedMillis).reversed()
-                      .thenComparing(Account::getName, String.CASE_INSENSITIVE_ORDER)
-                      .thenComparing(Account::getId);
+    private static final @NotNull Comparator<@NotNull Account> LISTING_ORDER = Comparator.comparingLong(Account::getLastUsedMillis).reversed()
+                                                                                         .thenComparing(Account::getName, String.CASE_INSENSITIVE_ORDER)
+                                                                                         .thenComparing(Account::getId);
 
     /**
      * Creates a {@link AccountStore} instance for an install's Beacon.Link folder; nothing is read or created.
