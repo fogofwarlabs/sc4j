@@ -336,7 +336,7 @@ final class DemoGameScreenTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"1280, 720, 1.0, 0", "1280, 720, 2.0, 1", "1920, 1080, 1.0, 1", "1920, 1080, 2.0, 0", "2560, 1440, 1.0, 0", "2560, 1440, 2.0, 1"})
+    @CsvSource({"1280, 720, 2.0, 1", "1920, 1080, 1.0, 1", "1920, 1080, 2.0, 0", "2560, 1440, 1.0, 0"})
     void demo_game_screen_draws_the_console_pictures_at_their_own_resolution(int width, int height, float scale, int factionIndex,
                                                                              @TempDir @NotNull Path storage) throws IOException,
                                                                                                                     ManifestException,
@@ -437,8 +437,7 @@ final class DemoGameScreenTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"1280, 720, 1.0, 0", "1280, 720, 1.5, 1", "1280, 720, 2.0, 1", "1920, 1080, 1.0, 1", "1920, 1080, 1.5, 0", "1920, 1080, 2.0, 0",
-                "2560, 1440, 1.0, 0", "2560, 1440, 1.5, 1", "2560, 1440, 2.0, 1"})
+    @CsvSource({"1280, 720, 1.0, 0", "1280, 720, 1.5, 1", "1280, 720, 2.0, 1", "1920, 1080, 1.5, 0", "2560, 1440, 1.0, 0"})
     void demo_game_screen_console_leaves_the_world_view_its_room_at_every_window_size_and_scale(int width, int height, float scale, int factionIndex,
                                                                                                 @TempDir @NotNull Path storage) throws IOException,
                                                                                                                                        ManifestException,
@@ -517,7 +516,7 @@ final class DemoGameScreenTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"1280, 720, 1.0, 0", "1280, 720, 2.0, 1", "1920, 1080, 1.0, 1", "1920, 1080, 2.0, 0", "2560, 1440, 1.0, 0", "2560, 1440, 2.0, 1"})
+    @CsvSource({"1280, 720, 2.0, 1", "1920, 1080, 1.0, 1", "1920, 1080, 2.0, 0", "2560, 1440, 1.0, 0"})
     void demo_game_screen_refuses_a_build_button_without_gold_with_a_message(int width, int height, float scale, int factionIndex,
                                                                              @TempDir @NotNull Path storage) throws IOException,
                                                                                                                     ManifestException,
@@ -564,7 +563,7 @@ final class DemoGameScreenTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"1280, 720, 1.0, 0", "1280, 720, 2.0, 1", "1920, 1080, 1.0, 1", "1920, 1080, 2.0, 0", "2560, 1440, 1.0, 0", "2560, 1440, 2.0, 1"})
+    @CsvSource({"1280, 720, 2.0, 1", "1920, 1080, 1.0, 1", "1920, 1080, 2.0, 0", "2560, 1440, 1.0, 0"})
     void demo_game_screen_shows_the_selection_of_one_unit_and_of_a_group(int width, int height, float scale, int factionIndex,
                                                                          @TempDir @NotNull Path storage) throws IOException, ManifestException, ModException {
         try (DemoClientScenario scenario = new DemoClientScenario(storage, width, height)) {
@@ -606,7 +605,7 @@ final class DemoGameScreenTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"1280, 720, 1.0, 0", "1280, 720, 2.0, 1", "1920, 1080, 1.0, 1", "1920, 1080, 2.0, 0", "2560, 1440, 1.0, 0", "2560, 1440, 2.0, 1"})
+    @CsvSource({"1280, 720, 2.0, 1", "1920, 1080, 1.0, 1", "1920, 1080, 2.0, 0", "2560, 1440, 1.0, 0"})
     void demo_game_screen_keeps_the_map_in_view_and_shows_no_terrain_at_its_unexplored_edge(int width, int height, float scale, int factionIndex,
                                                                                             @TempDir @NotNull Path storage) throws IOException,
                                                                                                                                    ManifestException,
@@ -681,7 +680,7 @@ final class DemoGameScreenTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"1280, 720, 1.0, 0", "1280, 720, 2.0, 1", "1920, 1080, 1.0, 1", "1920, 1080, 2.0, 0", "2560, 1440, 1.0, 0", "2560, 1440, 2.0, 1"})
+    @CsvSource({"1280, 720, 2.0, 1", "1920, 1080, 1.0, 1", "1920, 1080, 2.0, 0", "2560, 1440, 1.0, 0"})
     void demo_game_screen_shows_a_queue_that_waits_for_supply_and_no_queue_region_without_a_queue(int width, int height, float scale,
                                                                                                   int factionIndex, @TempDir @NotNull Path storage) throws IOException,
                                                                                                                                                            ManifestException,

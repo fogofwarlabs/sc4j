@@ -60,6 +60,13 @@ final class WaveDataTest {
     private static final int OVERSIZED_RIFF_BYTES = 255;
     private static final int MISALIGNED_DATA_CHUNK_BYTES = 3;
 
+    /**
+     * The bytes after the data chunk of a file whose RIFF size counts them: a chunk header whose size passes the file end, and two bytes.
+     */
+    private static final int TRAILING_BYTES = 10;
+    private static final int TRAILING_CHUNK_BYTES = 0xFFFF0000;
+    private static final int RIFF_HEADER_EXCLUDED_BYTES = 8;
+
     private static byte @NotNull [] createWaveContents() {
         ByteBuffer result = ByteBuffer.allocate(FILE_BYTES).order(ByteOrder.LITTLE_ENDIAN);
 
@@ -81,6 +88,20 @@ final class WaveDataTest {
         Assertions.assertEquals(CHANNELS, data.getChannels());
         Assertions.assertEquals(SAMPLE_RATE, data.getSampleRate());
         Assertions.assertEquals(SAMPLE_BITS, data.getSampleBits());
+        Assertions.assertArrayEquals(new byte[]{0x34, 0x12, (byte) 0xCC, (byte) 0xED}, data.getSamples());
+    }
+
+    @Test
+    void decode_should_not_read_the_bytes_after_the_data_chunk() throws IOException {
+        ByteBuffer file = ByteBuffer.allocate(FILE_BYTES + TRAILING_BYTES).order(ByteOrder.LITTLE_ENDIAN);
+
+        file.put(createWaveContents());
+        file.putInt(JUNK_CHUNK_IDENTIFIER).putInt(TRAILING_CHUNK_BYTES).put((byte) JUNK_BYTE).put((byte) JUNK_BYTE);
+        file.putInt(RIFF_BYTES_OFFSET, FILE_BYTES + TRAILING_BYTES - RIFF_HEADER_EXCLUDED_BYTES);
+
+        WaveData data = WaveData.decode(file.array());
+
+        Assertions.assertEquals(CHANNELS, data.getChannels());
         Assertions.assertArrayEquals(new byte[]{0x34, 0x12, (byte) 0xCC, (byte) 0xED}, data.getSamples());
     }
 

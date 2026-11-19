@@ -78,10 +78,16 @@ final class PackTilesetUtils {
         int tileCount = columns * (image.getHeight() / tileHeight);
         int tilePixels = tileWidth * tileHeight;
         int[] colors = new int[tileCount * tilePixels];
+        int[] pixels = PackSpriteSheetUtils.readArgbPixels(image);
+        int imageWidth = image.getWidth();
 
         for (int tileIndex = 0; tileIndex < tileCount; tileIndex++) {
-            image.getRGB(tileIndex % columns * tileWidth, tileIndex / columns * tileHeight, tileWidth, tileHeight, colors, tileIndex * tilePixels,
-                         tileWidth);
+            int tileX = tileIndex % columns * tileWidth;
+            int tileY = tileIndex / columns * tileHeight;
+
+            for (int y = 0; y < tileHeight; y++) {
+                System.arraycopy(pixels, (tileY + y) * imageWidth + tileX, colors, tileIndex * tilePixels + y * tileWidth, tileWidth);
+            }
         }
 
         return new TileGraphics(tileWidth, tileHeight, shape, PixelLayer.ofRgba(colors));

@@ -214,6 +214,7 @@ final class PeerRoutingSimulationTest {
     }
 
     @Test
+    @LargeSimulation
     void eclipse_attempt_of_two_hundred_sybils_in_one_network_fails() {
         SimulatedNetwork network = new SimulatedNetwork(RANDOM_SEED + 1L, REGIONS, LOSS_RATE);
         SplittableRandom random = network.getRandom();

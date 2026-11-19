@@ -9,7 +9,9 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 import java.awt.image.Raster;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -105,6 +107,10 @@ final class PackSpriteSheetUtils {
         BufferedImage teamMask = readOptionalPicture(source, definitionPath, definition.findText(TEAM_MASK_FIELD), color);
         BufferedImage shadow = readOptionalPicture(source, definitionPath, definition.findText(SHADOW_FIELD), color);
 
+        int sheetWidth = color.getWidth();
+        int[] colorPixels = readArgbPixels(color);
+        int[] shadowPixels = shadow != null ? readArgbPixels(shadow) : null;
+        int[] teamMaskPixels = teamMask != null && teamMask.getRaster().getNumBands() != 1 ? readArgbPixels(teamMask) : null;
         int frameCount = columns * rows;
         int framePixels = frameWidth * frameHeight;
         List<SpriteFrame> frames = new ArrayList<>(frameCount);
@@ -122,18 +128,21 @@ final class PackSpriteSheetUtils {
 
             for (int y = 0; y < frameHeight; y++) {
                 int rowOffset = pixelOffset + y * frameWidth;
+                int sheetOffset = (cellY + y) * sheetWidth + cellX;
 
-                color.getRGB(cellX, cellY + y, frameWidth, 1, colors, rowOffset, frameWidth);
+                System.arraycopy(colorPixels, sheetOffset, colors, rowOffset, frameWidth);
 
-                if (teamMask != null) {
+                if (teamMaskPixels != null) {
+                    for (int x = 0; x < frameWidth; x++) {
+                        teamMaskValues[rowOffset + x] = (byte) (teamMaskPixels[sheetOffset + x] >>> RED_SHIFT & CHANNEL_MASK);
+                    }
+                } else if (teamMask != null) {
                     readMaskRow(teamMask, cellX, cellY + y, row, teamMaskValues, rowOffset);
                 }
 
-                if (shadow != null) {
-                    shadow.getRGB(cellX, cellY + y, frameWidth, 1, row, 0, frameWidth);
-
+                if (shadowPixels != null) {
                     for (int x = 0; x < frameWidth; x++) {
-                        shadowValues[rowOffset + x] = (byte) (row[x] >>> ALPHA_SHIFT);
+                        shadowValues[rowOffset + x] = (byte) (shadowPixels[sheetOffset + x] >>> ALPHA_SHIFT);
                     }
                 }
             }
@@ -172,6 +181,26 @@ final class PackSpriteSheetUtils {
         for (int column = 0; column < row.length; column++) {
             values[offset + column] = (byte) (row[column] >>> RED_SHIFT & CHANNEL_MASK);
         }
+    }
+
+    /**
+     * Returns the pixels of a picture as non-premultiplied ARGB values, row-major: the picture drawn once into an ARGB picture of its size.
+     *
+     * @param picture the picture
+     * @return the pixels, {@code width * height} values
+     */
+    static int @NotNull [] readArgbPixels(@NotNull BufferedImage picture) {
+        BufferedImage argb = new BufferedImage(picture.getWidth(), picture.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = argb.createGraphics();
+
+        try {
+            graphics.setComposite(AlphaComposite.Src);
+            graphics.drawImage(picture, 0, 0, null);
+        } finally {
+            graphics.dispose();
+        }
+
+        return ((DataBufferInt) argb.getRaster().getDataBuffer()).getData();
     }
 
     private static @Nullable BufferedImage readOptionalPicture(@NotNull PackSource source, @NotNull String definitionPath, @Nullable String picture,
