@@ -1060,7 +1060,8 @@ public final class SortedEdgeIndex<U extends Unit> implements SnapshotContributo
             coordinates[edgeIndex] = coordinates[neighborIndex];
             unitIndices[neighborIndex] = previousUnitIndex;
             coordinates[neighborIndex] = previousCoordinate;
-                                         edgeIndex = (maximum ? unit.getMaximumEdgeIndex(horizontal) : unit.getMinimumEdgeIndex(horizontal)) + direction;
+
+            edgeIndex = (maximum ? unit.getMaximumEdgeIndex(horizontal) : unit.getMinimumEdgeIndex(horizontal)) + direction;
 
             setEdgeIndex(unit, horizontal, maximum, edgeIndex);
 

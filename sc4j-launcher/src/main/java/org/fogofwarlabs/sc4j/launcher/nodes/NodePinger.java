@@ -114,8 +114,9 @@ public final class NodePinger {
                 results[index] = new NodePingResult(nodes.get(index), NodePingStatus.UNRESOLVED);
             } else {
                 addresses[index] = address;
-                                   onLoopback &= address.getAddress().isLoopbackAddress() &&
-                                                 address.getAddress() instanceof Inet4Address == loopback instanceof Inet4Address;
+
+                onLoopback &= address.getAddress().isLoopbackAddress() &&
+                              address.getAddress() instanceof Inet4Address == loopback instanceof Inet4Address;
             }
         }
 
