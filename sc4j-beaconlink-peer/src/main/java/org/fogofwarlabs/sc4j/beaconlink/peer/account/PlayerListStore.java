@@ -57,9 +57,6 @@ public final class PlayerListStore {
     private static final @NotNull String KEY_KEY = "key";
     private static final @NotNull String TIME_KEY = "time";
     private static final @NotNull String REMOVED_KEY = "removed";
-    private static final @NotNull Comparator<Map.@NotNull Entry<@NotNull IdentityKey, @NotNull Change>> FILE_ORDER =
-            Comparator.<Map.Entry<IdentityKey, Change>>comparingLong(entry -> entry.getValue().timeMillis)
-                      .thenComparing((first, second) -> Arrays.compareUnsigned(first.getKey().getBytes(), second.getKey().getBytes()));
 
     /**
      * Holds the last change of one player: its time and whether it removed the player.
@@ -279,7 +276,8 @@ public final class PlayerListStore {
         long listed = ordered.stream().filter(entry -> !entry.getValue().removed).count();
         LinkedHashMap<IdentityKey, Change> kept = new LinkedHashMap<>();
 
-        ordered.sort(FILE_ORDER);
+        ordered.sort(Comparator.<Map.Entry<IdentityKey, Change>>comparingLong(entry -> entry.getValue().timeMillis)
+                               .thenComparing(Map.Entry.comparingByKey()));
 
         for (Map.Entry<IdentityKey, Change> entry : ordered) {
             if (!entry.getValue().removed && listed > this.maximumPlayers) {

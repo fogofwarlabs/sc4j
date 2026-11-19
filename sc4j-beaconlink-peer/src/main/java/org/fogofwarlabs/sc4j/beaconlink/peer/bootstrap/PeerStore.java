@@ -91,10 +91,9 @@ public final class PeerStore {
     private static final @NotNull String FIRST_SEEN_KEY = "firstSeen";
     private static final @NotNull String LAST_SUCCESS_KEY = "lastSuccess";
     private static final @NotNull String FAILURES_KEY = "failures";
-    private static final @NotNull Comparator<@NotNull LearnedPeer> TOTAL_ORDER =
-            Comparator.comparingLong(LearnedPeer::getLastSuccessMillis).reversed()
-                      .thenComparingLong(LearnedPeer::getFirstSeenMillis)
-                      .thenComparing((first, second) -> Arrays.compareUnsigned(first.getKey().getBytes(), second.getKey().getBytes()));
+    private static final @NotNull Comparator<@NotNull LearnedPeer> TOTAL_ORDER = Comparator.comparingLong(LearnedPeer::getLastSuccessMillis).reversed()
+                                                                                           .thenComparingLong(LearnedPeer::getFirstSeenMillis)
+                                                                                           .thenComparing(LearnedPeer::getKey);
 
     /**
      * Opens the peers of a file for one user, reading the file; at most {@value #MAXIMUM_PEERS} peers are kept.

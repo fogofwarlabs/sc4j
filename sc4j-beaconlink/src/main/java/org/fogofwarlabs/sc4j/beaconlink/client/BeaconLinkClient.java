@@ -1520,15 +1520,23 @@ public final class BeaconLinkClient implements BeaconLinkSession {
         }
 
         // A repeated answer changes nothing, so a replayed offer of an answered channel needs no remembered nonce.
-        if (channel != null) {
-            return channel.isAwaitingOffer() ? this.isNewSignal(envelope, nowMillis) && channel.acceptOffer(offer, node, nowMillis)
-                                             : channel.repeatAnswer(offer, node);
+        if (channel != null && channel.isAwaitingOffer()) {
+            return this.isNewSignal(envelope, nowMillis) && channel.acceptOffer(offer, node, nowMillis);
+        }
+
+        if (channel != null && channel.repeatAnswer(offer, node)) {
+            return true;
         }
 
         if (this.isOfferingTo(sender) ||
             this.waitingOffers.size() >= MAXIMUM_WAITING_OFFERS && !this.waitingOffers.containsKey(sender) ||
             !this.isNewSignal(envelope, nowMillis)) {
             return false;
+        }
+
+        // A new offer of a participant whose channel still stands here: the participant left that channel.
+        if (channel != null) {
+            channel.replace();
         }
 
         this.waitingOffers.put(sender, new WaitingOffer(offer, node, nowMillis + WAITING_OFFER_MILLIS));
@@ -1538,8 +1546,19 @@ public final class BeaconLinkClient implements BeaconLinkSession {
 
     private boolean handleJoin(@NotNull Envelope envelope, @NotNull LinkParticipant sender, @NotNull ChannelOffer offer,
                                @Nullable PeerChannel channel, @NotNull NodeSession node, long nowMillis) {
+        boolean replacing = channel != null;
+
         if (channel != null) {
-            return channel.repeatAnswer(offer, node);
+            if (channel.repeatAnswer(offer, node)) {
+                return true;
+            }
+
+            if (!this.isNewSignal(envelope, nowMillis)) {
+                return false;
+            }
+
+            // A new join of a participant whose channel still stands here: the participant left that channel.
+            channel.replace();
         }
 
         ClientHostedRoom room = this.findRoom(offer.getRoomNumber());
@@ -1557,7 +1576,7 @@ public final class BeaconLinkClient implements BeaconLinkSession {
             return true;
         }
 
-        if (!this.isNewSignal(envelope, nowMillis)) {
+        if (!replacing && !this.isNewSignal(envelope, nowMillis)) {
             return false;
         }
 

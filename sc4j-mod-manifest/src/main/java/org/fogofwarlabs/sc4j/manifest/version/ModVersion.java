@@ -12,8 +12,8 @@ import java.util.regex.Pattern;
  * ({@code 1.0.0-beta.2}), as the manifest field {@code version} gives it.
  */
 public final class ModVersion {
-    private static final @NotNull Pattern VERSION_PATTERN =
-            Pattern.compile("(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})(?:-([0-9A-Za-z]+(?:\\.[0-9A-Za-z]+)*))?");
+    private static final @NotNull Pattern VERSION_PATTERN = Pattern.compile("(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})" +
+                                                                            "(?:-([0-9A-Za-z]+(?:\\.[0-9A-Za-z]+)*))?");
     private static final int MAJOR_GROUP = 1;
     private static final int MINOR_GROUP = 2;
     private static final int PATCH_GROUP = 3;

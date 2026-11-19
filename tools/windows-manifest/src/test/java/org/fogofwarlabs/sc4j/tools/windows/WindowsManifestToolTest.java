@@ -15,8 +15,8 @@ import java.nio.file.Path;
  * Checks the UTF-8 active code page setting added to the application manifest of a Windows program.
  */
 final class WindowsManifestToolTest {
-    private static final @NotNull String SETTING =
-            "<activeCodePage xmlns=\"http://schemas.microsoft.com/SMI/2019/WindowsSettings\">UTF-8</activeCodePage>";
+    private static final @NotNull String SETTING = "<activeCodePage xmlns=\"http://schemas.microsoft.com/SMI/2019/WindowsSettings\">" +
+                                                   "UTF-8</activeCodePage>";
 
     @Test
     void add_utf8_code_page_should_add_the_setting_to_the_windows_settings() {

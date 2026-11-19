@@ -25,8 +25,8 @@ import java.util.regex.Pattern;
  * written with the functions of {@code kernel32}, so the tool runs on Windows only, with native access enabled.
  */
 public final class WindowsManifestTool {
-    private static final @NotNull String UTF8_CODE_PAGE_SETTING =
-            "<activeCodePage xmlns=\"http://schemas.microsoft.com/SMI/2019/WindowsSettings\">UTF-8</activeCodePage>";
+    private static final @NotNull String UTF8_CODE_PAGE_SETTING = "<activeCodePage xmlns=\"http://schemas.microsoft.com/SMI/2019/WindowsSettings\">" +
+                                                                  "UTF-8</activeCodePage>";
     private static final @NotNull String ACTIVE_CODE_PAGE_ELEMENT = "<activeCodePage";
     private static final @NotNull Pattern WINDOWS_SETTINGS_END = Pattern.compile("</(?:[A-Za-z0-9_]+:)?windowsSettings>");
     private static final @NotNull String ASSEMBLY_END = "</assembly>";
