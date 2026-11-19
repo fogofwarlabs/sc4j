@@ -550,6 +550,8 @@ final class LauncherWindowTest {
 
                 window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
                 LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
+                Assertions.assertTrue(findNavigation(layRoot(stage), texts.get("nav.chat")).isSelected(), "logging in shows the chat");
+                findNavigation(layRoot(stage), texts.get("nav.mods")).fire();
 
                 Parent root = layRoot(stage);
 
