@@ -56,6 +56,12 @@ public interface ParticipantChannel extends Closeable {
      */
     long getDelayMillis();
 
+    /**
+     * @return {@code true} if the channel's datagrams go through a third participant, {@code false} if they go directly or the channel has no
+     * path
+     */
+    boolean isRelayed();
+
 
     /**
      * Sends a datagram to the other participant on the channel's path. The datagram may be lost.

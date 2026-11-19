@@ -14,7 +14,7 @@ Every `public` or `protected` class, interface, constructor, method and field (c
 | `sc4j-mod-manifest` | mod manifest `sc4j-mod.json`, validation, settings, versions, install layout | `sc4j-mod-manifest/api/sc4j-mod-manifest.api` |
 | `sc4j-engine-core` | JSON, fixed-point math, map grid, terrain, players, state hash, content types, mod identity, resource models | `sc4j-engine-core/api/sc4j-engine-core.api` |
 | `sc4j-engine-sim` | game, units, default systems, content, animation programs, orders, commands, computer players, triggers, data pack, maps, lockstep, replays, saves | `sc4j-engine-sim/api/sc4j-engine-sim.api` |
-| `sc4j-engine-net` | datagram links, lockstep transport, LAN discovery, network lobby, Beacon.Link and community interfaces, channel chat | `sc4j-engine-net/api/sc4j-engine-net.api` |
+| `sc4j-engine-net` | datagram links, lockstep transport, payload transfer, LAN discovery, network lobby, Beacon.Link and community interfaces, channel chat | `sc4j-engine-net/api/sc4j-engine-net.api` |
 | `sc4j-engine-client` | host, scenes, input, renderer abstraction, projections, text, HUD, command card, console, dialogs, cursors, skins, world view, audio, video, settings store | `sc4j-engine-client/api/sc4j-engine-client.api` |
 | `sc4j-engine` | mod API (`engine.mod`), client application (`engine.client.app`), community screen parts (`engine.client.community`), lobby parts (`engine.client.lobby`) | `sc4j-engine/api/sc4j-engine.api` |
 | `sc4j-catalog` | what is published: GitHub releases, release versions, the check for a newer release, the mod catalog | `sc4j-catalog/api/sc4j-catalog.api` |

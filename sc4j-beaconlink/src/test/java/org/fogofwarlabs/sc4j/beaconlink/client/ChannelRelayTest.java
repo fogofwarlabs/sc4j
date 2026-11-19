@@ -108,8 +108,9 @@ final class ChannelRelayTest {
         BeaconLinkClient first = this.openClient(this.scenario.openNat(firstType));
         BeaconLinkClient second = this.openClient(this.scenario.openNat(secondType));
         BeaconLinkClient relay = this.openClient(this.scenario.openNat(NatType.FULL_CONE));
+        ParticipantChannel[] direct = this.connect(first, relay);
 
-        this.assertOpen(this.connect(first, relay));
+        this.assertOpen(direct);
         this.assertOpen(this.connect(second, relay));
 
         ParticipantChannel[] channels = this.connect(first, second);
@@ -118,6 +119,8 @@ final class ChannelRelayTest {
         this.assertCarries(channels, "through the relay");
 
         Assertions.assertTrue(relay.getRelayedCount() > 0);
+        Assertions.assertTrue(channels[0].isRelayed() && channels[1].isRelayed());
+        Assertions.assertFalse(direct[0].isRelayed());
         Assertions.assertNotEquals(ParticipantChannel.UNKNOWN_DELAY, channels[0].getDelayMillis());
     }
 

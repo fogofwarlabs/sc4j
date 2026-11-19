@@ -36,6 +36,10 @@ public interface LinkOverlay extends Closeable {
      */
     int GAME_PORT = 2;
     /**
+     * The port of the engine's transfer of payloads ({@link LinkTransferService}).
+     */
+    int TRANSFER_PORT = 3;
+    /**
      * The first port for a mod's own protocols; the ports below it are the engine's.
      */
     int FIRST_MOD_PORT = 0x10;

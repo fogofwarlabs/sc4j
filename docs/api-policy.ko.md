@@ -14,7 +14,7 @@
 | `sc4j-mod-manifest` | 모드 매니페스트 `sc4j-mod.json`, 검증, 설정, 버전, 설치 폴더 구조 | `sc4j-mod-manifest/api/sc4j-mod-manifest.api` |
 | `sc4j-engine-core` | JSON, 고정소수점 연산, 맵 격자, 지형, 플레이어, 상태 해시, 콘텐츠 타입, 모드 정체성, 리소스 모델 | `sc4j-engine-core/api/sc4j-engine-core.api` |
 | `sc4j-engine-sim` | 게임, 유닛, 기본 시스템, 콘텐츠, 애니메이션 프로그램, 명령, 커맨드, 컴퓨터 플레이어, 트리거, 데이터 팩, 맵, 락스텝, 리플레이, 저장 | `sc4j-engine-sim/api/sc4j-engine-sim.api` |
-| `sc4j-engine-net` | 데이터그램 링크, 락스텝 전송, LAN 탐색, 네트워크 로비, Beacon.Link와 커뮤니티 인터페이스, 채널 채팅 | `sc4j-engine-net/api/sc4j-engine-net.api` |
+| `sc4j-engine-net` | 데이터그램 링크, 락스텝 전송, 페이로드 전송, LAN 탐색, 네트워크 로비, Beacon.Link와 커뮤니티 인터페이스, 채널 채팅 | `sc4j-engine-net/api/sc4j-engine-net.api` |
 | `sc4j-engine-client` | 호스트, 씬, 입력, 렌더러 추상화, 투영, 텍스트, HUD, 커맨드 카드, 콘솔, 대화 상자, 커서, 스킨, 월드 뷰, 오디오, 동영상, 설정 저장소 | `sc4j-engine-client/api/sc4j-engine-client.api` |
 | `sc4j-engine` | 모드 API(`engine.mod`), 클라이언트 애플리케이션(`engine.client.app`), 커뮤니티 화면 부품(`engine.client.community`), 로비 부품(`engine.client.lobby`) | `sc4j-engine/api/sc4j-engine.api` |
 | `sc4j-catalog` | 공개된 정보: GitHub 릴리즈, 릴리즈 버전, 새 릴리즈 확인, 모드 목록 | `sc4j-catalog/api/sc4j-catalog.api` |

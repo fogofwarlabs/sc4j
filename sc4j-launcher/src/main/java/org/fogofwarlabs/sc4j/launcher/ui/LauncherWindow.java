@@ -115,6 +115,7 @@ import java.util.function.Function;
  * decoded again for the new scale and the window is fitted to the screen it is on, without a restart ({@link #fitDisplay}).
  */
 public final class LauncherWindow {
+    private static final @NotNull LauncherShell.Section FIRST_SECTION = LauncherShell.Section.CHAT;
     private static final double DEFAULT_WIDTH = 1280;
     private static final double DEFAULT_HEIGHT = 800;
     private static final double MINIMUM_WIDTH = 1100;
@@ -591,12 +592,12 @@ public final class LauncherWindow {
         this.conversations = openedConversations;
         this.chatAlerts    = new ChatAlerts(opened);
         this.accountMenu   = this.createAccountMenu(loggedIn, opened);
-        this.section       = LauncherShell.Section.MODS;
+        this.section       = FIRST_SECTION;
 
         openedConversations.setOnRead(this::updateChatDot);
         opened.setOnChanged(this::onSessionChanged);
         opened.openChat(this.texts.getLocale());
-        this.showSection(LauncherShell.Section.MODS);
+        this.showSection(FIRST_SECTION);
         this.selectLastMod();
         this.offerLauncherUpdate();
     }

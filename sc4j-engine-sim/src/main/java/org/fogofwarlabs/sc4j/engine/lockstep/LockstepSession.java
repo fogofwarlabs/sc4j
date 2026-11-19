@@ -64,8 +64,9 @@ public final class LockstepSession {
         private void record(int frame, long hash) {
             this.frames[this.next] = frame;
             this.hashes[this.next] = hash;
-                                     this.next = (this.next + 1) % this.frames.length;
-                                     this.count = Math.min(this.count + 1, this.frames.length);
+
+            this.next = (this.next + 1) % this.frames.length;
+            this.count = Math.min(this.count + 1, this.frames.length);
         }
 
         private int find(int frame) {
