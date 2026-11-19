@@ -8,9 +8,10 @@ import java.nio.ByteBuffer;
 /**
  * Sends an offered payload to a peer that requested it: chunks go out while the chunks sent and not acknowledged stay within the congestion
  * window, which grows with every acknowledged chunk (doubling per round trip until the first loss, then by one chunk per round trip), halves
- * on a loss the acknowledgements show and falls to its least size when no acknowledgement advanced for the retransmission timeout. A lost
- * chunk is sent again once three later chunks were acknowledged; after the timeout every unacknowledged chunk the peer does not hold is sent
- * again.
+ * on a loss the acknowledgements show and falls to its least size when no acknowledgement advanced for the retransmission timeout. A missing
+ * chunk counts as lost once three later chunks were acknowledged and it was sent longer ago than the smoothed round trip and its variation,
+ * and is sent again; after the timeout every unacknowledged chunk the peer does not hold is sent again. The round trip is measured on the
+ * acknowledgements of chunks that arrived in order, none of them sent again or held behind a missing chunk.
  *
  * @param <A> the type of the peers' addresses
  */
@@ -166,8 +167,8 @@ final class TransferUpload<A> {
     }
 
     /**
-     * Takes an acknowledgement: the chunks held without gap move the window on and measure the round trip, the bits mark the chunks held after
-     * the first missing one, and a missing chunk with enough held chunks after it is marked lost.
+     * Takes an acknowledgement: the chunks held without gap move the window on and, when they arrived in order, measure the round trip; the
+     * bits mark the chunks held after the first missing one, and a missing chunk with enough held chunks after it is marked lost.
      *
      * @param data      the acknowledgement after its header
      * @param nowMillis the clock time
@@ -183,10 +184,15 @@ final class TransferUpload<A> {
         }
 
         if (count > this.acknowledged) {
-            int last = slot(count - 1);
+            // Only chunks that arrived in order, none sent again and none held behind a gap, give a round trip sample.
+            boolean inOrder = true;
 
-            if (!this.resent[last]) {
-                this.measure(nowMillis - this.sentMillis[last]);
+            for (int index = this.acknowledged; index < count; index++) {
+                inOrder &= !this.resent[slot(index)] && !this.held[slot(index)];
+            }
+
+            if (inOrder) {
+                this.measure(nowMillis - this.sentMillis[slot(count - 1)]);
             }
 
             for (int index = this.acknowledged; index < count; index++) {
@@ -216,7 +222,7 @@ final class TransferUpload<A> {
         for (int index = this.acknowledged; index <= this.highestHeld - LOSS_THRESHOLD; index++) {
             int slot = slot(index);
 
-            if (!this.held[slot] && !this.lost[slot] && nowMillis - this.sentMillis[slot] >= (long) this.roundTripMillis) {
+            if (!this.held[slot] && !this.lost[slot] && nowMillis - this.sentMillis[slot] >= (long) (this.roundTripMillis + this.variationMillis)) {
                 this.lost[slot] = true;
                 this.lostCount++;
 

@@ -45,6 +45,14 @@ final class TransferServiceTest {
     private static final long WITHDRAWN_NETWORK_SEED = 6L;
     private static final long CANCELED_PAYLOAD_SEED = 7L;
     private static final long CANCELED_NETWORK_SEED = 8L;
+    /**
+     * The payload, loss, seeds and longest time of the download through heavy loss and reordering.
+     */
+    private static final int HEAVY_LOSS_PAYLOAD = 1_000_000;
+    private static final int HEAVY_LOSS_PERCENT = 10;
+    private static final long HEAVY_LOSS_PAYLOAD_SEED = 9L;
+    private static final long HEAVY_LOSS_NETWORK_SEED = 10L;
+    private static final long HEAVY_LOSS_LIMIT_MILLIS = 60_000L;
 
     private static byte @NotNull [] createPayload(int size, long seed) {
         byte[] bytes = new byte[size];
@@ -203,5 +211,32 @@ final class TransferServiceTest {
             Assertions.assertTrue(network.getClock().getMillis() - start >= TransferService.IDLE_MILLIS);
             run(network, () -> holder.getUploadCount() == 0, holder, requester);
         }
+    }
+
+    @Test
+    void payload_keeps_moving_through_heavy_loss_and_reordering(@TempDir @NotNull Path folder) throws IOException {
+        byte[] contents = createPayload(HEAVY_LOSS_PAYLOAD, HEAVY_LOSS_PAYLOAD_SEED);
+        Path source = Files.write(folder.resolve("source"), contents);
+        Path target = folder.resolve("target");
+        MemoryTransferNetwork network = new MemoryTransferNetwork(HEAVY_LOSS_NETWORK_SEED);
+
+        network.setLossPercent(HEAVY_LOSS_PERCENT);
+        network.setDelay(DELAY_MILLIS, JITTER_MILLIS);
+
+        try (MemoryTransferNetwork.Service holder = network.open(HOLDER, DATAGRAM_LENGTH);
+             MemoryTransferNetwork.Service requester = network.open(REQUESTER, DATAGRAM_LENGTH);
+             FileTransferSource input = FileTransferSource.open(source);
+             FileTransferSink output = FileTransferSink.open(target)) {
+            holder.offer(KEY, input);
+
+            TransferDownload<String> download = requester.request(HOLDER, KEY, output);
+            long[] frames = {0L};
+
+            run(network, () -> download.isDone() || frames[0]++ * FRAME_MILLIS >= HEAVY_LOSS_LIMIT_MILLIS, holder, requester);
+
+            Assertions.assertEquals(TransferState.COMPLETE, download.getState(), "the download ends within " + HEAVY_LOSS_LIMIT_MILLIS + " ms");
+        }
+
+        Assertions.assertArrayEquals(contents, Files.readAllBytes(target));
     }
 }
