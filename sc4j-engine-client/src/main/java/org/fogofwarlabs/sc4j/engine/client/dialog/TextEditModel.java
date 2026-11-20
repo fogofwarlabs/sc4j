@@ -8,9 +8,10 @@ import java.util.Deque;
 import java.util.function.Predicate;
 
 /**
- * Edits one line of text: typing, the editing keys ({@link TextEditKey}), a selection, the clipboard operations and a bounded undo/redo
- * history ({@link TextEditOperation}), a length limit, refused characters and an owner's acceptance test. A dialog control draws the text and
- * the caret in its own look; the model holds no look.
+ * Edits one line of text: typing, the editing keys ({@link TextEditKey}), a selection that Shift with the caret keys and the pointer extend
+ * ({@link #press(TextEditKey, boolean)}, {@link #moveCaret}, {@link #selectWord}), the clipboard operations and a bounded undo/redo history
+ * ({@link TextEditOperation}), a length limit, refused characters and an owner's acceptance test. A dialog control draws the text, the
+ * selection and the caret in its own look and maps the pointer to an index ({@link TextBoundaryUtils#findIndexAt}); the model holds no look.
  * <p>
  * The model works in Unicode code points: the caret and the selection ends are UTF-16 indexes of {@link #getText()} that never split a
  * surrogate pair, Backspace, Delete, Left and Right step over a whole code point, and the length limit counts code points. Typed characters
@@ -187,14 +188,44 @@ public final class TextEditModel {
     }
 
     /**
-     * Applies an editing key; Backspace and Delete remove the selection when there is one, Left and Right end it at its start or end.
+     * Applies an editing key without extending the selection ({@link #press(TextEditKey, boolean)}).
      *
      * @param key the key
      * @return {@code true} if the text changed, {@code false} otherwise
      */
     public boolean press(@NotNull TextEditKey key) {
+        return this.press(key, false);
+    }
+
+    /**
+     * Applies an editing key; Backspace and Delete remove the selection when there is one, Left and Right end it at its start or end. While
+     * extending (Shift held), Left, Right, Home and End move the caret and keep the selection's other end, so the selection grows or shrinks
+     * from where it started; Backspace and Delete ignore it.
+     *
+     * @param key    the key
+     * @param extend whether the caret keys extend the selection
+     * @return {@code true} if the text changed, {@code false} otherwise
+     */
+    public boolean press(@NotNull TextEditKey key, boolean extend) {
         int start = this.getSelectionStart();
         int end = this.getSelectionEnd();
+
+        if (extend && key != TextEditKey.BACKSPACE && key != TextEditKey.DELETE) {
+            int origin = this.anchor == NO_SELECTION ? this.caret : this.anchor;
+
+            this.caret = switch (key) {
+                case LEFT -> this.caret == 0 ? 0 : this.text.offsetByCodePoints(this.caret, -1);
+                case RIGHT -> this.caret >= this.text.length() ? this.caret : this.text.offsetByCodePoints(this.caret, 1);
+                case HOME -> 0;
+                case END -> this.text.length();
+                case BACKSPACE, DELETE -> this.caret;
+            };
+
+            this.anchor = origin == this.caret ? NO_SELECTION : origin;
+            this.typing = false;
+
+            return false;
+        }
 
         if ((key == TextEditKey.BACKSPACE || key == TextEditKey.DELETE) && start < end) {
             this.rememberStep();
@@ -238,6 +269,42 @@ public final class TextEditModel {
         this.typing = false;
 
         return false;
+    }
+
+    /**
+     * Moves the caret to an index, as a pointer press or drag does; an index inside a surrogate pair moves before the pair. Extending keeps
+     * the selection's other end (the caret before the move without a selection), otherwise the selection ends.
+     *
+     * @param index  the UTF-16 index, clamped to the text
+     * @param extend whether the move extends the selection
+     */
+    public void moveCaret(int index, boolean extend) {
+        int origin = this.anchor == NO_SELECTION ? this.caret : this.anchor;
+        int target = Math.clamp(index, 0, this.text.length());
+
+        if (target > 0 && target < this.text.length() && Character.isLowSurrogate(this.text.charAt(target)) &&
+            Character.isHighSurrogate(this.text.charAt(target - 1))) {
+            target--;
+        }
+
+        this.caret  = target;
+        this.anchor = extend && origin != target ? origin : NO_SELECTION;
+        this.typing = false;
+    }
+
+    /**
+     * Selects the word around an index ({@link TextBoundaryUtils#findWordStart}), as a double press does; the caret goes to the word's end.
+     *
+     * @param index the UTF-16 index, clamped to the text
+     */
+    public void selectWord(int index) {
+        String current = this.text.toString();
+        int target = Math.clamp(index, 0, current.length());
+        int start = TextBoundaryUtils.findWordStart(current, target);
+
+        this.caret  = TextBoundaryUtils.findWordEnd(current, target);
+        this.anchor = start == this.caret ? NO_SELECTION : start;
+        this.typing = false;
     }
 
     /**

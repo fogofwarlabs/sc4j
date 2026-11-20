@@ -217,4 +217,110 @@ final class TextEditModelTest {
         Assertions.assertEquals(2, edit.getCaret());
         Assertions.assertFalse(edit.apply(TextEditOperation.UNDO, new MemoryClipboard(null)));
     }
+
+    @Test
+    void press_should_extend_the_selection_from_its_first_end_when_extending() {
+        TextEditModel edit = createTypedModel("hello world");
+        MemoryClipboard clipboard = new MemoryClipboard(null);
+
+        Assertions.assertFalse(edit.press(TextEditKey.LEFT, true));
+        edit.press(TextEditKey.LEFT, true);
+
+        Assertions.assertEquals(9, edit.getSelectionStart());
+        Assertions.assertEquals(11, edit.getSelectionEnd());
+        Assertions.assertEquals(9, edit.getCaret());
+
+        edit.apply(TextEditOperation.COPY, clipboard);
+
+        Assertions.assertEquals("ld", clipboard.read());
+
+        // End returns to the first end, which ends the selection; Home then selects back to the start.
+        edit.press(TextEditKey.END, true);
+        edit.press(TextEditKey.HOME, true);
+
+        Assertions.assertEquals(0, edit.getSelectionStart());
+        Assertions.assertEquals(11, edit.getSelectionEnd());
+
+        edit.press(TextEditKey.RIGHT, false);
+
+        Assertions.assertEquals(11, edit.getCaret());
+        Assertions.assertEquals(edit.getSelectionStart(), edit.getSelectionEnd(), "A plain caret key ends the selection.");
+    }
+
+    @Test
+    void extended_selection_is_replaced_by_typing_and_removed_by_delete() {
+        TextEditModel edit = createTypedModel("abcdef");
+
+        edit.press(TextEditKey.HOME, false);
+        edit.press(TextEditKey.RIGHT, true);
+        edit.press(TextEditKey.RIGHT, true);
+
+        Assertions.assertTrue(edit.type('x'));
+        Assertions.assertEquals("xcdef", edit.getText());
+
+        edit.press(TextEditKey.END, true);
+
+        Assertions.assertTrue(edit.press(TextEditKey.DELETE, true));
+        Assertions.assertEquals("x", edit.getText());
+    }
+
+    @Test
+    void extending_keys_step_over_whole_code_points() {
+        TextEditModel edit = createTypedModel("a" + SUPPLEMENTARY);
+
+        edit.press(TextEditKey.LEFT, true);
+
+        Assertions.assertEquals(1, edit.getSelectionStart());
+        Assertions.assertEquals(3, edit.getSelectionEnd());
+    }
+
+    @Test
+    void move_caret_should_set_or_extend_the_selection() {
+        TextEditModel edit = createTypedModel("hello world");
+        MemoryClipboard clipboard = new MemoryClipboard(null);
+
+        // A press at 2, a drag to 7.
+        edit.moveCaret(2, false);
+        edit.moveCaret(7, true);
+        edit.apply(TextEditOperation.COPY, clipboard);
+
+        Assertions.assertEquals("llo w", clipboard.read());
+
+        // A Shift press before the first end extends from it.
+        edit.moveCaret(0, true);
+
+        Assertions.assertEquals(0, edit.getSelectionStart());
+        Assertions.assertEquals(2, edit.getSelectionEnd());
+
+        edit.moveCaret(99, false);
+
+        Assertions.assertEquals(11, edit.getCaret());
+        Assertions.assertEquals(11, edit.getSelectionStart());
+    }
+
+    @Test
+    void move_caret_should_not_split_a_surrogate_pair() {
+        TextEditModel edit = createTypedModel("a" + SUPPLEMENTARY + "b");
+
+        edit.moveCaret(2, false);
+
+        Assertions.assertEquals(1, edit.getCaret());
+    }
+
+    @Test
+    void select_word_should_select_the_run_around_the_index() {
+        TextEditModel edit = createTypedModel("gg wp, all");
+        MemoryClipboard clipboard = new MemoryClipboard(null);
+
+        edit.selectWord(4);
+        edit.apply(TextEditOperation.COPY, clipboard);
+
+        Assertions.assertEquals("wp", clipboard.read());
+        Assertions.assertEquals(5, edit.getCaret());
+
+        edit.selectWord(10);
+        edit.apply(TextEditOperation.COPY, clipboard);
+
+        Assertions.assertEquals("all", clipboard.read());
+    }
 }
