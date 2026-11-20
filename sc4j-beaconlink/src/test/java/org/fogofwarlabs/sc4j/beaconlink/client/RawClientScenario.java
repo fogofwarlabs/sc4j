@@ -9,6 +9,7 @@ import org.fogofwarlabs.sc4j.beaconlink.protocol.message.*;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.room.ModFingerprint;
 import org.fogofwarlabs.sc4j.beaconlink.test.client.ClientScenario;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkParticipant;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 
@@ -42,18 +43,31 @@ final class RawClientScenario implements AutoCloseable {
     private final @NotNull DatagramChannel channel;
     private final @NotNull ByteBuffer buffer;
     private long nextRequestNumber;
+    /**
+     * How long before the scenario's clock the raw client signs its messages.
+     */
+    private long signalAgeMillis;
 
     RawClientScenario(@NotNull ClientScenario scenario) throws IOException {
         this.scenario = scenario;
         this.keyPair  = IdentityKeyPair.generate(new SecureRandom());
-        this.encoder  = new MessageEncoder(this.keyPair, scenario.getClock(), new SplittableRandom(ClientScenario.RANDOM_SEED));
+        this.encoder  = new MessageEncoder(this.keyPair, () -> scenario.getClock().getEpochMillis() - this.signalAgeMillis,
+                                           new SplittableRandom(ClientScenario.RANDOM_SEED));
         this.channel  = DatagramChannel.open(StandardProtocolFamily.INET);
         this.buffer   = ByteBuffer.allocate(Envelope.MAXIMUM_DATAGRAM_LENGTH + 1);
 
         this.nextRequestNumber = 1L;
+        this.signalAgeMillis   = 0L;
 
         this.channel.configureBlocking(false);
         this.channel.bind(new InetSocketAddress(ClientScenario.LOOPBACK, 0));
+    }
+
+    /**
+     * @return the participant the raw client is: its key and {@link #CONNECTION}
+     */
+    @NotNull LinkParticipant getParticipant() {
+        return LinkParticipant.of(LinkPlayer.of(this.keyPair.getPublicKey().getBytes()), CONNECTION);
     }
 
     /**
@@ -77,9 +91,23 @@ final class RawClientScenario implements AutoCloseable {
      * Sends a signal to a connection through a node without waiting for the node's result.
      */
     void sendSignal(@NotNull PeerSocket node, @NotNull LinkParticipant target, byte @NotNull [] payload) throws IOException {
+        this.sendSignal(node, target, payload, 0L);
+    }
+
+    /**
+     * Sends a signal to a connection through a node, signed the given time before the scenario's clock, without waiting for the node's
+     * result.
+     */
+    void sendSignal(@NotNull PeerSocket node, @NotNull LinkParticipant target, byte @NotNull [] payload, long ageMillis) throws IOException {
         SignalMessage signal = new SignalMessage(IdentityKey.of(target.getPlayer().getKey()), target.getConnection(), payload);
 
-        this.channel.send(ByteBuffer.wrap(this.encoder.encodeRequest(signal, this.nextRequestNumber++)), node.getLocalAddress());
+        this.signalAgeMillis = ageMillis;
+
+        try {
+            this.channel.send(ByteBuffer.wrap(this.encoder.encodeRequest(signal, this.nextRequestNumber++)), node.getLocalAddress());
+        } finally {
+            this.signalAgeMillis = 0L;
+        }
     }
 
     /**

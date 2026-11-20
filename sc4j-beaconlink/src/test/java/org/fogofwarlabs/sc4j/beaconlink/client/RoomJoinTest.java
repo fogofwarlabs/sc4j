@@ -25,8 +25,8 @@ import java.util.List;
 /**
  * Tests joining a Beacon.Link room through emulated NATs on 127.0.0.1: the host's check of the engine version and the mod identity with
  * the refusal reasons, a private room's password, a room the host does not hold, the accepted joiner's channel at the host (at the host's
- * connection that holds the room, while another connection of the host's account is online), and the two-person room whose pair cannot
- * connect.
+ * connection that holds the room, while another connection of the host's account is online), a join signed before the standing join's,
+ * which leaves its channel, and the two-person room whose pair cannot connect.
  */
 final class RoomJoinTest {
     private static final @NotNull ModIdentity IDENTITY = ClientScenario.createIdentity("1.0.0");
@@ -41,6 +41,21 @@ final class RoomJoinTest {
     private static final int STRANGERS = 70;
     private static final int RELAXED_LIMIT = 65_536;
     private static final int SETTLE_POLLS = 20;
+    /**
+     * How long before the scenario's clock the standing join and the late copy of an older join are signed.
+     */
+    private static final long STANDING_JOIN_AGE_MILLIS = 1_000L;
+    private static final long LATE_JOIN_AGE_MILLIS = 2_000L;
+
+    /**
+     * Creates a raw participant's offer to join a room, with a fresh ephemeral key and no address candidates.
+     */
+    private static byte @NotNull [] createJoinOffer(@NotNull FoundRoom target, @NotNull ModFingerprint fingerprint, long receiveNumber,
+                                                    @NotNull SecureRandom random) {
+        return new ChannelOffer(RawClientScenario.CONNECTION, receiveNumber, EphemeralKeyPair.generate(random).getPublicKey(), target.getNumber(),
+                                fingerprint, List.of()).write();
+    }
+
 
     private final @NotNull ClientScenario scenario;
 
@@ -283,6 +298,44 @@ final class RoomJoinTest {
             for (RawClientScenario stranger : strangers) {
                 stranger.close();
             }
+        }
+    }
+
+    @Test
+    void join_signed_before_the_standing_join_does_not_replace_its_channel() throws IOException {
+        PeerSocket node = this.scenario.openNode(ClientScenario.createNodeConfiguration());
+        BeaconLinkClient host = this.openClient(node, NatType.FULL_CONE, IDENTITY);
+        this.publish(host);
+
+        FoundRoom target = this.findOwnRoom(host);
+        ModFingerprint fingerprint = BeaconLinkClient.createFingerprint(IDENTITY);
+        SecureRandom random = new SecureRandom();
+
+        try (RawClientScenario joiner = new RawClientScenario(this.scenario)) {
+            joiner.register(node, fingerprint);
+            // The joiner never answers the host's probes, so that each accepted join's channel keeps connecting.
+            joiner.sendSignal(node, target.getHost(), createJoinOffer(target, fingerprint, 1L, random), STANDING_JOIN_AGE_MILLIS);
+
+            for (int poll = 0; poll < SETTLE_POLLS; poll++) {
+                this.scenario.pollAll();
+            }
+
+            ParticipantChannel standing = host.openChannel(joiner.getParticipant());
+            int dropped = host.getDroppedCount();
+
+            Assertions.assertEquals(ChannelState.CONNECTING, standing.getState());
+
+            joiner.sendSignal(node, target.getHost(), createJoinOffer(target, fingerprint, 2L, random), LATE_JOIN_AGE_MILLIS);
+            this.scenario.await(() -> host.getDroppedCount() > dropped, "the host drops the late copy of an older join");
+
+            Assertions.assertEquals(ChannelState.CONNECTING, standing.getState());
+            Assertions.assertSame(standing, host.openChannel(joiner.getParticipant()));
+
+            joiner.sendSignal(node, target.getHost(), createJoinOffer(target, fingerprint, 3L, random));
+            this.scenario.await(() -> standing.getState() == ChannelState.CLOSED, "a newer join replaces the channel");
+
+            Assertions.assertEquals(ChannelFailure.CLOSED_BY_PEER, standing.getFailure());
+            Assertions.assertNotSame(standing, host.openChannel(joiner.getParticipant()));
         }
     }
 
