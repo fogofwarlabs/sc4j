@@ -166,11 +166,13 @@ public final class BeaconLinkClient implements BeaconLinkSession {
     private static final class WaitingOffer {
         private final @NotNull ChannelOffer offer;
         private final @NotNull NodeSession node;
+        private final long signalMillis;
         private final long expiryMillis;
 
-        private WaitingOffer(@NotNull ChannelOffer offer, @NotNull NodeSession node, long expiryMillis) {
+        private WaitingOffer(@NotNull ChannelOffer offer, @NotNull NodeSession node, long signalMillis, long expiryMillis) {
             this.offer        = offer;
             this.node         = node;
+            this.signalMillis = signalMillis;
             this.expiryMillis = expiryMillis;
         }
     }
@@ -822,7 +824,7 @@ public final class BeaconLinkClient implements BeaconLinkSession {
         WaitingOffer waiting = this.waitingOffers.remove(peer);
 
         if (waiting != null && channel.isAwaitingOffer() && nowMillis < waiting.expiryMillis &&
-            !channel.acceptOffer(waiting.offer, waiting.node, nowMillis)) {
+            !channel.acceptOffer(waiting.offer, waiting.node, waiting.signalMillis, nowMillis)) {
             LOGGER.debug("BEACON.LINK: the waiting offer of {0} has an invalid key", peer);
         }
 
@@ -1494,7 +1496,7 @@ public final class BeaconLinkClient implements BeaconLinkSession {
         if (payload instanceof ChannelOffer offer) {
             taken = this.handleOffer(envelope, sender, offer, channel, node, nowMillis);
         } else if (payload instanceof ChannelAnswer answer) {
-            taken = channel != null && this.isNewSignal(envelope, nowMillis) && channel.acceptAnswer(answer, nowMillis);
+            taken = channel != null && this.isNewSignal(envelope, nowMillis) && channel.acceptAnswer(answer, envelope.getTimestampMillis(), nowMillis);
         } else if (payload instanceof ChannelRefusal refusal) {
             taken = channel != null && this.isNewSignal(envelope, nowMillis) && channel.acceptRefusal(refusal);
         }
@@ -1519,17 +1521,24 @@ public final class BeaconLinkClient implements BeaconLinkSession {
             return this.handleJoin(envelope, sender, offer, channel, node, nowMillis);
         }
 
+        long signalMillis = envelope.getTimestampMillis();
+
         // A repeated answer changes nothing, so a replayed offer of an answered channel needs no remembered nonce.
         if (channel != null && channel.isAwaitingOffer()) {
-            return this.isNewSignal(envelope, nowMillis) && channel.acceptOffer(offer, node, nowMillis);
+            return this.isNewSignal(envelope, nowMillis) && channel.acceptOffer(offer, node, signalMillis, nowMillis);
         }
 
         if (channel != null && channel.repeatAnswer(offer, node)) {
             return true;
         }
 
+        WaitingOffer waiting = this.waitingOffers.get(sender);
+
+        // An offer signed before the standing channel's signal or the waiting offer is a late copy of an older one.
         if (this.isOfferingTo(sender) ||
-            this.waitingOffers.size() >= MAXIMUM_WAITING_OFFERS && !this.waitingOffers.containsKey(sender) ||
+            channel != null && !channel.isOlderThan(signalMillis) ||
+            waiting != null && signalMillis <= waiting.signalMillis ||
+            waiting == null && this.waitingOffers.size() >= MAXIMUM_WAITING_OFFERS ||
             !this.isNewSignal(envelope, nowMillis)) {
             return false;
         }
@@ -1539,7 +1548,7 @@ public final class BeaconLinkClient implements BeaconLinkSession {
             channel.replace();
         }
 
-        this.waitingOffers.put(sender, new WaitingOffer(offer, node, nowMillis + WAITING_OFFER_MILLIS));
+        this.waitingOffers.put(sender, new WaitingOffer(offer, node, signalMillis, nowMillis + WAITING_OFFER_MILLIS));
 
         return true;
     }
@@ -1553,7 +1562,8 @@ public final class BeaconLinkClient implements BeaconLinkSession {
                 return true;
             }
 
-            if (!this.isNewSignal(envelope, nowMillis)) {
+            // A join signed before the standing channel's offer is a late copy of an older join.
+            if (!channel.isOlderThan(envelope.getTimestampMillis()) || !this.isNewSignal(envelope, nowMillis)) {
                 return false;
             }
 
@@ -1593,7 +1603,7 @@ public final class BeaconLinkClient implements BeaconLinkSession {
 
         accepted.setRoom(room);
 
-        return accepted.acceptOffer(offer, node, nowMillis);
+        return accepted.acceptOffer(offer, node, envelope.getTimestampMillis(), nowMillis);
     }
 
     private void refuseJoin(@NotNull LinkParticipant sender, @NotNull ChannelOffer offer, @Nullable JoinRefusal refusal, @NotNull NodeSession node) {

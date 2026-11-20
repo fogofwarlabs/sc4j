@@ -98,6 +98,10 @@ final class PeerChannel implements ParticipantChannel, RequestOwner {
     private static final int RELAY_STATUS_LENGTH = LinkParticipant.LENGTH + 1 + Integer.BYTES;
     private static final long HALF = 2L;
     private static final long NO_RELAY_DELAY = Long.MAX_VALUE;
+    /**
+     * The signal time of a channel that took no signal of the other participant yet: every signal is newer.
+     */
+    private static final long NO_SIGNAL_MILLIS = Long.MIN_VALUE;
     private static final byte @NotNull [] EMPTY = new byte[0];
 
     /**
@@ -152,6 +156,10 @@ final class PeerChannel implements ParticipantChannel, RequestOwner {
     private @Nullable ChannelFailure failure;
     private @Nullable JoinRefusal joinRefusal;
     private long remoteReceiveNumber;
+    /**
+     * The signed time of the other participant's offer or answer the channel took, or {@link #NO_SIGNAL_MILLIS}.
+     */
+    private long remoteSignalMillis;
     private @Nullable ChannelCipher cipher;
     private final @NotNull Set<@NotNull InetSocketAddress> probeTargets;
     private @Nullable InetSocketAddress directAddress;
@@ -207,6 +215,7 @@ final class PeerChannel implements ParticipantChannel, RequestOwner {
         this.failure             = null;
         this.joinRefusal         = null;
         this.remoteReceiveNumber = 0L;
+        this.remoteSignalMillis  = NO_SIGNAL_MILLIS;
         this.cipher              = null;
         this.probeTargets        = new LinkedHashSet<>();
         this.directAddress       = null;
@@ -337,6 +346,18 @@ final class PeerChannel implements ParticipantChannel, RequestOwner {
     }
 
     /**
+     * Tells whether a signal of the other participant was signed after the offer or answer the channel took from it, so that it may replace
+     * the channel; the signals of one participant carry its own clock's times, while their order of arrival may differ.
+     *
+     * @param signalMillis the signal's signed time
+     * @return {@code true} if the signal is newer than the other participant's signal the channel took, or the channel took none,
+     * {@code false} otherwise
+     */
+    boolean isOlderThan(long signalMillis) {
+        return signalMillis > this.remoteSignalMillis;
+    }
+
+    /**
      * @return {@code true} if the channel waits for the other participant's offer, {@code false} otherwise
      */
     boolean isAwaitingOffer() {
@@ -414,12 +435,13 @@ final class PeerChannel implements ParticipantChannel, RequestOwner {
      * Accepts the other participant's offer: derives the keys, answers it through the node it came through and starts punching after the
      * punch delay.
      *
-     * @param offer     the offer
-     * @param node      the node the offer came through
-     * @param nowMillis the protocol clock time
+     * @param offer        the offer
+     * @param node         the node the offer came through
+     * @param signalMillis the signed time of the offer's signal
+     * @param nowMillis    the protocol clock time
      * @return {@code true} if the offer was accepted, {@code false} otherwise (its ephemeral key is invalid)
      */
-    boolean acceptOffer(@NotNull ChannelOffer offer, @NotNull NodeSession node, long nowMillis) {
+    boolean acceptOffer(@NotNull ChannelOffer offer, @NotNull NodeSession node, long signalMillis, long nowMillis) {
         ChannelKeys keys = ChannelKeys.derive(this.ephemeral, offer.getEphemeralKey(), false, this.peer, this.peerConnection, this.client.getKey(),
                                               this.client.getConnection(), offer.getReceiveNumber(), this.receiveNumber);
 
@@ -430,6 +452,7 @@ final class PeerChannel implements ParticipantChannel, RequestOwner {
         }
 
         this.remoteReceiveNumber = offer.getReceiveNumber();
+        this.remoteSignalMillis  = signalMillis;
         this.cipher              = new ChannelCipher(keys, offer.getReceiveNumber());
         this.answer              = new ChannelAnswer(this.client.getConnection(), offer.getReceiveNumber(), this.receiveNumber,
                                                      this.ephemeral.getPublicKey(), this.client.getCandidates());
@@ -463,11 +486,12 @@ final class PeerChannel implements ParticipantChannel, RequestOwner {
     /**
      * Takes the other participant's answer to this side's offer: derives the keys and starts punching at the common start time.
      *
-     * @param answer    the answer
-     * @param nowMillis the protocol clock time
+     * @param answer       the answer
+     * @param signalMillis the signed time of the answer's signal
+     * @param nowMillis    the protocol clock time
      * @return {@code true} if the answer belongs to this channel's offer and carries a valid ephemeral key, {@code false} otherwise
      */
-    boolean acceptAnswer(@NotNull ChannelAnswer answer, long nowMillis) {
+    boolean acceptAnswer(@NotNull ChannelAnswer answer, long signalMillis, long nowMillis) {
         if (this.phase != Phase.OFFERING || answer.getOfferNumber() != this.receiveNumber) {
             return false;
         }
@@ -480,6 +504,7 @@ final class PeerChannel implements ParticipantChannel, RequestOwner {
         }
 
         this.remoteReceiveNumber = answer.getReceiveNumber();
+        this.remoteSignalMillis  = signalMillis;
         this.cipher              = new ChannelCipher(keys, answer.getReceiveNumber());
 
         this.client.cancelRequests(this);
