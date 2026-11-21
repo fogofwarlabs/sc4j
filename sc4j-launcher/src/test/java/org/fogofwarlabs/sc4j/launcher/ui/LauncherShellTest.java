@@ -131,6 +131,10 @@ final class LauncherShellTest {
         }
 
         @Override
+        public void onChangeVersion(@NotNull ModEntry entry) {
+        }
+
+        @Override
         public void onRemove(@NotNull ModEntry entry) {
         }
 

@@ -1,5 +1,8 @@
 package org.fogofwarlabs.sc4j.launcher.ui;
 
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.beans.Observable;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -37,6 +40,8 @@ import org.fogofwarlabs.sc4j.launcher.form.SettingsForm;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
 import org.fogofwarlabs.sc4j.launcher.install.ModInstaller;
+import org.fogofwarlabs.sc4j.launcher.install.ModReleaseState;
+import org.fogofwarlabs.sc4j.launcher.install.ModSource;
 import org.fogofwarlabs.sc4j.launcher.launch.RuntimeCommandLine;
 import org.fogofwarlabs.sc4j.launcher.launch.RuntimeListener;
 import org.fogofwarlabs.sc4j.launcher.launch.RuntimeProcess;
@@ -76,6 +81,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -102,11 +108,12 @@ import java.util.function.Function;
  * While the runtime runs, the window is minimized; it comes back when the runtime ends and shows the run's report. Closing
  * the launcher does not stop a running runtime.
  * <p>
- * Updates come from GitHub releases ({@link #startChecks}): the Update dialog ({@link LauncherUpdateDialog}) of a newer launcher version opens
- * by itself once per run ({@link #isUpdateOffered}), and the version is shown in a notice above every screen, unless the player skipped it,
- * and on the Settings screen, which also checks on demand and then always opens the dialog. The dialog replaces the programs and starts the
- * launcher again. Mods are installed, updated and removed from the Mods screen ({@link ModReleaseDialogs}); a newer release of a mod
- * installed from a release is shown in its details.
+ * Updates come from GitHub releases ({@link #startChecks}, at the start and periodically): the Update dialog ({@link LauncherUpdateDialog}) of a
+ * newer launcher version opens by itself once per version and run ({@link #isUpdateOffered}), and the version is shown in a notice above every
+ * screen, unless the player skipped it, and on the Settings screen, which also checks on demand and then always opens the dialog. The dialog
+ * replaces the programs and starts the launcher again. Mods are installed, updated, reinstalled and switched to another release from the Mods
+ * screen ({@link ModReleaseDialogs}); a newer release of a mod installed from a release is shown in its details. Starting a mod that is not
+ * known to be its latest release asks first ({@link ModReleaseState}).
  * <p>
  * Sizes are JavaFX logical units, which grow with the display scale. The window opens at its saved bounds when they are on a screen, else
  * centred on the primary screen; its size and smallest size are cut to the free area of that screen, so that it fits at any display scale.
@@ -128,6 +135,16 @@ public final class LauncherWindow {
     private static final double HALF = 2;
     private static final @NotNull String PING_THREAD_NAME = "launcher-node-ping";
     private static final @NotNull String UPDATE_CHECK_THREAD_NAME = "launcher-update-check";
+    /**
+     * The time between two automatic looks for a newer launcher version and newer mod releases while the launcher runs.
+     */
+    private static final @NotNull Duration UPDATE_CHECK_PERIOD = Duration.ofHours(4);
+    /**
+     * The time between two tests whether the automatic look is due ({@link #isUpdateCheckDue}); short, so that a look missed while the
+     * computer slept follows soon after it wakes.
+     */
+    private static final @NotNull Duration UPDATE_CHECK_TICK = Duration.ofMinutes(10);
+    private static final @NotNull String CONFIRMED_VERSION_SEPARATOR = "@";
     private static final @NotNull String BACKUP_FILE_PATTERN = "*" + AccountBackup.FILE_EXTENSION;
     private static final @NotNull String KEY_FILE_PATTERN = "*.key";
     private static final @NotNull String ALL_FILES_PATTERN = "*.*";
@@ -239,19 +256,31 @@ public final class LauncherWindow {
     }
 
     /**
-     * Tells whether the launcher opens the Update dialog of a newer version by itself: once per run, while an account is logged in and no
-     * game runs, and not for the version the player chose to skip.
+     * Tells whether the launcher opens the Update dialog of a newer version by itself: once per version and run, while an account is logged in
+     * and no game runs, and not for the version the player chose to skip.
      *
      * @param update   the newer version the check found, or {@code null} when the launcher is up to date
      * @param settings the launcher settings, which name the skipped version
      * @param loggedIn whether an account is logged in
      * @param running  whether a game runs
-     * @param offered  whether the dialog was opened in this run already
+     * @param offered  the version whose dialog was opened in this run already, or {@code null} when none was
      * @return {@code true} if the dialog opens, {@code false} otherwise
      */
     static boolean isUpdateOffered(@Nullable LauncherRelease update, @NotNull LauncherSettings settings, boolean loggedIn, boolean running,
-                                   boolean offered) {
-        return update != null && loggedIn && !running && !offered && !settings.isSkipped(update.getVersion());
+                                   @Nullable ReleaseVersion offered) {
+        return update != null && loggedIn && !running && (offered == null || !offered.toString().equals(update.getVersion().toString())) &&
+               !settings.isSkipped(update.getVersion());
+    }
+
+    /**
+     * Tells whether the periodic look for a newer launcher version is due: {@link #UPDATE_CHECK_PERIOD} after the last automatic look.
+     *
+     * @param lastCheck when the last automatic look started, or {@code null} before the first one
+     * @param now       the current time
+     * @return {@code true} if the look is due, {@code false} otherwise
+     */
+    static boolean isUpdateCheckDue(@Nullable Instant lastCheck, @NotNull Instant now) {
+        return lastCheck == null || !now.isBefore(lastCheck.plus(UPDATE_CHECK_PERIOD));
     }
 
 
@@ -274,6 +303,8 @@ public final class LauncherWindow {
     private final @NotNull VBox notices;
     private final @NotNull SimpleBooleanProperty running;
 
+    private final @NotNull Set<@NotNull String> confirmedVersions;
+
     private double imageScale;
 
     private @Nullable String settingsProblem;
@@ -288,7 +319,9 @@ public final class LauncherWindow {
     private @Nullable ChatAlerts chatAlerts;
 
     private @Nullable LauncherRelease launcherUpdate;
-    private boolean updateOffered;
+    private @Nullable ReleaseVersion offeredVersion;
+    private @Nullable Instant lastUpdateCheck;
+    private @Nullable Timeline updateCheckTimer;
     private boolean updateChecking;
     private @Nullable String updateStatus;
     private @NotNull Tone updateStatusTone;
@@ -346,6 +379,8 @@ public final class LauncherWindow {
         this.notices         = ComponentUtils.createColumn(Spacing.M);
         this.running         = new SimpleBooleanProperty(false);
 
+        this.confirmedVersions = new HashSet<>();
+
         this.imageScale = ThemeUtils.getImageScale();
 
         this.settingsProblem = null;
@@ -360,7 +395,9 @@ public final class LauncherWindow {
         this.chatAlerts      = null;
 
         this.launcherUpdate   = null;
-        this.updateOffered    = false;
+        this.offeredVersion   = null;
+        this.lastUpdateCheck  = null;
+        this.updateCheckTimer = null;
         this.updateChecking   = false;
         this.updateStatus     = null;
         this.updateStatusTone = Tone.NEUTRAL;
@@ -426,12 +463,35 @@ public final class LauncherWindow {
     /**
      * Runs the checks of the launcher's start, once per run: shows why the last update failed, removes what downloads and updates left, and,
      * on threads of their own and quietly on failure, looks for a newer version of the launcher (release builds only,
-     * {@link LauncherUpdater#isAutomaticCheckAllowed}) and for newer releases of the mods installed from releases.
+     * {@link LauncherUpdater#isAutomaticCheckAllowed}) and for newer releases of the mods installed from releases. The two looks are repeated
+     * every {@link #UPDATE_CHECK_PERIOD} while the launcher runs; a newer launcher version opens its Update dialog by itself only once
+     * ({@link #isUpdateOffered}).
      */
     public void startChecks() {
+        Timeline timer = new Timeline(new KeyFrame(javafx.util.Duration.millis(UPDATE_CHECK_TICK.toMillis()), event -> this.runAutomaticChecks()));
+
         this.updateFailure = this.launcherUpdater.takeFailure();
         this.launcherUpdater.cleanUp();
         this.updateNotices();
+        this.runAutomaticChecks();
+
+        timer.setCycleCount(Animation.INDEFINITE);
+        timer.play();
+        this.updateCheckTimer = timer;
+    }
+
+    /**
+     * Looks for a newer launcher version and newer mod releases when the look is due ({@link #isUpdateCheckDue}) and no look for a newer
+     * launcher version runs.
+     */
+    private void runAutomaticChecks() {
+        Instant now = Instant.now();
+
+        if (this.updateChecking || !isUpdateCheckDue(this.lastUpdateCheck, now)) {
+            return;
+        }
+
+        this.lastUpdateCheck = now;
 
         if (LauncherUpdater.isAutomaticCheckAllowed(ReleaseVersion.parse(this.version))) {
             this.checkLauncherUpdate(this.settings.getUpdateRepository(), false);
@@ -789,6 +849,16 @@ public final class LauncherWindow {
             }
 
             /**
+             * Called when the user installs another release of the mod, or the installed one again.
+             *
+             * @param entry the mod
+             */
+            @Override
+            public void onChangeVersion(@NotNull ModEntry entry) {
+                LauncherWindow.this.changeVersion(entry);
+            }
+
+            /**
              * Called when the user removes the mod.
              *
              * @param entry the mod
@@ -806,7 +876,7 @@ public final class LauncherWindow {
              */
             @Override
             public void onRun(@NotNull ModEntry entry, @NotNull SettingsForm form) {
-                LauncherWindow.this.startRun(entry, form);
+                LauncherWindow.this.confirmRun(entry, form);
             }
 
             /**
@@ -850,12 +920,34 @@ public final class LauncherWindow {
     }
 
     /**
-     * Lists the mods again after a mod was installed, updated or removed, with that mod selected while it is listed.
+     * Lists the mods again after a mod was installed, updated or removed, with that mod selected while it is listed, and looks for newer
+     * releases again, as the installed release may be an older one.
      */
     private void onModChanged(@NotNull String jarName) {
         this.modUpdates.remove(jarName);
         this.selectedJar = jarName;
         this.refreshCatalog();
+        this.checkModUpdates();
+    }
+
+    /**
+     * Opens Change version for a mod installed from a release, or Install mod for another mod, whose release then replaces it.
+     */
+    private void changeVersion(@NotNull ModEntry entry) {
+        ModReleaseDialogs dialogs = this.createModReleaseDialogs();
+        ModSource source;
+
+        try {
+            source = this.modInstaller.findSource(entry.getJarName());
+        } catch (IOException exception) {
+            source = null;
+        }
+
+        if (source != null) {
+            dialogs.openVersions(entry, source);
+        } else {
+            dialogs.openInstall();
+        }
     }
 
     /**
@@ -944,7 +1036,7 @@ public final class LauncherWindow {
     }
 
     private void offerLauncherUpdate() {
-        if (isUpdateOffered(this.launcherUpdate, this.settings, this.account != null, this.running.get(), this.updateOffered)) {
+        if (isUpdateOffered(this.launcherUpdate, this.settings, this.account != null, this.running.get(), this.offeredVersion)) {
             this.openLauncherUpdate();
         }
     }
@@ -973,7 +1065,7 @@ public final class LauncherWindow {
             return;
         }
 
-        this.updateOffered = true;
+        this.offeredVersion = available.getVersion();
         new LauncherUpdateDialog(this.shell, this.texts, this.imageScale, this.launcherUpdater, available, this.version, this.running,
                                  () -> this.skipLauncherUpdate(available), this::closeForUpdate).open();
     }
@@ -993,9 +1085,16 @@ public final class LauncherWindow {
     }
 
     /**
-     * Quits the launcher: saves the window state, closes the session and closes the window.
+     * Quits the launcher: stops the automatic update looks, saves the window state, closes the session and closes the window.
      */
     private void quit() {
+        Timeline timer = this.updateCheckTimer;
+
+        if (timer != null) {
+            timer.stop();
+            this.updateCheckTimer = null;
+        }
+
         this.saveWindowState();
         this.closeSession();
         this.stage.close();
@@ -1396,6 +1495,54 @@ public final class LauncherWindow {
 
         this.settings = this.settings.withWindow(window).withLastMod(this.selectedJar);
         this.saveSettings();
+    }
+
+    /**
+     * Starts a run, after a notice when the mod is not known to be its latest release ({@link ModInstaller#findReleaseState}): players whose
+     * versions differ may not play together. The notice lets the user start anyway, and does not come again in this run of the launcher
+     * for the same jar and version once accepted.
+     */
+    private void confirmRun(@NotNull ModEntry entry, @NotNull SettingsForm form) {
+        ModManifest manifest = entry.getManifest();
+        ModRelease newer = this.modUpdates.get(entry.getJarName());
+        ModReleaseState state;
+
+        if (manifest == null || this.account == null || this.running.get()) {
+            return;
+        }
+
+        try {
+            state = this.modInstaller.findReleaseState(entry, newer != null);
+        } catch (IOException exception) {
+            state = ModReleaseState.LATEST;
+        }
+
+        String confirmedVersion = entry.getJarName() + CONFIRMED_VERSION_SEPARATOR + manifest.getVersion();
+
+        if (state == ModReleaseState.LATEST || this.confirmedVersions.contains(confirmedVersion)) {
+            this.startRun(entry, form);
+
+            return;
+        }
+
+        ModalDialog dialog = new ModalDialog(this.texts.get("run.version.title"));
+        Button cancel = ComponentUtils.createButton(this.texts.get("mods.cancel"), ButtonRole.SECONDARY);
+        Button start = ComponentUtils.createButton(this.texts.get("run.version.start"), ButtonRole.PRIMARY);
+        String name = ModArt.getName(entry, this.texts);
+        String text = state == ModReleaseState.OLDER && newer != null ? this.texts.format("run.version.older", name, manifest.getVersion(), newer.getTag())
+                                                                      : this.texts.format("run.version.unreleased", name, manifest.getVersion());
+
+        dialog.addContent(ComponentUtils.createNotice(Tone.WARNING, text));
+        dialog.setButtons(cancel, start);
+        cancel.setOnAction(event -> this.shell.closeDialog(dialog));
+        start.setOnAction(event -> {
+            this.confirmedVersions.add(confirmedVersion);
+            this.shell.closeDialog(dialog);
+            this.startRun(entry, form);
+        });
+
+        this.shell.showDialog(dialog);
+        cancel.requestFocus();
     }
 
     private void startRun(@NotNull ModEntry entry, @NotNull SettingsForm form) {

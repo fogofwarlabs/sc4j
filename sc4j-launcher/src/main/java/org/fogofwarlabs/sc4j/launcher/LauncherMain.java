@@ -16,15 +16,17 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Locale;
 
 /**
- * Starts the SC4J launcher: {@code sc4j-launcher [--install <dir>] [--list]}.
+ * Starts the SC4J launcher: {@code sc4j-launcher [--install <dir>] [--list | tool [<mod id> [<tool id> [<arguments>...]]]]}.
  * <p>
  * The install folder comes from {@code --install} or from the launcher's own location ({@code <install>/launcher/lib}, or
- * the development install for a run from the source tree). Without {@code --list} the launcher window opens;
+ * the development install for a run from the source tree). Without {@code --list} and {@code tool} the launcher window opens;
  * {@code --list} prints the mod list with each mod's status and reasons and exits without opening a window (status 0 when
- * no mod has an error, 1 otherwise).
+ * no mod has an error, 1 otherwise). {@code tool} lists or runs the command line tools of the installed mods ({@link ToolCommand}) and exits
+ * with the tool's status; every argument after it belongs to the command.
  */
 public final class LauncherMain {
     /**
@@ -37,7 +39,7 @@ public final class LauncherMain {
     private static final @NotNull String HELP_OPTION = "--help";
     private static final @NotNull String NAMED_PARAMETER_PREFIX = "--";
     private static final @NotNull String NAMED_PARAMETER_SEPARATOR = "=";
-    private static final @NotNull String USAGE = "Usage: sc4j-launcher [--install <dir>] [--list]";
+    private static final @NotNull String USAGE = "Usage: sc4j-launcher [--install <dir>] [--list | " + ToolCommand.USAGE + "]";
     private static final @NotNull String TEMPORARY_DIRECTORY_PROPERTY = "java.io.tmpdir";
     private static final @NotNull String LIST_FORMAT = "%-7s %-20s %s";
     private static final @NotNull String ISSUE_PREFIX = "        ";
@@ -53,11 +55,14 @@ public final class LauncherMain {
     public static void main(@NotNull String @NotNull [] arguments) {
         Path installOption = null;
         boolean list = false;
+        List<String> toolArguments = null;
 
-        for (int index = 0; index < arguments.length; index++) {
+        for (int index = 0; index < arguments.length && toolArguments == null; index++) {
             String argument = arguments[index];
 
-            if (argument.equals(LIST_OPTION)) {
+            if (argument.equals(ToolCommand.COMMAND) && !list) {
+                toolArguments = List.of(arguments).subList(index + 1, arguments.length);
+            } else if (argument.equals(LIST_OPTION)) {
                 list = true;
             } else if (argument.equals(INSTALL_OPTION)) {
                 index++;
@@ -85,6 +90,10 @@ public final class LauncherMain {
         }
 
         createTemporaryDirectory();
+
+        if (toolArguments != null) {
+            System.exit(ToolCommand.run(install, toolArguments, System.out, System.err, ToolCommand::startProcess));
+        }
 
         if (list) {
             System.exit(printCatalog(install, System.out));

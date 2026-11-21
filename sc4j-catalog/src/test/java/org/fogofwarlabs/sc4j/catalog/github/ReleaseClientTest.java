@@ -91,6 +91,40 @@ final class ReleaseClientTest {
     }
 
     @Test
+    void find_releases_should_list_the_releases_newest_first() throws IOException {
+        try (ReleaseServerScenario server = ReleaseServerScenario.start()) {
+            server.addCheckedRelease(REPOSITORY, "v1.0.0", Map.of(JAR, JAR_CONTENTS));
+            server.addCheckedRelease(REPOSITORY, "v1.1.0", Map.of(JAR, JAR_CONTENTS));
+            server.addCheckedRelease(REPOSITORY, TAG, Map.of(JAR, JAR_CONTENTS));
+
+            List<Release> releases = new ReleaseClient(server.getApi()).findReleases(requireRepository(REPOSITORY));
+
+            Assertions.assertEquals(List.of(TAG, "v1.1.0", "v1.0.0"), releases.stream().map(Release::getTag).toList());
+            Assertions.assertEquals(List.of(JAR, JAR + ReleaseServerScenario.CHECKSUM_EXTENSION), getNames(releases.getLast()));
+        }
+    }
+
+    @Test
+    void find_releases_should_leave_out_drafts_and_pre_releases() throws IOException {
+        try (ReleaseServerScenario server = ReleaseServerScenario.start()) {
+            server.setReleases(REPOSITORY, """
+                                           [{"tag_name": "v2.0.0", "draft": true, "assets": []},
+                                            {"tag_name": "v1.3.0-beta.1", "prerelease": true, "assets": []},
+                                            {"tag_name": "v1.2.0", "draft": false, "prerelease": false, "assets": []}]
+                                           """.getBytes(StandardCharsets.UTF_8));
+            server.setReleases("owner/message", "{\"message\": \"Moved\"}".getBytes(StandardCharsets.UTF_8));
+
+            ReleaseClient client = new ReleaseClient(server.getApi());
+            ReleaseException missing = Assertions.assertThrows(ReleaseException.class, () -> client.findReleases(requireRepository("owner/none")));
+            ReleaseException invalid = Assertions.assertThrows(ReleaseException.class, () -> client.findReleases(requireRepository("owner/message")));
+
+            Assertions.assertEquals(List.of(TAG), client.findReleases(requireRepository(REPOSITORY)).stream().map(Release::getTag).toList());
+            Assertions.assertEquals(ReleaseProblem.NOT_FOUND, missing.getProblem());
+            Assertions.assertEquals(ReleaseProblem.INVALID_RESPONSE, invalid.getProblem());
+        }
+    }
+
+    @Test
     void read_should_refuse_a_file_larger_than_the_limit() throws IOException {
         try (ReleaseServerScenario server = ReleaseServerScenario.start()) {
             ReleaseClient client = new ReleaseClient(server.getApi());

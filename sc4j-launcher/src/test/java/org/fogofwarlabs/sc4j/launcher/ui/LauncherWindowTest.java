@@ -52,6 +52,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -72,8 +73,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * English and Korean. Whisper in the account menu's Friends shows the Chat screen with the friend's conversation selected and the input
  * focused, from another screen and from the Chat screen. Open mods folder hands the mods folder to the folder opener, and a mod's website
  * link goes to the document opener.
- * The Update dialog of a newer launcher version opens by itself once per run, once logged in, while no game runs and not for a skipped
- * version.
+ * The Update dialog of a newer launcher version opens by itself once per version and run, once logged in, while no game runs and not for a
+ * skipped version; the automatic look for it is due again a period after the last one.
  * The chat runs from the login on: the session joins the shared channel without the Chat screen. The Chat entry shows a dot while a line or
  * a whisper is unread and the sound plays for it while the Chat screen is hidden; reading the conversation clears its part of the dot, and the
  * Settings switch mutes the sound. Closing the window asks to minimize, quit or cancel, in a dialog whose footer has the same room on every
@@ -340,16 +341,29 @@ final class LauncherWindowTest {
             Assertions.assertNotNull(newer);
             skipped = LauncherSettings.DEFAULT.withSkippedVersion(newer.getVersion());
 
-            Assertions.assertTrue(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, false, false), "newer");
+            Assertions.assertTrue(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, false, null), "newer");
             Assertions.assertFalse(LauncherWindow.isUpdateOffered(updater.findUpdate(repository, ReleaseVersion.parse("1.2.0")), LauncherSettings.DEFAULT,
-                                                                  true, false, false), "same");
-            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, skipped, true, false, false), "skipped");
-            Assertions.assertTrue(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT.withSkippedVersion(olderSkipped), true, false, false),
+                                                                  true, false, null), "same");
+            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, skipped, true, false, null), "skipped");
+            Assertions.assertTrue(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT.withSkippedVersion(olderSkipped), true, false, null),
                                   "a release after the skipped one");
-            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, true, false), "running game");
-            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, false, false, false), "login step");
-            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, false, true), "once per run");
+            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, true, null), "running game");
+            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, false, false, null), "login step");
+            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, false, ReleaseVersion.parse("v1.2.0")),
+                                   "once per version");
+            Assertions.assertTrue(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, false, olderSkipped),
+                                  "a release after the one offered");
         }
+    }
+
+    @Test
+    void is_update_check_due_should_wait_the_period_after_the_last_check() {
+        Instant start = Instant.parse("2026-11-21T10:00:00Z");
+
+        Assertions.assertTrue(LauncherWindow.isUpdateCheckDue(null, start), "the first check");
+        Assertions.assertFalse(LauncherWindow.isUpdateCheckDue(start, start.plus(Duration.ofHours(3).plusMinutes(59))), "within the period");
+        Assertions.assertTrue(LauncherWindow.isUpdateCheckDue(start, start.plus(Duration.ofHours(4))), "after the period");
+        Assertions.assertTrue(LauncherWindow.isUpdateCheckDue(start, start.plus(Duration.ofDays(1))), "after a long sleep");
     }
 
     @Test

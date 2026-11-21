@@ -84,6 +84,14 @@ final class ModManifestReaderTest {
         return parseInvalid(createManifestWithNotices(notices)).getProblems().stream().map(ValidationProblem::getSubject).toList();
     }
 
+    private static @NotNull String createManifestWithTools(@NotNull String tools) {
+        return VALID_MANIFEST.replace("\"website\": \"https://example.org\",", "\"website\": \"https://example.org\",\n  \"tools\": " + tools + ",");
+    }
+
+    private static @NotNull List<@NotNull String> listToolSubjects(@NotNull String tools) {
+        return parseInvalid(createManifestWithTools(tools)).getProblems().stream().map(ValidationProblem::getSubject).toList();
+    }
+
     @Test
     void parse_should_read_every_field_of_a_valid_manifest() throws ManifestException {
         ModManifest manifest = ModManifestReader.parse(VALID_MANIFEST.getBytes(StandardCharsets.UTF_8));
@@ -180,6 +188,32 @@ final class ModManifestReaderTest {
         Assertions.assertEquals(List.of("settings[0].detect.programFolders"), badFolder.getProblems().stream().map(ValidationProblem::getSubject).toList());
         Assertions.assertEquals(List.of("settings[1].shared"), sameShared.getProblems().stream().map(ValidationProblem::getSubject).toList());
         Assertions.assertTrue(sameShared.hasProblem(ProblemCode.SETTING_DUPLICATE), sameShared.describe());
+    }
+
+    @Test
+    void parse_should_read_the_tools_in_listed_order() throws ManifestException {
+        ModManifest manifest = ModManifestReader.parse(createManifestWithTools("""
+                                                                               [{"id": "script", "main": "org.example.tool.ScriptTool"},
+                                                                                {"id": "map-check", "main": "org.example.tool.MapCheck"}]
+                                                                               """).getBytes(StandardCharsets.UTF_8));
+        ModTool script = manifest.findTool("script");
+
+        Assertions.assertEquals(List.of("script", "map-check"), manifest.getTools().stream().map(ModTool::getId).toList());
+        Assertions.assertNotNull(script);
+        Assertions.assertEquals("org.example.tool.ScriptTool", script.getMain());
+        Assertions.assertNull(manifest.findTool("missing"));
+        Assertions.assertEquals(List.of(), ModManifestReader.parse(VALID_MANIFEST.getBytes(StandardCharsets.UTF_8)).getTools());
+    }
+
+    @Test
+    void parse_should_reject_invalid_tools() {
+        Assertions.assertEquals(List.of("tools"), listToolSubjects("{\"id\": \"script\"}"));
+        Assertions.assertEquals(List.of("tools[0]"), listToolSubjects("[\"script\"]"));
+        Assertions.assertEquals(List.of("tools[0].main"), listToolSubjects("[{\"id\": \"script\"}]"));
+        Assertions.assertEquals(List.of("tools[0].id"), listToolSubjects("[{\"id\": \"Script Tool\", \"main\": \"org.example.ScriptTool\"}]"));
+        Assertions.assertEquals(List.of("tools[0].main"), listToolSubjects("[{\"id\": \"script\", \"main\": \"org.example.Script Tool\"}]"));
+        Assertions.assertEquals(List.of("tools[1].id"), listToolSubjects("[{\"id\": \"script\", \"main\": \"org.example.First\"}, " +
+                                                                         "{\"id\": \"script\", \"main\": \"org.example.Second\"}]"));
     }
 
     @Test

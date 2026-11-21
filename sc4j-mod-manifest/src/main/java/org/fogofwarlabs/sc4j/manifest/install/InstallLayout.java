@@ -55,6 +55,12 @@ public final class InstallLayout {
      */
     public static final @NotNull String DEVELOPMENT_INSTALL = "build/dev-install";
 
+    /**
+     * The system property that names the install folder in the Java process of a mod tool, which the launcher starts with
+     * {@code tool <mod id> <tool id>}.
+     */
+    public static final @NotNull String INSTALL_PROPERTY = "sc4j.install";
+
     private static final @NotNull String LIBRARY_FOLDER = "lib";
     private static final @NotNull String BINARY_FOLDER = "bin";
     private static final @NotNull String JAR_EXTENSION = ".jar";

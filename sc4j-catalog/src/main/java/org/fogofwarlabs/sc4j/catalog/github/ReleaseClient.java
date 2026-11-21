@@ -30,7 +30,8 @@ import java.util.regex.Pattern;
 /**
  * Reads releases of GitHub repositories with the JDK's HTTP client: the latest release of a repository through the GitHub REST API
  * ({@code GET <api>/repos/<owner>/<name>/releases/latest}, which leaves out drafts and pre-releases) with its tag, publication time, notes
- * and files, small files such as checksum files and catalogs, and release files. A downloaded file is kept only when its SHA-256 checksum
+ * and files, the list of a repository's releases ({@code GET <api>/repos/<owner>/<name>/releases}), small files such as checksum files and
+ * catalogs, and release files. A downloaded file is kept only when its SHA-256 checksum
  * equals the one in the release's checksum file ({@code <file>.sha256}, the {@code sha256sum} output or the bare checksum).
  * <p>
  * Redirects are followed, as GitHub serves release files from another host. Every answer is limited in size, and a download stops when
@@ -43,6 +44,11 @@ public final class ReleaseClient {
     public static final @NotNull URI GITHUB_API = URI.create("https://api.github.com/");
 
     private static final @NotNull String LATEST_RELEASE_PATH = "repos/{0}/{1}/releases/latest";
+    private static final @NotNull String RELEASES_PATH = "repos/{0}/{1}/releases?per_page={2}";
+    /**
+     * The number of releases {@link #findReleases} reads: one page of the GitHub REST API at its largest size.
+     */
+    private static final int RELEASE_PAGE_SIZE = 100;
     private static final @NotNull Duration CONNECT_TIMEOUT = Duration.ofSeconds(15);
     private static final @NotNull Duration RESPONSE_TIMEOUT = Duration.ofSeconds(30);
     private static final @NotNull String USER_AGENT_HEADER = "User-Agent";
@@ -53,6 +59,7 @@ public final class ReleaseClient {
     private static final int OK_STATUS = 200;
     private static final int NOT_FOUND_STATUS = 404;
     private static final int MAXIMUM_RELEASE_SIZE = 4 * 1024 * 1024;
+    private static final int MAXIMUM_RELEASE_LIST_SIZE = 16 * 1024 * 1024;
     private static final int MAXIMUM_CHECKSUM_SIZE = 4 * 1024;
     private static final int BUFFER_SIZE = 64 * 1024;
     private static final @NotNull String DIGEST_ALGORITHM = "SHA-256";
@@ -65,16 +72,18 @@ public final class ReleaseClient {
     private static final @NotNull String NAME_FIELD = "name";
     private static final @NotNull String ADDRESS_FIELD = "browser_download_url";
     private static final @NotNull String SIZE_FIELD = "size";
+    private static final @NotNull String DRAFT_FIELD = "draft";
+    private static final @NotNull String PRE_RELEASE_FIELD = "prerelease";
 
-    private static @NotNull Release parseRelease(@NotNull ReleaseRepository repository, byte @NotNull [] contents) throws ReleaseException {
-        Object parsed;
-
+    private static @NotNull Object parseJson(@NotNull ReleaseRepository repository, byte @NotNull [] contents) throws ReleaseException {
         try {
-            parsed = JsonReader.parse(contents);
+            return JsonReader.parse(contents);
         } catch (IOException exception) {
             throw new ReleaseException(ReleaseProblem.INVALID_RESPONSE, Exceptions.format("The release of {0} is not JSON", repository), exception);
         }
+    }
 
+    private static @NotNull Release parseRelease(@NotNull ReleaseRepository repository, @Nullable Object parsed) throws ReleaseException {
         if (!(parsed instanceof Map<?, ?> release) || !(release.get(TAG_FIELD) instanceof String tag) ||
             !(release.get(ASSETS_FIELD) instanceof List<?> files)) {
             throw new ReleaseException(ReleaseProblem.INVALID_RESPONSE, Exceptions.format("The answer for {0} is not a release", repository));
@@ -150,7 +159,35 @@ public final class ReleaseClient {
     public @NotNull Release findLatestRelease(@NotNull ReleaseRepository repository) throws ReleaseException {
         URI address = this.api.resolve(Exceptions.format(LATEST_RELEASE_PATH, repository.getOwner(), repository.getName()));
 
-        return parseRelease(repository, this.read(address, GITHUB_JSON, MAXIMUM_RELEASE_SIZE));
+        return parseRelease(repository, parseJson(repository, this.read(address, GITHUB_JSON, MAXIMUM_RELEASE_SIZE)));
+    }
+
+    /**
+     * Reads the releases of a repository, newest first as GitHub lists them, without drafts and pre-releases; the first one is the latest
+     * release ({@link #findLatestRelease}). Only the first page of the list is read, at most 100 releases.
+     *
+     * @param repository the repository
+     * @return the releases, newest first; empty when the repository has none
+     * @throws ReleaseException if the repository does not exist, GitHub cannot be reached or its answer is not a list of releases
+     */
+    public @NotNull List<@NotNull Release> findReleases(@NotNull ReleaseRepository repository) throws ReleaseException {
+        URI address = this.api.resolve(Exceptions.format(RELEASES_PATH, repository.getOwner(), repository.getName(), RELEASE_PAGE_SIZE));
+
+        if (!(parseJson(repository, this.read(address, GITHUB_JSON, MAXIMUM_RELEASE_LIST_SIZE)) instanceof List<?> listed)) {
+            throw new ReleaseException(ReleaseProblem.INVALID_RESPONSE, Exceptions.format("The answer for {0} is not a list of releases", repository));
+        }
+
+        List<Release> releases = new ArrayList<>(listed.size());
+
+        for (Object release : listed) {
+            if (release instanceof Map<?, ?> fields && (Boolean.TRUE.equals(fields.get(DRAFT_FIELD)) || Boolean.TRUE.equals(fields.get(PRE_RELEASE_FIELD)))) {
+                continue;
+            }
+
+            releases.add(parseRelease(repository, release));
+        }
+
+        return releases;
     }
 
     /**

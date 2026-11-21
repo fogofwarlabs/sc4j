@@ -34,6 +34,7 @@ public final class org.fogofwarlabs.sc4j.catalog.github.ReleaseAsset {
 
 public final class org.fogofwarlabs.sc4j.catalog.github.ReleaseClient {
   public byte[] read(java.net.URI, int) throws org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
+  public java.util.List<org.fogofwarlabs.sc4j.catalog.github.Release> findReleases(org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository) throws org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
   public org.fogofwarlabs.sc4j.catalog.github.Release findLatestRelease(org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository) throws org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
   public org.fogofwarlabs.sc4j.catalog.github.ReleaseClient(java.net.URI);
   public static final java.net.URI GITHUB_API;
@@ -86,5 +87,6 @@ public final class org.fogofwarlabs.sc4j.catalog.mods.ModRelease {
   public org.fogofwarlabs.sc4j.catalog.github.ReleaseAsset getChecksumFile();
   public org.fogofwarlabs.sc4j.catalog.github.ReleaseAsset getJarFile();
   public org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository getRepository();
+  public static java.util.List<org.fogofwarlabs.sc4j.catalog.mods.ModRelease> findAll(org.fogofwarlabs.sc4j.catalog.github.ReleaseClient, org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository, java.lang.String) throws org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
   public static org.fogofwarlabs.sc4j.catalog.mods.ModRelease find(org.fogofwarlabs.sc4j.catalog.github.ReleaseClient, org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository, java.lang.String) throws org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
 }

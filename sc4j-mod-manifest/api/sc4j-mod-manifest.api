@@ -25,8 +25,10 @@ public final class org.fogofwarlabs.sc4j.manifest.ModManifest {
   public java.lang.String getLicense();
   public java.lang.String getWebsite();
   public java.util.List<java.lang.String> getAuthors();
+  public java.util.List<org.fogofwarlabs.sc4j.manifest.ModTool> getTools();
   public java.util.List<org.fogofwarlabs.sc4j.manifest.text.LocalizedText> getNotices();
   public org.fogofwarlabs.sc4j.manifest.ModImages getImages();
+  public org.fogofwarlabs.sc4j.manifest.ModTool findTool(java.lang.String);
   public org.fogofwarlabs.sc4j.manifest.settings.SettingsSchema getSettings();
   public org.fogofwarlabs.sc4j.manifest.text.LocalizedText getDescription();
   public org.fogofwarlabs.sc4j.manifest.text.LocalizedText getName();
@@ -42,6 +44,12 @@ public final class org.fogofwarlabs.sc4j.manifest.ModManifestReader {
   public static final java.lang.String FILE_NAME = "sc4j-mod.json";
   public static org.fogofwarlabs.sc4j.manifest.ModArchive read(java.nio.file.Path) throws org.fogofwarlabs.sc4j.manifest.ManifestException;
   public static org.fogofwarlabs.sc4j.manifest.ModManifest parse(byte[]) throws org.fogofwarlabs.sc4j.manifest.ManifestException;
+}
+
+public final class org.fogofwarlabs.sc4j.manifest.ModTool {
+  public java.lang.String getId();
+  public java.lang.String getMain();
+  public org.fogofwarlabs.sc4j.manifest.ModTool(java.lang.String, java.lang.String);
 }
 
 public final class org.fogofwarlabs.sc4j.manifest.install.InstallLayout {
@@ -60,6 +68,7 @@ public final class org.fogofwarlabs.sc4j.manifest.install.InstallLayout {
   public java.nio.file.Path getStorageDirectory(java.lang.String);
   public java.nio.file.Path getUserDataDirectory();
   public static final java.lang.String DEVELOPMENT_INSTALL = "build/dev-install";
+  public static final java.lang.String INSTALL_PROPERTY = "sc4j.install";
   public static final java.lang.String LAUNCHER_FOLDER = "launcher";
   public static final java.lang.String MODS_FOLDER = "mods";
   public static final java.lang.String RUNTIME_FOLDER = "runtime";

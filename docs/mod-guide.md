@@ -198,6 +198,7 @@ Players install a released mod from the launcher: the latest GitHub release of t
 | `notices` | no | short legal notices per language like `name`: `[{"en": "Example Game is a trademark of Example Company.", "ko": "..."}]`; the About box lists them under the mod name, in the display language or English |
 | `images` | no | `icon`, `banner`, `screenshots`: PNG paths in the jar |
 | `settings` | no | pre-run settings (below) |
+| `tools` | no | command line tools: `[{"id": "check", "main": "com.example.mymod.CheckTool"}]`; `id` like the mod id and unique in the mod, `main` a fully qualified class with a `main` method (section 15) |
 
 The mod plugin writes `version` and `engine` into the manifest of the jar. A source manifest with either field, or without a `format` that the plugin's engine reads, fails the build.
 
@@ -305,7 +306,7 @@ The mod id is the `id` of `src/main/resources/sc4j-mod.json`; the mod version is
 |---|---|
 | compile | every source set of the mod, in whichever project of the build owns it, against the SC4J mod API of the plugin's version: the engine modules the runtime provides; not packed |
 | `processResources` | writes `version` and `engine` into `sc4j-mod.json` (chapter 3) |
-| `jar` | `build/libs/<id>.jar`, reproducible (no timestamps, fixed order, duplicates fail), `LICENSE` and `NOTICE` in `META-INF/`; fails when `sc4j-mod.json` names another id, other versions or a missing entry class |
+| `jar` | `build/libs/<id>.jar`, reproducible (no timestamps, fixed order, duplicates fail), `LICENSE` and `NOTICE` in `META-INF/`; fails when `sc4j-mod.json` names another id, other versions or a missing entry or tool class |
 | `run` | runs the jar in the plugin's engine runtime with the install's user data (or `build/sc4j-run`); `--args=--headless`, `--debug-jvm` |
 | `installMod` | copies the jar into `<install>/mods/` (Gradle property `sc4j.install`) |
 | `sc4jMod` | `id` (optional, must equal the manifest `id`; needed when a build task writes the manifest), `sourceSets` (more source sets in the jar), `install`, `licenses` (files of `META-INF/`) |
@@ -428,6 +429,7 @@ Demo: `DemoLobby`, [`BeaconLinkScene`](../mods/demo/src/main/java/org/fogofwarla
 - **Install**: put the jar into `<install>/mods/`. The launcher shows `READY`, `WARNING` (settings to fix) or `ERROR` (broken jar or manifest, unsupported engine version, missing image, duplicate id).
 - **Runtime**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]` (`--help`). Exit codes: 0 normal, 1 run failure, 2 command line or settings error, 3 mod load or validation failure. Log: `<install>/userdata/logs/<id>/sc4j.log`.
 - **Launcher**: starts the runtime with the mod's settings, storage and log folders.
+- **Mod tools**: `SC4J.bat tool <mod id> <tool id> [arguments]` (Linux `SC4J`, Windows console `SC4J-cli.exe`) runs the tool's `main` with the install's Java runtime and the class path the runtime gives the mod (the runtime's libraries and the mod jar), in the caller's current folder, with the JVM options of the runtime and the install folder in the system property `sc4j.install` (`InstallLayout.INSTALL_PROPERTY`); the arguments are passed on and the tool's exit status is returned. `tool` lists the tools of the installed mods, `tool <mod id>` those of one mod.
 
 ## 16. API and versions
 

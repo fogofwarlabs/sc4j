@@ -141,6 +141,11 @@ def checkModJar = { File jar, String id, String version, List<String> licenseNam
             if (!(manifest.entry instanceof String) || archive.getEntry(manifest.entry.replace('.', '/') + '.class') == null) {
                 problems << 'lacks the entry class ' + manifest.entry + ' of sc4j-mod.json'
             }
+            (manifest.tools instanceof List ? manifest.tools : []).each { tool ->
+                if (!(tool instanceof Map) || !(tool.main instanceof String) || archive.getEntry(tool.main.replace('.', '/') + '.class') == null) {
+                    problems << 'lacks the tool class ' + (tool instanceof Map ? tool.main : tool) + ' of sc4j-mod.json'
+                }
+            }
         }
         if (!problems.isEmpty()) {
             throw new GradleException('The mod jar ' + jar + ' ' + problems.join(', ') + '.')
