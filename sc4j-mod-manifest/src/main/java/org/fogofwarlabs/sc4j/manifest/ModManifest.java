@@ -13,7 +13,8 @@ import java.util.List;
 
 /**
  * Describes a mod as its manifest {@code sc4j-mod.json} declares it: identity ({@code id}, {@code version}), the engine
- * API version it is built for, the entry class, the texts, legal notices and images the launcher shows and the pre-run settings schema.
+ * API version it is built for, the entry class, the texts, legal notices and images the launcher shows, the pre-run settings schema and the
+ * command line tools.
  * <p>
  * {@link ModManifestReader} creates instances from a mod jar or from manifest bytes; every field is already validated.
  */
@@ -33,6 +34,7 @@ public final class ModManifest {
     private final @NotNull ModImages images;
 
     private final @NotNull SettingsSchema settings;
+    private final @NotNull List<@NotNull ModTool> tools;
 
     /**
      * Creates a {@link ModManifest} instance from validated fields.
@@ -50,11 +52,12 @@ public final class ModManifest {
      * @param website     the website address, or {@code null}
      * @param images      the launcher images
      * @param settings    the pre-run settings schema
+     * @param tools       the command line tools, in listed order
      */
     ModManifest(int format, @NotNull String id, @NotNull ModVersion version, @NotNull EngineVersion engine, @NotNull String entry,
                 @NotNull LocalizedText name, @Nullable LocalizedText description, @NotNull List<@NotNull String> authors,
                 @Nullable String license, @NotNull List<@NotNull LocalizedText> notices, @Nullable String website, @NotNull ModImages images,
-                @NotNull SettingsSchema settings) {
+                @NotNull SettingsSchema settings, @NotNull List<@NotNull ModTool> tools) {
         this.format  = format;
         this.id      = id;
         this.version = version;
@@ -70,6 +73,7 @@ public final class ModManifest {
         this.images      = images;
 
         this.settings = settings;
+        this.tools    = List.copyOf(tools);
     }
 
     /**
@@ -161,6 +165,29 @@ public final class ModManifest {
      */
     public @NotNull SettingsSchema getSettings() {
         return this.settings;
+    }
+
+    /**
+     * @return the command line tools ({@code tools}), in listed order; empty when there are none
+     */
+    public @NotNull List<@NotNull ModTool> getTools() {
+        return this.tools;
+    }
+
+    /**
+     * Finds a command line tool by its id.
+     *
+     * @param toolId the tool id
+     * @return the tool, or {@code null} when the mod has no such tool
+     */
+    public @Nullable ModTool findTool(@NotNull String toolId) {
+        for (ModTool tool : this.tools) {
+            if (tool.getId().equals(toolId)) {
+                return tool;
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -17,7 +17,7 @@ public enum ChannelFailure {
     /**
      * The two participants found no path between them.
      */
-    PAIR_CANNOT_CONNECT("The two participants cannot connect."),
+    PAIR_CANNOT_CONNECT("The two players cannot connect. Let another player create the room."),
     /**
      * Nothing came from the participant on the channel's path for too long.
      */

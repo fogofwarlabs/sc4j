@@ -17,10 +17,7 @@ import org.fogofwarlabs.sc4j.launcher.ui.session.Conversations.Conversation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
 /**
@@ -31,7 +28,8 @@ import java.util.function.Function;
  * <p>
  * A channel's input says lines and runs slash commands ({@code /help} lists them); a whisper conversation's input whispers to its player. A
  * right click on a member, or on a name in the log, opens the player's menu with Whisper, Add or Remove friend, Ignore or Unignore, Copy name
- * and Show status, the commands of the account menu. Without a connection the screen says why.
+ * and Show status, the commands of the account menu. The log ({@link ChatLog}) selects and copies its text across lines and opens its links
+ * after asking. Without a connection the screen says why.
  */
 public final class ChatScreen {
     /**
@@ -39,89 +37,18 @@ public final class ChatScreen {
      */
     public interface Actions {
         /**
-         * Called when the user copies text, a player's name.
+         * Called when the user copies text: a player's name or the selected text of the log.
          *
          * @param text the text for the clipboard
          */
         void onCopy(@NotNull String text);
-    }
-
-    /**
-     * Holds one line of the shown log: the sender's name, the player it names, the text, the text's style and a state line under it.
-     */
-    private static final class LogLine {
-        private final @NotNull String prefix;
-        private final @Nullable FriendCode player;
-        private final @NotNull String playerName;
-        private final @NotNull String text;
-        private final @NotNull String textStyle;
-        private final @Nullable String caption;
 
         /**
-         * Creates a {@link LogLine} instance.
+         * Called when the user opens a link of the log after confirming it.
          *
-         * @param prefix     the sender's name with its separator, empty for a line without a sender
-         * @param player     the player the line names, or {@code null} for none
-         * @param playerName the name and tag of the player the line names, empty for none
-         * @param text       the text
-         * @param textStyle  the style class of the text
-         * @param caption    the state line under the text, or {@code null} for none
+         * @param address the {@code http} or {@code https} address
          */
-        private LogLine(@NotNull String prefix, @Nullable FriendCode player, @NotNull String playerName, @NotNull String text,
-                        @NotNull String textStyle, @Nullable String caption) {
-            this.prefix     = prefix;
-            this.player     = player;
-            this.playerName = playerName;
-            this.text       = text;
-            this.textStyle  = textStyle;
-            this.caption    = caption;
-        }
-    }
-
-    /**
-     * Shows one line of the log: the sender's name, which opens the player's menu, and the text, with a state line under a whisper that is
-     * under way or was not delivered.
-     */
-    private final class LogCell extends ListCell<LogLine> {
-        private LogCell() {
-            ComponentUtils.markFirstRow(this);
-        }
-
-        /**
-         * Updates the item associated with this cell.
-         *
-         * @param line  the new item for the cell
-         * @param empty whether or not this cell represents data from the list
-         */
-        @Override
-        protected void updateItem(@Nullable LogLine line, boolean empty) {
-            super.updateItem(line, empty);
-
-            if (empty || line == null) {
-                this.setText(null);
-                this.setGraphic(null);
-
-                return;
-            }
-
-            Label text = ComponentUtils.createParagraph(line.text, line.textStyle);
-            Label name = ComponentUtils.createLabel(line.prefix, "text-heading", "text-accent-strong");
-            HBox row = ComponentUtils.createTextRow(Spacing.S, name, text);
-            VBox graphic = ComponentUtils.createColumn(Spacing.XS, row);
-            FriendCode player = line.player;
-
-            if (line.prefix.isEmpty()) {
-                row.getChildren().remove(name);
-            } else if (player != null) {
-                name.setOnContextMenuRequested(event -> ChatScreen.this.openPlayerMenu(player, line.playerName, event));
-            }
-
-            if (line.caption != null) {
-                graphic.getChildren().add(ComponentUtils.createLabel(line.caption, "text-caption"));
-            }
-
-            ComponentUtils.setCellGraphic(this, graphic);
-        }
+        void onOpenWebsite(@NotNull String address);
     }
 
     private final @NotNull LauncherShell shell;
@@ -137,7 +64,7 @@ public final class ChatScreen {
     private final @NotNull ListView<Conversation> conversationList;
     private final @NotNull Label logTitle;
     private final @NotNull Button leave;
-    private final @NotNull ListView<LogLine> log;
+    private final @NotNull ChatLog log;
     private final @NotNull TextField input;
     private final @NotNull Button send;
     private final @NotNull Label inputMessage;
@@ -149,6 +76,7 @@ public final class ChatScreen {
     private @Nullable String shownChannel;
     private @Nullable Conversation shownConversation;
     private @NotNull List<?> shownSource;
+    private @Nullable Object shownKey;
     private boolean listed;
     private boolean updating;
 
@@ -180,7 +108,7 @@ public final class ChatScreen {
         this.conversationList = ComponentUtils.createListView(ListItemSize.COMPACT);
         this.logTitle         = ComponentUtils.createLabel("");
         this.leave            = ComponentUtils.createSmallButton(texts.get("chat.leave"), ButtonRole.SECONDARY);
-        this.log              = ComponentUtils.createLogListView();
+        this.log              = new ChatLog(shell, texts, actions, this::openPlayerMenu);
         this.input            = new TextField();
         this.send             = ComponentUtils.createButton(texts.get("session.whispers.send"), ButtonRole.PRIMARY);
         this.inputMessage     = ComponentUtils.createLabel("", "field-message");
@@ -192,6 +120,7 @@ public final class ChatScreen {
         this.shownChannel      = null;
         this.shownConversation = null;
         this.shownSource       = List.of();
+        this.shownKey          = null;
         this.listed            = false;
         this.updating          = false;
 
@@ -296,14 +225,13 @@ public final class ChatScreen {
     }
 
     private @NotNull VBox createLog() {
-        VBox panel = ComponentUtils.createPanelWithFooter(this.logTitle, ComponentUtils.createFlushPanelBody(this.log),
+        VBox panel = ComponentUtils.createPanelWithFooter(this.logTitle, ComponentUtils.createFlushPanelBody(this.log.getView()),
                                                           ComponentUtils.createInputFooter(this.input, this.send, this.inputMessage), this.leave);
 
         HBox.setHgrow(panel, Priority.ALWAYS);
         ComponentUtils.fillHeight(panel);
 
-        this.log.setCellFactory(view -> new LogCell());
-        VBox.setVgrow(this.log, Priority.ALWAYS);
+        VBox.setVgrow(this.log.getView(), Priority.ALWAYS);
         this.leave.setOnAction(event -> {
             String channel = this.shownChannel;
 
@@ -414,8 +342,9 @@ public final class ChatScreen {
     private void showConversation() {
         String channel = this.shownChannel;
         Conversation conversation = this.shownConversation;
+        Object key = channel != null ? channel : conversation == null ? null : conversation.getCode();
         List<?> source;
-        List<LogLine> lines;
+        List<ChatLog.Line> lines;
         List<FriendView> members = List.of();
 
         if (channel != null) {
@@ -455,10 +384,10 @@ public final class ChatScreen {
             this.logTitle.setText(this.texts.get("chat.title"));
         }
 
-        if (!source.equals(this.shownSource)) {
+        if (!source.equals(this.shownSource) || !Objects.equals(key, this.shownKey)) {
+            this.log.show(lines, Objects.equals(key, this.shownKey));
             this.shownSource = source;
-            this.log.getItems().setAll(lines);
-            ComponentUtils.scrollToLast(this.log);
+            this.shownKey    = key;
         }
 
         if (!members.equals(this.memberList.getItems())) {
@@ -467,7 +396,7 @@ public final class ChatScreen {
 
         String placeholder = channel == null && conversation == null ? "chat.channels.empty" : "chat.log.empty";
 
-        this.log.setPlaceholder(ComponentUtils.createParagraph(this.texts.get(placeholder), "text-caption"));
+        this.log.getView().setPlaceholder(ComponentUtils.createParagraph(this.texts.get(placeholder), "text-caption"));
         this.memberCount.setText(channel == null ? "" : Integer.toString(members.size()));
         this.leave.setVisible(channel != null);
         this.leave.setManaged(channel != null);
@@ -478,19 +407,19 @@ public final class ChatScreen {
     /**
      * Creates the log line of a channel entry; the session gives no whisper entries, its whispers show in their conversations.
      */
-    private @NotNull LogLine createLine(@NotNull ChatEntryView entry) {
+    private @NotNull ChatLog.Line createLine(@NotNull ChatEntryView entry) {
         FriendCode code = entry.getPlayer();
         String playerName = entry.getPlayerName() == null ? "" : entry.getPlayerName();
 
         return switch (entry.getKind()) {
-            case SAY, WHISPER -> new LogLine(entry.getPrefix().strip(), code, playerName, entry.getText(), "text-body", null);
-            case EMOTE -> new LogLine("", code, playerName, entry.getText(), "text-accent", null);
-            case INFO -> new LogLine("", code, playerName, entry.getText(), "text-caption", null);
-            case ERROR -> new LogLine("", code, playerName, entry.getText(), "text-danger", null);
+            case SAY, WHISPER -> new ChatLog.Line(entry.getPrefix().strip(), code, playerName, entry.getText(), "text-body", null);
+            case EMOTE -> new ChatLog.Line("", code, playerName, entry.getText(), "text-accent", null);
+            case INFO -> new ChatLog.Line("", code, playerName, entry.getText(), "text-caption", null);
+            case ERROR -> new ChatLog.Line("", code, playerName, entry.getText(), "text-danger", null);
         };
     }
 
-    private @NotNull LogLine createLine(@NotNull WhisperView whisper) {
+    private @NotNull ChatLog.Line createLine(@NotNull WhisperView whisper) {
         String sender = whisper.isIncoming() ? whisper.getOtherTaggedName() : this.taggedName;
         FriendCode code = whisper.isIncoming() ? whisper.getOtherCode() : this.session.getFriendCode();
         String caption = switch (whisper.getState()) {
@@ -499,7 +428,7 @@ public final class ChatScreen {
             case RECEIVED, DELIVERED -> null;
         };
 
-        return new LogLine(sender + ":", code, sender, whisper.getText(), "text-body", caption);
+        return new ChatLog.Line(sender + ":", code, sender, whisper.getText(), "text-body", caption);
     }
 
     /**

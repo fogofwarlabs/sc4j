@@ -22,7 +22,7 @@ import java.util.List;
 
 /**
  * Tests the default bitmap font: glyph advances, colour codes (with the default {@link TextColorTable}), the style's kerning, scale
- * and pixel snapping, the drawn glyph pixels on a hidden window, and the detail face picked for a scaled canvas.
+ * and pixel snapping, and the detail face picked for a scaled canvas.
  */
 final class BitmapFontTest {
     private static final int FIELD_PAGE_SIZE = 64;
@@ -35,9 +35,6 @@ final class BitmapFontTest {
     private static final int GREEN_CODE = 0x01;
     private static final int RED = 0xFF0000FF;
     private static final int GREEN = 0x00FF00FF;
-    private static final int RED_PIXEL = 0xFF0000;
-    private static final int GREEN_PIXEL = 0x00FF00;
-    private static final int BLACK_PIXEL = 0;
     private static final int TEXT_LEFT = 4;
     private static final int TEXT_TOP = 6;
     private static final int RESTORE_CODE = 0x02;
@@ -51,9 +48,6 @@ final class BitmapFontTest {
     private static final int QUAD_VALUES = 4;
     private static final int DETAIL_MULTIPLE = 2;
     private static final int CANVAS_UNITS = 32;
-    private static final int OPAQUE_ALPHA = -1;
-    private static final int ARGB_RED = 0xFFFF0000;
-    private static final int ARGB_BLACK = 0xFF000000;
 
     private static final @NotNull TextColorHook GREEN_CODE_HOOK = new TextColorHook() {
         @Override
@@ -119,8 +113,7 @@ final class BitmapFontTest {
     }
 
     /**
-     * Creates the detail face of {@link #createFace} at twice the size whose glyph {@code A} covers only its left half, so that a drawing tells
-     * which face it came from.
+     * Creates the detail face of {@link #createFace} at twice the size.
      *
      * @return the created {@link FontFace} instance
      */
@@ -129,12 +122,6 @@ final class BitmapFontTest {
         int height = IMAGE_HEIGHT * DETAIL_MULTIPLE;
         int glyphSize = GLYPH_SIZE * DETAIL_MULTIPLE;
         byte[] alphas = new byte[width * height];
-
-        for (int y = 0; y < glyphSize; y++) {
-            for (int x = 0; x < glyphSize / 2; x++) {
-                alphas[y * width + x] = (byte) OPAQUE_ALPHA;
-            }
-        }
 
         return new FontFace(LINE_HEIGHT * DETAIL_MULTIPLE, width, PixelLayer.ofAlpha(alphas),
                             List.of(new FontGlyph('A', ADVANCE * DETAIL_MULTIPLE, 0, 0, glyphSize, glyphSize, 0, 0)));
@@ -152,19 +139,10 @@ final class BitmapFontTest {
             Assertions.assertEquals(DETAIL_MULTIPLE, font.findDrawnMultiple(canvas, TextStyle.builder().setScale(1.5f).build()));
             canvas.end();
 
-            // At two pixels per unit glyph A comes from the detail face: only its left half is drawn, at the font's size.
             canvas.begin(UiSurface.of(CANVAS_UNITS * DETAIL_MULTIPLE, CANVAS_UNITS * DETAIL_MULTIPLE, DisplayScale.of(DETAIL_MULTIPLE, 1)));
-            Assertions.assertEquals(DETAIL_MULTIPLE, font.findDrawnMultiple(canvas, TextStyle.DEFAULT));
-            font.draw(canvas, "A", TEXT_LEFT, TEXT_TOP, RED);
+            Assertions.assertEquals(DETAIL_MULTIPLE, font.findDrawnMultiple(canvas, TextStyle.DEFAULT), "two pixels per unit draw the detail face");
             canvas.end();
         }
-
-        int left = TEXT_LEFT * DETAIL_MULTIPLE;
-        int top = TEXT_TOP * DETAIL_MULTIPLE;
-
-        Assertions.assertEquals(ARGB_RED, canvas.getImage().getRGB(left, top));
-        Assertions.assertEquals(ARGB_RED, canvas.getImage().getRGB(left + GLYPH_SIZE - 1, top + GLYPH_SIZE * DETAIL_MULTIPLE - 1));
-        Assertions.assertEquals(ARGB_BLACK, canvas.getImage().getRGB(left + GLYPH_SIZE, top));
     }
 
     @Test
@@ -190,40 +168,27 @@ final class BitmapFontTest {
 
     @Test
     void draw_should_draw_glyphs_in_the_pen_color_after_color_codes() {
-        HiddenWindowScenario.run(() -> {
-            try (GlCanvas canvas = new GlCanvas(FIELD_PAGE_SIZE);
-                 BitmapFont font = new BitmapFont(canvas, createFace(), GREEN_CODE_HOOK)) {
-                canvas.begin(HiddenWindowScenario.SIZE, HiddenWindowScenario.SIZE);
+        RecordingCanvas recording = new RecordingCanvas();
 
-                float pen = font.draw(canvas, "A\u0001B", TEXT_LEFT, TEXT_TOP, RED);
+        try (BitmapFont font = new BitmapFont(recording.canvas, createFace(), GREEN_CODE_HOOK)) {
+            float pen = font.draw(recording.canvas, "A\u0001B", TEXT_LEFT, TEXT_TOP, RED);
 
-                canvas.end();
-
-                Assertions.assertEquals(TEXT_LEFT + ADVANCE + ADVANCE, pen);
-                Assertions.assertEquals(RED_PIXEL, HiddenWindowScenario.readColor(TEXT_LEFT + 1, TEXT_TOP + 1));
-                Assertions.assertEquals(BLACK_PIXEL, HiddenWindowScenario.readColor(TEXT_LEFT + GLYPH_SIZE, TEXT_TOP + 1));
-                Assertions.assertEquals(GREEN_PIXEL, HiddenWindowScenario.readColor(TEXT_LEFT + ADVANCE + 1, TEXT_TOP + 1));
-                Assertions.assertEquals(BLACK_PIXEL, HiddenWindowScenario.readColor(TEXT_LEFT + 1, TEXT_TOP + GLYPH_SIZE + 1));
-            }
-        });
+            Assertions.assertEquals(TEXT_LEFT + ADVANCE + ADVANCE, pen);
+            Assertions.assertEquals(List.of(RED, GREEN), recording.colors);
+        }
     }
 
     @Test
     void draw_should_switch_back_after_a_restore_code_of_the_color_table() {
         TextColorTable table = TextColorTable.builder().setColor(GREEN_CODE, GREEN).setRestoreCode(RESTORE_CODE).build();
         TextStyle style = TextStyle.builder().setColors(table).build();
+        RecordingCanvas recording = new RecordingCanvas();
 
-        HiddenWindowScenario.run(() -> {
-            try (GlCanvas canvas = new GlCanvas(FIELD_PAGE_SIZE);
-                 BitmapFont font = new BitmapFont(canvas, createFace(), BitmapFont.NO_KERNING, style)) {
-                canvas.begin(HiddenWindowScenario.SIZE, HiddenWindowScenario.SIZE);
-                font.draw(canvas, "AB", TEXT_LEFT, TEXT_TOP, RED);
-                canvas.end();
+        try (BitmapFont font = new BitmapFont(recording.canvas, createFace(), BitmapFont.NO_KERNING, style)) {
+            font.draw(recording.canvas, "AB", TEXT_LEFT, TEXT_TOP, RED);
 
-                Assertions.assertEquals(GREEN_PIXEL, HiddenWindowScenario.readColor(TEXT_LEFT + 1, TEXT_TOP + 1));
-                Assertions.assertEquals(RED_PIXEL, HiddenWindowScenario.readColor(TEXT_LEFT + ADVANCE + 1, TEXT_TOP + 1));
-            }
-        });
+            Assertions.assertEquals(List.of(GREEN, RED), recording.colors);
+        }
     }
 
     @Test

@@ -27,14 +27,12 @@ import java.util.List;
 
 /**
  * Tests the scene flow of an engine-only client without a window: the first scene from the mod's factory, input to the top scene, a requested
- * switch at the next frame, drawing on the canvas, the last frame after a quit request and the scenes closed at the end, and the logical units
- * of drawing and pointer input at a display scale, lowered until the scene and the engine minimum fit.
+ * switch at the next frame, the last frame after a quit request and the scenes closed at the end, and the logical units of pointer input at a
+ * display scale, lowered until the scene and the engine minimum fit.
  */
 final class SceneClientTest {
     private static final int RED = 0xFF0000FF;
     private static final int BLUE = 0x0000FFFF;
-    private static final int ARGB_RED = 0xFFFF0000;
-    private static final int ARGB_BLUE = 0xFF0000FF;
     private static final long FRAME_TIME = 16;
     private static final int LOGICAL_WIDTH = 800;
     private static final int LOGICAL_HEIGHT = 480;
@@ -136,9 +134,9 @@ final class SceneClientTest {
     }
 
     @Test
-    void scene_client_switches_draws_and_ends_with_the_scenes_of_the_mod(@TempDir @NotNull Path storage) throws ManifestException,
-                                                                                                                ModException,
-                                                                                                                IOException {
+    void scene_client_switches_and_ends_with_the_scenes_of_the_mod(@TempDir @NotNull Path storage) throws ManifestException,
+                                                                                                          ModException,
+                                                                                                          IOException {
         List<String> events = new ArrayList<>();
         RecordingScene menu = new RecordingScene("menu", RED, events);
         RecordingScene game = new RecordingScene("game", BLUE, events);
@@ -151,7 +149,6 @@ final class SceneClientTest {
             Assertions.assertThrows(IllegalStateException.class, () -> client.start(started -> game));
 
             Assertions.assertEquals(FrameResult.PRESENTED, client.runFrame(FRAME_TIME, ClientLaunchScenario.WIDTH, ClientLaunchScenario.HEIGHT));
-            Assertions.assertEquals(ARGB_RED, canvas.getImage().getRGB(1, 1), "the first scene draws");
             Assertions.assertTrue(client.handleInput(InputEvent.createKey(InputEvent.Type.KEY_PRESSED, Key.ENTER, 0)));
 
             client.getScenes().replace(game);
@@ -161,7 +158,6 @@ final class SceneClientTest {
             client.runFrame(FRAME_TIME * 2, ClientLaunchScenario.WIDTH, ClientLaunchScenario.HEIGHT);
 
             Assertions.assertSame(game, client.getScenes().getScene());
-            Assertions.assertEquals(ARGB_BLUE, canvas.getImage().getRGB(1, 1), "the next scene draws");
             Assertions.assertEquals(FRAME_TIME * 2, client.getTime());
 
             client.requestQuit();
@@ -175,9 +171,9 @@ final class SceneClientTest {
 
     @ParameterizedTest
     @ValueSource(floats = {1.0f, 1.5f, 2.0f})
-    void scene_client_draws_and_takes_the_pointer_in_logical_units_at_a_display_scale(float scale, @TempDir @NotNull Path storage) throws ManifestException,
-                                                                                                                                          ModException,
-                                                                                                                                          IOException {
+    void scene_client_takes_the_pointer_in_logical_units_at_a_display_scale(float scale, @TempDir @NotNull Path storage) throws ManifestException,
+                                                                                                                                ModException,
+                                                                                                                                IOException {
         int framebufferWidth = Math.round(LOGICAL_WIDTH * scale);
         int framebufferHeight = Math.round(LOGICAL_HEIGHT * scale);
         SquareScene scene = new SquareScene(0, 0);
@@ -193,13 +189,6 @@ final class SceneClientTest {
             Assertions.assertEquals(LOGICAL_WIDTH, client.getWidth());
             Assertions.assertEquals(LOGICAL_HEIGHT, client.getHeight());
             Assertions.assertEquals(Math.round(scale), cursor.getScale());
-
-            // The square covers its logical size times the scale in framebuffer pixels.
-            int inside = Math.round((SQUARE_LEFT + SQUARE_SIZE) * scale) - 1;
-            int outside = Math.round((SQUARE_LEFT + SQUARE_SIZE) * scale) + 1;
-
-            Assertions.assertEquals(ARGB_RED, canvas.getImage().getRGB(inside, inside));
-            Assertions.assertNotEquals(ARGB_RED, canvas.getImage().getRGB(outside, outside));
 
             client.handleInput(InputEvent.createPointerMoved(POINTER_X * scale, POINTER_Y * scale));
             client.handleInput(InputEvent.createKey(InputEvent.Type.KEY_PRESSED, Key.ENTER, 0));

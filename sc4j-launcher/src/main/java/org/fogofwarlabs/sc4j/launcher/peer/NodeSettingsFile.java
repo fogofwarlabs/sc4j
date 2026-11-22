@@ -23,10 +23,12 @@ import java.util.Map;
  * {
  *   "format": 1,
  *   "role": "automatic",
- *   "port": 7455
+ *   "port": 7455,
+ *   "portMapping": true
  * }
  *}
- * The role is {@code automatic} or {@code off} ({@link NodeRole#getName()}). A missing file holds {@link NodeSettings#DEFAULT}.
+ * The role is {@code automatic} or {@code off} ({@link NodeRole#getName()}); without {@code portMapping} the ports are mapped. A missing file
+ * holds {@link NodeSettings#DEFAULT}.
  */
 public final class NodeSettingsFile {
     /**
@@ -41,6 +43,7 @@ public final class NodeSettingsFile {
     private static final @NotNull String FORMAT_FIELD = "format";
     private static final @NotNull String ROLE_FIELD = "role";
     private static final @NotNull String PORT_FIELD = "port";
+    private static final @NotNull String PORT_MAPPING_FIELD = "portMapping";
 
     /**
      * Creates a {@link NodeSettingsFile} instance for the node settings file of an install.
@@ -93,7 +96,13 @@ public final class NodeSettingsFile {
             throw Exceptions.newIOException("Invalid node settings file {0}: expected format {1} with a role and a port", this.path, FORMAT);
         }
 
-        return new NodeSettings(role, port.intValue());
+        Object portMapping = object.get(PORT_MAPPING_FIELD);
+
+        if (portMapping != null && !(portMapping instanceof Boolean)) {
+            throw Exceptions.newIOException("Invalid node settings file {0}: portMapping must be true or false", this.path);
+        }
+
+        return new NodeSettings(role, port.intValue(), !Boolean.FALSE.equals(portMapping));
     }
 
     /**
@@ -108,6 +117,7 @@ public final class NodeSettingsFile {
         object.put(FORMAT_FIELD, (long) FORMAT);
         object.put(ROLE_FIELD, settings.getRole().getName());
         object.put(PORT_FIELD, (long) settings.getPort());
+        object.put(PORT_MAPPING_FIELD, settings.isPortMapping());
 
         AtomicFileUtils.write(this.path, JsonWriterUtils.write(object).getBytes(StandardCharsets.UTF_8));
     }

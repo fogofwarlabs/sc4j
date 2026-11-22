@@ -13,6 +13,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -20,7 +21,7 @@ import java.util.concurrent.locks.LockSupport;
 
 /**
  * A test mod on the engine-only path that opens a Beacon.Link session headless: its headless runner opens a session with the nodes of the
- * run's command line ({@link BeaconLink#open()}), polls it until a node registered it and writes {@value #RUN_FILE} into its storage: the
+ * run's command line ({@link BeaconLink#open()}), polls it until a node registered it and writes {@value #RUN_FILE} into its storage at once: the
  * address the node observed, the player key in hexadecimal and the connection number in hexadecimal. With the mod argument
  * {@value #HOLD_ARGUMENT} and a file, the session stays open and polled until that file exists. A session that fails or that no node
  * registers within {@value #REGISTRATION_TIMEOUT_MILLIS} ms, or that is held longer than that, refuses the run with the reason.
@@ -39,6 +40,7 @@ public final class BeaconLinkMod implements Mod {
      */
     public static final @NotNull String HOLD_ARGUMENT = "--hold";
 
+    private static final @NotNull String WRITING_SUFFIX = ".writing";
     private static final long REGISTRATION_TIMEOUT_MILLIS = 60_000L;
     private static final long POLL_PAUSE_NANOS = TimeUnit.MILLISECONDS.toNanos(10L);
 
@@ -109,9 +111,12 @@ public final class BeaconLinkMod implements Mod {
 
             LinkParticipant participant = session.getParticipant();
 
-            Files.writeString(initialized.getStorage().resolve(RUN_FILE), REGISTERED + ' ' + observed + ' ' +
-                                                                          HexFormat.of().formatHex(participant.getPlayer().getKey()) + ' ' +
-                                                                          Long.toHexString(participant.getConnection()), StandardCharsets.UTF_8);
+            Path runFile = initialized.getStorage().resolve(RUN_FILE);
+            Path writtenFile = runFile.resolveSibling(RUN_FILE + WRITING_SUFFIX);
+
+            Files.writeString(writtenFile, REGISTERED + ' ' + observed + ' ' + HexFormat.of().formatHex(participant.getPlayer().getKey()) + ' ' +
+                                           Long.toHexString(participant.getConnection()), StandardCharsets.UTF_8);
+            Files.move(writtenFile, runFile, StandardCopyOption.ATOMIC_MOVE);
 
             Path release = findHoldFile(initialized.getArguments());
             long holdDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(REGISTRATION_TIMEOUT_MILLIS);

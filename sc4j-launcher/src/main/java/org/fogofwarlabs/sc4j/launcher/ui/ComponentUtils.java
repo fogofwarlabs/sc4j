@@ -322,11 +322,11 @@ public final class ComponentUtils {
      * sender's name before a chat line.
      *
      * @param spacing the spacing between the label and the text
-     * @param label   the label
-     * @param text    the text, a paragraph ({@link #createParagraph})
+     * @param label   the label, or a text flow of it
+     * @param text    the text, a paragraph ({@link #createParagraph}) or a text flow
      * @return the created row, its children aligned at the top
      */
-    public static @NotNull HBox createTextRow(@NotNull Spacing spacing, @NotNull Label label, @NotNull Label text) {
+    public static @NotNull HBox createTextRow(@NotNull Spacing spacing, @NotNull Region label, @NotNull Region text) {
         HBox row = createRow(spacing, label, text);
 
         label.setMinWidth(Region.USE_PREF_SIZE);
@@ -598,14 +598,18 @@ public final class ComponentUtils {
     /**
      * Creates a menu: a panel of flat entries ({@link #createMenuButton}) under a header, such as a {@link ListItem} of the player the menu is about.
      *
-     * @param header  the header
+     * @param header  the header, or {@code null} for a menu of entries only
      * @param entries the entries and the separators between their groups
      * @return the created menu
      */
-    public static @NotNull VBox createMenuPanel(@NotNull Region header, @NotNull Node @NotNull ... entries) {
-        VBox menu = new VBox(header);
+    public static @NotNull VBox createMenuPanel(@Nullable Region header, @NotNull Node @NotNull ... entries) {
+        VBox menu = new VBox();
 
-        header.getStyleClass().add("menu-header");
+        if (header != null) {
+            header.getStyleClass().add("menu-header");
+            menu.getChildren().add(header);
+        }
+
         menu.getChildren().addAll(entries);
         menu.getStyleClass().addAll("panel", "menu-panel");
 

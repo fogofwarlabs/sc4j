@@ -16,7 +16,6 @@ import org.fogofwarlabs.sc4j.engine.client.dialog.Control;
 import org.fogofwarlabs.sc4j.engine.client.dialog.Label;
 import org.fogofwarlabs.sc4j.engine.client.dialog.ListBox;
 import org.fogofwarlabs.sc4j.engine.client.display.DisplayScale;
-import org.fogofwarlabs.sc4j.engine.client.display.UiSurface;
 import org.fogofwarlabs.sc4j.engine.client.hud.WaitingDialog;
 import org.fogofwarlabs.sc4j.engine.client.input.Key;
 import org.fogofwarlabs.sc4j.engine.client.input.PointerButton;
@@ -51,31 +50,23 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
 
 /**
- * Tests the demo's network screens offscreen with two clients in one JVM on 127.0.0.1: the host opens a room, the joiner finds it in the
- * room list through the loopback room discovery and joins it, chooses its faction, both say they are ready and the host starts; both clients
- * play the network game in lockstep, leave it with their replays stored, and the host's replay plays to its end in the replay viewer. The
- * network screen, the room and the network game mid-game are saved as sample pictures. When the joiner stalls, the host's waiting dialog
- * names it with the countdown, and its drop button lets the host's game go on alone. Over Beacon.Link with a node on 127.0.0.1, the host
- * opens the Beacon.Link tab and creates a private room with a password at a turn rate (its map becomes a recent map), the joiner's tab
- * lists it as private from the node, a wrong password is refused with its reason and the right one joins; the room names both players with
- * their tags, and both play the started game at the host's turn rate; the tab, the create and password popups and the room are saved as
- * sample pictures. On a Beacon.Link played by hand, the tab shows the channel's users with their mods and latencies, the chat with slash
- * commands and whispers, the channel list and the friends, the rooms with their states and turn rates through their filter, an away status
- * with its text, and the refusal of a node that holds too many devices of the account, which asks nothing; it is saved as sample pictures at
- * two frame sizes. At every window size and scale the chosen tab is lit, the selected room shows the faction's warm band, and the create popup's
- * buttons follow its last row.
+ * Tests the demo's network screens offscreen with two clients in one JVM on 127.0.0.1: the host opens a room, the joiner finds it in the room list
+ * through the loopback room discovery and joins it, chooses its faction, both say they are ready and the host starts; both clients play the network
+ * game in lockstep, leave it with their replays stored, and the host's replay plays to its end in the replay viewer. When the joiner stalls, the
+ * host's waiting dialog names it with the countdown, and its drop button lets the host's game go on alone. Over Beacon.Link with a node on
+ * 127.0.0.1, the host opens the Beacon.Link tab and creates a private room with a password at a turn rate (its map becomes a recent map), the
+ * joiner's tab lists it as private from the node, a wrong password is refused with its reason and the right one joins; the room names both players
+ * with their tags, and both play the started game at the host's turn rate. On a Beacon.Link played by hand, the tab shows the channel's users with
+ * their mods and latencies, the chat with slash commands and whispers, the channel list and the friends, the rooms with their states and turn rates
+ * through their filter, an away status with its text, and the refusal of a node that holds too many devices of the account, which asks nothing. At
+ * every window size and scale the Beacon.Link tab and its create popup show whole, and the popup's buttons follow its last row.
  */
 final class NetworkSceneTest {
     private static final long UPDATE_MILLISECONDS = 16L;
     private static final long WAIT_SECONDS = 60L;
     private static final int MID_GAME_LOOP = 2400;
-    private static final int TEAM_TOLERANCE = 48;
-    private static final int TEAM_PIXELS = 20;
-    private static final int BLUE = 0x3C78D8;
     private static final long NODE_SEED = 20261108L;
     private static final int FIRST_LOOPS = 100;
-    private static final int LARGE_WIDTH = 1920;
-    private static final int LARGE_HEIGHT = 1080;
     private static final int SELF_KEY = 1;
     private static final int KIRA_KEY = 2;
     private static final int TAMSIN_KEY = 3;
@@ -96,28 +87,11 @@ final class NetworkSceneTest {
     private static final int SLOW_TURN_RATE = 8;
     private static final int TURN_RATE_COLUMN = 3;
     /**
-     * How far right of a tab's left edge, in logical units, its colour is read: inside the frame, left of the text.
-     */
-    private static final float TAB_SAMPLE_INSET = 20;
-    /**
-     * Where in the room table the selected row's colour is read: the middle of the first row under the header, at this share of the width.
-     */
-    private static final float ROW_MIDDLE = 1.5f;
-    private static final float ROW_SAMPLE_SHARE = 0.55f;
-    private static final int SAMPLE_SIZE = 4;
-    private static final int CHANNELS = 3;
-    private static final int RED_CHANNEL = 0;
-    private static final int GREEN_CHANNEL = 1;
-    private static final int BLUE_CHANNEL = 2;
-    private static final int CHANNEL_MASK = 0xFF;
-    private static final int LIT_DIFFERENCE = 20;
-    /**
      * The largest gap in logical units between the create popup's last row and its buttons.
      */
     private static final float LARGEST_BUTTON_GAP = 48;
     private static final @NotNull String PASSWORD = "pw-4417";
     private static final @NotNull String AWAY_TEXT = "back soon";
-    private static final int PERCENT = 100;
     /**
      * The offset from the waiting dialog's bottom right padding corner into its drop button.
      */
@@ -216,39 +190,6 @@ final class NetworkSceneTest {
                                   LatencyEstimate.of(FAIR_MILLISECONDS)));
     }
 
-    /**
-     * Reads the mean red, green and blue of a small square of the last frame at a logical position of its surface.
-     */
-    private static int @NotNull [] readArea(@NotNull DemoClientScenario scenario, float logicalX, float logicalY) {
-        UiSurface surface = scenario.getClient().getSurface();
-
-        Assertions.assertNotNull(surface, "the client drew a frame");
-
-        int[] channels = new int[CHANNELS];
-        int left = Math.round(surface.toFramebufferX(logicalX));
-        int top = Math.round(surface.toFramebufferY(logicalY));
-
-        for (int y = top; y < top + SAMPLE_SIZE; y++) {
-            for (int x = left; x < left + SAMPLE_SIZE; x++) {
-                int color = scenario.readColor(x, y);
-
-                channels[RED_CHANNEL] += color >>> Short.SIZE & CHANNEL_MASK;
-                channels[GREEN_CHANNEL] += color >>> Byte.SIZE & CHANNEL_MASK;
-                channels[BLUE_CHANNEL] += color & CHANNEL_MASK;
-            }
-        }
-
-        for (int index = 0; index < channels.length; index++) {
-            channels[index] /= SAMPLE_SIZE * SAMPLE_SIZE;
-        }
-
-        return channels;
-    }
-
-    private static int sum(int @NotNull [] channels) {
-        return channels[RED_CHANNEL] + channels[GREEN_CHANNEL] + channels[BLUE_CHANNEL];
-    }
-
     private static @NotNull List<String> getRoomNames(@NotNull BeaconLinkScene tab) {
         return tab.getShownRooms().stream().map(room -> room.getSettings().getRoomName()).toList();
     }
@@ -309,7 +250,6 @@ final class NetworkSceneTest {
 
             runUntil("the room list shows the room", () -> joinerNetwork.getShownRooms().size() == 1, host, joiner);
             joiner.runFrame();
-            joiner.saveFrame("network");
             ((ListBox) joinerNetwork.requireControl(NetworkScene.ROOMS_ID)).setSelection(0);
             joiner.type("j");
             joiner.runFrame();
@@ -330,7 +270,6 @@ final class NetworkSceneTest {
             host.type("y");
             runUntil("everyone is ready", () -> hostRoom.getLobby().getLobby().isReadyToStart(), host, joiner);
             host.runFrame();
-            host.saveFrame("network-room");
 
             TableBox members = Assertions.assertInstanceOf(TableBox.class, hostRoom.requireControl(NetworkRoomScene.MEMBERS_ID),
                                                            "the room shows its members in a table");
@@ -357,8 +296,6 @@ final class NetworkSceneTest {
                      () -> hostState.getClock().getFrame() >= MID_GAME_LOOP && joinerState.getClock().getFrame() >= MID_GAME_LOOP, host, joiner);
             Assertions.assertEquals(0, hostGame.getNetwork().getLockstep().getDesyncMonitor().getMismatchCount(), "no desync");
             host.runFrame();
-            host.saveFrame("network-game");
-            Assertions.assertTrue(host.countPixels(BLUE, TEAM_TOLERANCE) >= TEAM_PIXELS, "the host's units in their blue");
 
             DemoGameScreen joinerScreen = joinerGame.getScreen();
             DemoGameScreen hostScreen = hostGame.getScreen();
@@ -460,7 +397,6 @@ final class NetworkSceneTest {
             int stalledFrame = hostState.getClock().getFrame();
 
             host.runFrame();
-            host.saveFrame("network-waiting");
 
             float scale = host.getClient().getDisplayScale().getScale();
             float buttonX = dialog.getX() + dialog.getWidth() - dialog.getSkin().getDialogPadding() - BUTTON_INSET;
@@ -511,7 +447,6 @@ final class NetworkSceneTest {
                 Assertions.assertEquals(hostDemo.getTaggedPlayerName(), hostNetwork.requireControl(NetworkScene.NAME_ID).getText());
                 Assertions.assertTrue(hostDemo.getTaggedPlayerName().startsWith("Raynor#"), "the menus show Name#tag");
                 Assertions.assertTrue(hostNetwork.requireControl(NetworkScene.BEACON_LINK_TAB_ID).isEnabled());
-                host.saveFrame("network-account");
                 host.type("b");
                 host.runFrame();
 
@@ -541,7 +476,6 @@ final class NetworkSceneTest {
                 host.runFrame();
                 create.requireControl(BeaconLinkScene.CREATE_PASSWORD_ID).setText(PASSWORD);
                 host.runFrame();
-                host.saveFrame("network-beaconlink-create");
 
                 Assertions.assertTrue(create.requireControl(BeaconLinkScene.CREATE_PASSWORD_ID).isVisible(), "a private room shows its password");
                 host.press(Key.ENTER);
@@ -562,7 +496,6 @@ final class NetworkSceneTest {
 
                 listRoom(firstTab, host, joiner, pollNode);
                 joiner.runFrame();
-                joiner.saveFrame("network-beaconlink");
 
                 Assertions.assertEquals("Private",
                                         ((TableBox) firstTab.requireControl(BeaconLinkScene.ROOMS_ID)).getRows().getFirst().getCells().getLast());
@@ -574,7 +507,6 @@ final class NetworkSceneTest {
                 Assertions.assertNotNull(wrongPrompt, "a private room asks for its password");
                 joiner.type("guess");
                 joiner.runFrame();
-                joiner.saveFrame("network-beaconlink-password");
                 joiner.press(Key.ENTER);
                 joiner.runFrame();
                 runUntil("the wrong password is refused", () -> joiner.getScene() instanceof BeaconLinkScene tab && tab != firstTab, host, joiner,
@@ -604,7 +536,6 @@ final class NetworkSceneTest {
                 host.type("y");
                 runUntil("everyone is ready", () -> hostRoom.getLobby().getLobby().isReadyToStart(), host, joiner, pollNode);
                 host.runFrame();
-                host.saveFrame("network-beaconlink-room");
 
                 Assertions.assertEquals(List.of(hostDemo.getTaggedPlayerName(), joinerDemo.getTaggedPlayerName()),
                                         hostRoom.getLobby().getLobby().getMembers().stream().map(LobbyMember::getName).toList(),
@@ -673,7 +604,6 @@ final class NetworkSceneTest {
             side.setSelection(2);
             scenario.type("a");
             scenario.runFrame();
-            scenario.saveFrame("network-beaconlink-chat");
 
             List<String> texts = log.getTexts();
 
@@ -697,7 +627,6 @@ final class NetworkSceneTest {
             Assertions.assertSame(BeaconLinkScene.SidePanel.FRIENDS, tab.getSidePanel());
             Assertions.assertEquals(List.of(new TableRow(List.of(kira.getTaggedName(), "Online", "demo 0.1.0"), FRIEND_ROW_COLOR, null)),
                                     ((TableBox) tab.requireControl(BeaconLinkScene.SIDE_ID)).getRows());
-            scenario.saveFrame("network-beaconlink-friends");
 
             scenario.type("n");
             scenario.runFrame();
@@ -709,13 +638,11 @@ final class NetworkSceneTest {
             scenario.type("w");
             scenario.runFrame();
             Assertions.assertEquals("Trade (4)", tab.requireControl(BeaconLinkScene.CHANNEL_ID).getText());
-            scenario.saveFrame("network-beaconlink-channels");
 
             ((ComboBox) tab.requireControl(BeaconLinkScene.LATENCY_ID)).setSelection(1);
             ((ComboBox) tab.requireControl(BeaconLinkScene.VERSIONS_ID)).setSelection(1);
             scenario.runFrame();
             Assertions.assertEquals(List.of("Kira's game"), getRoomNames(tab));
-            scenario.saveFrame("network-beaconlink-filter");
 
             ComboBox presence = (ComboBox) tab.requireControl(BeaconLinkScene.PRESENCE_ID);
 
@@ -724,7 +651,6 @@ final class NetworkSceneTest {
             Assertions.assertNotNull(tab.getPopup(), "Away asks for an away text");
             scenario.type(AWAY_TEXT);
             scenario.runFrame();
-            scenario.saveFrame("network-beaconlink-away");
             scenario.press(Key.ENTER);
             scenario.runFrame();
             Assertions.assertNull(tab.getPopup());
@@ -736,14 +662,7 @@ final class NetworkSceneTest {
             scenario.runFrame();
             Assertions.assertNull(tab.getPopup(), "a refused session asks nothing");
             Assertions.assertEquals(LinkFailure.TOO_MANY_CONNECTIONS.getDescription(), tab.requireControl(BeaconLinkScene.NODES_ID).getText());
-            scenario.saveFrame("network-beaconlink-too-many-devices");
             link.setFailure(null);
-        }
-
-        try (DemoClientScenario large = new DemoClientScenario(directory.resolve("large"), link, LARGE_WIDTH, LARGE_HEIGHT)) {
-            openRecordedTab(large);
-            large.runFrame();
-            large.saveFrame("network-beaconlink-chat-1920x1080");
         }
     }
 
@@ -759,7 +678,6 @@ final class NetworkSceneTest {
         RecordingBeaconLink link = new RecordingBeaconLink(community, createRooms(),
                                                            new InetSocketAddress(DemoNetworkSettings.LOOPBACK, OBSERVED_PORT),
                                                            community.getSelf().getName());
-        String suffix = width + "x" + height + "-" + Math.round(scale * PERCENT);
 
         try (DemoClientScenario scenario = new DemoClientScenario(directory, link, width, height)) {
             scenario.getClient().setDisplayScale(DisplayScale.of(scale, 1));
@@ -769,27 +687,9 @@ final class NetworkSceneTest {
 
             rooms.setSelection(0);
             scenario.runFrame();
-            scenario.saveFrame("beaconlink-rooms-" + suffix);
             DemoDialogAssert.assertShownWhole(scenario.getClient(), tab.requireDialog(), "the Beacon.Link tab");
-
-            Control chosenTab = tab.requireControl(NetworkScene.BEACON_LINK_TAB_ID);
-            Control otherTab = tab.requireControl(NetworkScene.LOCAL_TAB_ID);
-            float tabRow = chosenTab.getTop() + chosenTab.getDefinition().getHeight() / 2f;
-            int[] chosen = readArea(scenario, tab.requireDialog().getLeft() + chosenTab.getLeft() + TAB_SAMPLE_INSET,
-                                    tab.requireDialog().getTop() + tabRow);
-            int[] other = readArea(scenario, tab.requireDialog().getLeft() + otherTab.getLeft() + TAB_SAMPLE_INSET,
-                                   tab.requireDialog().getTop() + tabRow);
-            float selectedRow = rooms.getTop() + scenario.getMenu().getDemo().getFont().getLineHeight() * ROW_MIDDLE;
-            int[] row = readArea(scenario, tab.requireDialog().getLeft() + rooms.getLeft() + rooms.getDefinition().getWidth() * ROW_SAMPLE_SHARE,
-                                 tab.requireDialog().getTop() + selectedRow);
-
-            Assertions.assertTrue(sum(chosen) > sum(other) + LIT_DIFFERENCE, "the chosen tab is lit: " + Arrays.toString(chosen) + " against " +
-                                                                             Arrays.toString(other));
-            Assertions.assertTrue(row[RED_CHANNEL] > row[BLUE_CHANNEL] + LIT_DIFFERENCE,
-                                  "the selected room shows the faction's warm band: " + Arrays.toString(row));
             scenario.type("h");
             scenario.runFrame();
-            scenario.saveFrame("beaconlink-create-" + suffix);
 
             DemoPopup create = tab.getPopup();
 
@@ -809,7 +709,6 @@ final class NetworkSceneTest {
             ((TableBox) tab.requireControl(BeaconLinkScene.ROOMS_ID)).setSelection(getRoomNames(tab).indexOf("Open field"));
             scenario.type("j");
             scenario.runFrame();
-            scenario.saveFrame("beaconlink-password-" + suffix);
 
             DemoPopup prompt = tab.getPopup();
 

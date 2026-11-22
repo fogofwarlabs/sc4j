@@ -52,7 +52,6 @@ final class DemoGameSceneTest {
             scenario.runUpdate(UPDATE_MILLISECONDS);
             scenario.press(Key.ESCAPE);
             scenario.runFrame();
-            scenario.saveFrame("game-menu");
             assertMenuOpen(scenario);
 
             long frame = game.getClock().getFrame();

@@ -7,7 +7,7 @@ plugins {
 // The engine client framework: runtime host, scenes, input, the renderer with its OpenGL defaults, text, HUD, dialogs, cursors, skins, the
 // world view and audio with its OpenAL default. Of the engine modules only this one uses LWJGL. No network and no mod API.
 tasks.withType(Test).configureEach {
-    // The OpenGL checks of the client defaults draw on a hidden window and read it back; false turns them off.
+    // The OpenGL and GLFW checks of the client defaults open a hidden window; false turns them off.
     systemProperty 'sc4j.render.smoke', providers.gradleProperty('sc4j.render.smoke').getOrElse('false')
 }
 

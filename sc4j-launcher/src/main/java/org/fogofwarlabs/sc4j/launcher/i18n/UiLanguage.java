@@ -17,7 +17,11 @@ public enum UiLanguage {
     /**
      * Korean.
      */
-    KOREAN("ko", Locale.KOREAN);
+    KOREAN("ko", Locale.KOREAN),
+    /**
+     * Simplified Chinese, also the language of a system in any other Chinese locale.
+     */
+    CHINESE("zh", Locale.SIMPLIFIED_CHINESE);
 
     /**
      * Selects the language of the launcher's texts.

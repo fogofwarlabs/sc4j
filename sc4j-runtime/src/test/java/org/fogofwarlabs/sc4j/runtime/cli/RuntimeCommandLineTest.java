@@ -15,7 +15,8 @@ final class RuntimeCommandLineTest {
         RuntimeCommandLine commandLine = RuntimeCommandLine.parse(new String[]{
                 "--mod", "mods/my-mod.jar", "--install", "install", "--settings", "my-mod.json", "--storage", "storage", "--log", "logs",
                 "--account", "accounts/0123456789abcdef", "--seeds", "seeds.json", "--seed", "127.0.0.1:7455", "--seed", "[::1]:7456",
-                "--peers", "peers.json", "--headless", "--replay", "game.sc4r", "--join", "192.0.2.2:6121", "--", "--skirmish", "--mod", "x"
+                "--peers", "peers.json", "--no-port-mapping",
+                "--headless", "--replay", "game.sc4r", "--join", "192.0.2.2:6121", "--", "--skirmish", "--mod", "x"
         });
 
         Assertions.assertEquals(Path.of("mods/my-mod.jar").toAbsolutePath(), commandLine.getMod());
@@ -28,6 +29,7 @@ final class RuntimeCommandLineTest {
         Assertions.assertEquals(List.of("127.0.0.1:7455", "[::1]:7456"), commandLine.getSeeds().stream().map(Object::toString).toList());
         Assertions.assertEquals(Path.of("peers.json").toAbsolutePath(), commandLine.getPeersFile());
         Assertions.assertTrue(commandLine.hasSeedSource());
+        Assertions.assertFalse(commandLine.isPortMapping());
         Assertions.assertTrue(commandLine.isHeadless());
         Assertions.assertEquals(Path.of("game.sc4r").toAbsolutePath(), commandLine.getReplay());
         Assertions.assertEquals("192.0.2.2:6121", commandLine.getJoin());
@@ -48,6 +50,7 @@ final class RuntimeCommandLineTest {
         Assertions.assertEquals(List.of(), commandLine.getSeeds());
         Assertions.assertNull(commandLine.getPeersFile());
         Assertions.assertFalse(commandLine.hasSeedSource(), "a run without a seed source offers no Beacon.Link");
+        Assertions.assertTrue(commandLine.isPortMapping(), "Beacon.Link sessions map their socket unless told not to");
         Assertions.assertFalse(commandLine.isHeadless());
         Assertions.assertEquals(List.of(), commandLine.getModArguments());
         Assertions.assertTrue(RuntimeCommandLine.parse(new String[]{"--help"}).isHelp());

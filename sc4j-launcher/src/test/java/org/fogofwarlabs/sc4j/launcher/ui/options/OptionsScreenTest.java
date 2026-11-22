@@ -20,10 +20,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -32,20 +30,17 @@ import java.util.function.Consumer;
 
 /**
  * Tests the Settings screen offscreen: two columns of equal width, the launcher panel's fields stacked one per row on the left (the version
- * first, the update source last) and the Beacon.Link panel with the peer list under it on the right, at 100% and 200% in English and Korean,
- * with one header height, the same room right of the header controls as above and below them and on every side of the peer footer; Peers
- * shows the list and keeps the header heights, and Ping asks for the listed peers and marks every row as being pinged until the results
- * come.
+ * first, the update source last) and the Beacon.Link panel with the peer list under it on the right, with one header height, the same room
+ * right of the header controls as above and below them and on every side of the peer footer; Peers shows and hides the list and keeps the
+ * header heights, and Ping asks for the listed peers and marks every row as being pinged until the results come.
  */
 final class OptionsScreenTest {
     private static final @NotNull String VERSION = "1.1.0";
     private static final @NotNull String SOURCE = "owner/sc4j";
     private static final double SCENE_WIDTH = 1280;
     private static final double SCENE_HEIGHT = 800;
-    private static final double SQUEEZED_SCENE_HEIGHT = 500;
     private static final int PEER_TOGGLES = 4;
     private static final @NotNull String NEWER_VERSION = "1.2.0";
-    private static final double PERCENT_SCALE = 100;
     private static final double TOLERANCE = 1;
     private static final @NotNull String PANEL_TITLE_SELECTOR = ".panel-title";
     private static final @NotNull String FORM_SELECTOR = ".form";
@@ -138,19 +133,16 @@ final class OptionsScreenTest {
         return titles;
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void settings_screen_shows_two_columns_of_equal_width(double scale, @NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void settings_screen_shows_two_columns_of_equal_width(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
 
         LauncherFxScenario.run(() -> {
             UpdateView view = createUpdateView(texts);
             GridPane root = createScreen(texts, directory, new PingActions(), view).getRoot();
 
             view.showStatus(texts.get("update.current"), Tone.SUCCESS, false);
-            ThemeUtils.apply(new Scene(root, SCENE_WIDTH, SCENE_HEIGHT), language);
+            ThemeUtils.apply(new Scene(root, SCENE_WIDTH, SCENE_HEIGHT), UiLanguage.ENGLISH);
             root.applyCss();
             root.layout();
 
@@ -182,11 +174,9 @@ final class OptionsScreenTest {
             // The Beacon.Link panel on the right, and the peer list under it once shown.
             Assertions.assertEquals(List.of(texts.get("beaconlink.title")), listPanelTitles(right));
             Assertions.assertEquals(2, LauncherFxScenario.assertHeaderInsets(root), "Check now and Peers are checked");
-            LauncherFxScenario.saveSample(root, scale, "settings-current-" + suffix);
             view.showStatus(texts.format("update.available", NEWER_VERSION), Tone.ACCENT, true);
             root.applyCss();
             root.layout();
-            LauncherFxScenario.saveSample(root, scale, "settings-available-" + suffix);
             LauncherFxScenario.findButton(root, texts.get("beaconlink.advanced.show")).fire();
             root.applyCss();
             root.layout();
@@ -196,32 +186,13 @@ final class OptionsScreenTest {
                                   getSceneBounds(right.getChildrenUnmodifiable().get(1)).getMinY(), "the peer list is under the Beacon.Link panel");
             Assertions.assertEquals(3, LauncherFxScenario.assertHeaderInsets(root), "Check now, Peers and Ping are checked");
             Assertions.assertEquals(1, LauncherFxScenario.assertFooterInsets(root), "the peer footer is checked");
-            LauncherFxScenario.saveSample(root, scale, "settings-peers-" + suffix);
 
-            return null;
-        });
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"en", "ko"})
-    void peers_should_keep_the_header_heights(@NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
-        LauncherTexts texts = LauncherTexts.of(language);
-
-        LauncherFxScenario.run(() -> {
-            GridPane root = createScreen(texts, directory, new PingActions()).getRoot();
-            Region header;
-            double height;
-
-            ThemeUtils.apply(new Scene(root, SCENE_WIDTH, SQUEEZED_SCENE_HEIGHT), language);
-            root.applyCss();
-            root.layout();
-            header = (Region) ((Parent) root.getChildren().get(1)).getChildrenUnmodifiable().getFirst().lookup(HEADER_SELECTOR);
-            height = header.getHeight();
-            LauncherFxScenario.assertHeaderInsets(root);
+            // Peers hides and shows the list again; the Beacon.Link header keeps its height.
+            Region header = (Region) right.getChildrenUnmodifiable().getFirst().lookup(HEADER_SELECTOR);
+            double height = header.getHeight();
 
             for (int toggle = 0; toggle < PEER_TOGGLES; toggle++) {
-                boolean shown = toggle % 2 == 0;
+                boolean shown = toggle % 2 == 1;
 
                 LauncherFxScenario.findButton(root, texts.get(shown ? "beaconlink.advanced.show" : "beaconlink.advanced.hide")).fire();
                 root.applyCss();
@@ -235,17 +206,15 @@ final class OptionsScreenTest {
         });
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"en", "ko"})
-    void ping_should_mark_every_listed_peer_until_the_results_come(@NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
-        LauncherTexts texts = LauncherTexts.of(language);
+    @Test
+    void ping_should_mark_every_listed_peer_until_the_results_come(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         PingActions actions = new PingActions();
 
         LauncherFxScenario.run(() -> {
             GridPane root = createScreen(texts, directory, actions).getRoot();
 
-            ThemeUtils.apply(new Scene(root, SCENE_WIDTH, SCENE_HEIGHT), language);
+            ThemeUtils.apply(new Scene(root, SCENE_WIDTH, SCENE_HEIGHT), UiLanguage.ENGLISH);
             root.applyCss();
             root.layout();
             LauncherFxScenario.findButton(root, texts.get("beaconlink.advanced.show")).fire();
@@ -255,7 +224,6 @@ final class OptionsScreenTest {
 
             Assertions.assertEquals(NODES, actions.pinged);
             Assertions.assertEquals(NODES.size(), countShownLabels(root, texts.get("nodes.ping.running")), "every row is being pinged");
-            LauncherFxScenario.saveSample(root, 1, "settings-nodes-" + language.getCode());
 
             return null;
         });

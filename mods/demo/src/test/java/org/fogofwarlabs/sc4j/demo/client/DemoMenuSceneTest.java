@@ -21,7 +21,6 @@ import java.nio.file.Path;
  * scales from 1.0 to 2.0, down to the engine minimum logical area.
  */
 final class DemoMenuSceneTest {
-    private static final int PERCENT = 100;
     /**
      * The game loops of the shown outcome and their game time at normal speed.
      */
@@ -43,26 +42,21 @@ final class DemoMenuSceneTest {
     void demo_menus_show_their_dialogs_whole_at_every_window_size_and_scale(int width, int height, float scale, @TempDir @NotNull Path storage) throws IOException,
                                                                                                                                                        ManifestException,
                                                                                                                                                        ModException {
-        String suffix = width + "x" + height + "-" + Math.round(scale * PERCENT);
-
         try (DemoClientScenario scenario = new DemoClientScenario(storage, width, height)) {
             MainMenuScene menu = scenario.getMenu();
             DemoClient demo = menu.getDemo();
 
             scenario.getClient().setDisplayScale(DisplayScale.of(scale, 1));
             scenario.runFrame();
-            scenario.saveFrame("menu-main-" + suffix);
             DemoDialogAssert.assertShownWhole(scenario.getClient(), menu.requireDialog(), "the main menu");
 
             GameSetupScene setup = show(scenario, new GameSetupScene(demo, menu));
 
-            scenario.saveFrame("menu-setup-" + suffix);
             DemoDialogAssert.assertShownWhole(scenario.getClient(), setup.requireDialog(), "the game setup");
 
             GameFileListScene replays = show(scenario, GameFileListScene.createReplayList("Replays", demo.getTheme(), DemoClient.REPLAY_FOLDER,
                                                                                           DemoGameScene.LOOP_MILLISECONDS, menu));
 
-            scenario.saveFrame("menu-replays-" + suffix);
             DemoDialogAssert.assertShownWhole(scenario.getClient(), replays.getDialog(), "the replay list");
 
             show(scenario, menu);
@@ -72,7 +66,6 @@ final class DemoMenuSceneTest {
             });
 
             scenario.runFrame();
-            scenario.saveFrame("menu-options-" + suffix);
             DemoDialogAssert.assertShownWhole(scenario.getClient(), options.requireDialog(), "the options");
             options.close();
             scenario.runFrame();
@@ -80,13 +73,11 @@ final class DemoMenuSceneTest {
             OutcomeScene outcome = show(scenario, new OutcomeScene(demo, menu, PlayerOutcome.VICTORY, demo.getContent().getFactions().getFirst(),
                                                                    "Ashen Ford", OUTCOME_LOOPS, ""));
 
-            scenario.saveFrame("menu-outcome-" + suffix);
             DemoDialogAssert.assertShownWhole(scenario.getClient(), outcome.requireDialog(), "the outcome");
             Assertions.assertEquals(OUTCOME_TIME, outcome.requireControl(OutcomeScene.LENGTH_ID).getText(), "the outcome shows the game time");
 
             NetworkScene network = show(scenario, new NetworkScene(demo, menu, DemoNetworkSettings.ANY_PORTS));
 
-            scenario.saveFrame("menu-network-" + suffix);
             DemoDialogAssert.assertShownWhole(scenario.getClient(), network.requireDialog(), "the network screen");
 
             scenario.type("h");
@@ -95,7 +86,6 @@ final class DemoMenuSceneTest {
 
             NetworkRoomScene room = Assertions.assertInstanceOf(NetworkRoomScene.class, scenario.getScene(), "Host opens a room");
 
-            scenario.saveFrame("menu-room-" + suffix);
             DemoDialogAssert.assertShownWhole(scenario.getClient(), room.requireDialog(), "the room");
         }
     }

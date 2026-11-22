@@ -1,13 +1,16 @@
 package org.fogofwarlabs.sc4j.beaconlink.client;
 
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
+import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMappingConfiguration;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.identity.PlayerStamp;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Holds the timings of a Beacon.Link client: how often and how long a request is sent, when a node that failed is tried again, the requested
- * registration lifetime, the lifetime and refresh of a published room, and the community values: the player stamp difficulty, the lifetime
- * and refresh of a presence and the chat rate. {@link #createDefault()} gives the values of a normal run.
+ * registration lifetime, the lifetime and refresh of a published room, the community values (the player stamp difficulty, the lifetime and
+ * refresh of a presence and the chat rate) and the port mapping of the session socket on the router, off unless set.
+ * {@link #createDefault()} gives the values of a normal run without port mapping.
  */
 public final class ClientConfiguration {
     private static final long DEFAULT_RESEND_MILLIS = 1_000L;
@@ -42,6 +45,8 @@ public final class ClientConfiguration {
         private int chatBurst;
         private int chatRate;
 
+        private @Nullable PortMappingConfiguration portMapping;
+
         /**
          * Creates a {@link Builder} instance with the default values.
          */
@@ -59,6 +64,8 @@ public final class ClientConfiguration {
             this.presenceRefreshMillis  = DEFAULT_PRESENCE_REFRESH_MILLIS;
             this.chatBurst              = DEFAULT_CHAT_BURST;
             this.chatRate               = DEFAULT_CHAT_RATE;
+
+            this.portMapping = null;
         }
 
         /**
@@ -194,6 +201,18 @@ public final class ClientConfiguration {
         }
 
         /**
+         * Sets how the session socket is mapped on the router; the mapped address becomes the first address candidate of the session's channels.
+         *
+         * @param portMapping the router and lease settings, or {@code null} for no port mapping
+         * @return this instance for chaining
+         */
+        public @NotNull Builder setPortMapping(@Nullable PortMappingConfiguration portMapping) {
+            this.portMapping = portMapping;
+
+            return this;
+        }
+
+        /**
          * Builds a {@link ClientConfiguration} instance from the values set.
          *
          * @return the built {@link ClientConfiguration} instance
@@ -227,6 +246,8 @@ public final class ClientConfiguration {
     private final long presenceRefreshMillis;
     private final int chatBurst;
     private final int chatRate;
+
+    private final @Nullable PortMappingConfiguration portMapping;
 
     private ClientConfiguration(@NotNull Builder builder) {
         if (builder.resendMillis <= 0L || builder.requestAttempts <= 0 || builder.retryMillis <= 0L) {
@@ -265,6 +286,8 @@ public final class ClientConfiguration {
         this.presenceRefreshMillis  = builder.presenceRefreshMillis;
         this.chatBurst              = builder.chatBurst;
         this.chatRate               = builder.chatRate;
+
+        this.portMapping = builder.portMapping;
     }
 
     /**
@@ -342,5 +365,12 @@ public final class ClientConfiguration {
      */
     public int getChatRate() {
         return this.chatRate;
+    }
+
+    /**
+     * @return how the session socket is mapped on the router, or {@code null} for no port mapping
+     */
+    public @Nullable PortMappingConfiguration getPortMapping() {
+        return this.portMapping;
     }
 }

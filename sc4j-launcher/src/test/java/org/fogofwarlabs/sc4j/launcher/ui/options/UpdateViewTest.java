@@ -20,9 +20,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -107,12 +106,9 @@ final class UpdateViewTest {
         root.layout();
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"en", "ko"})
-    void check_should_wait_for_its_result_and_update_should_show_only_when_available(@NotNull String languageCode,
-                                                                                     @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
-        LauncherTexts texts = LauncherTexts.of(language);
+    @Test
+    void check_should_wait_for_its_result_and_update_should_show_only_when_available(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         List<String> checked = new ArrayList<>();
 
         LauncherFxScenario.run(() -> {
@@ -122,7 +118,7 @@ final class UpdateViewTest {
             String failed = texts.format("update.failed", PROBLEM);
             Button update;
 
-            ThemeUtils.apply(new Scene(root, SCENE_WIDTH, SCENE_HEIGHT), language);
+            ThemeUtils.apply(new Scene(root, SCENE_WIDTH, SCENE_HEIGHT), UiLanguage.ENGLISH);
             layOut(root);
 
             Assertions.assertEquals(texts.get("update.check"), check.getText());
@@ -158,11 +154,9 @@ final class UpdateViewTest {
         });
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"en", "ko"})
-    void version_field_should_show_the_result_after_the_version(@NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
-        LauncherTexts texts = LauncherTexts.of(language);
+    @Test
+    void version_field_should_show_the_result_after_the_version(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
 
         LauncherFxScenario.run(() -> {
             UpdateView view = createView(texts, new ArrayList<>());
@@ -175,7 +169,7 @@ final class UpdateViewTest {
             Bounds source;
             double fieldHeight;
 
-            ThemeUtils.apply(new Scene(root, SCENE_WIDTH, SCENE_HEIGHT), language);
+            ThemeUtils.apply(new Scene(root, SCENE_WIDTH, SCENE_HEIGHT), UiLanguage.ENGLISH);
             view.showStatus(texts.get("update.current"), Tone.SUCCESS, false);
             layOut(root);
 

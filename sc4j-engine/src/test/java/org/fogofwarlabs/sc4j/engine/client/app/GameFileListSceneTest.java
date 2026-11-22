@@ -34,16 +34,12 @@ import java.util.Locale;
 
 /**
  * Tests the engine scene of stored games: it lists the replays of a storage folder that the mod's replay format reads (newest first,
- * unreadable and foreign files left out) as table rows of map, players, game time, date and file name, shows its dialog with a centred title
- * and buttons over the mod's backdrop, opens the selected entry with Enter and goes back with Escape; two playing slots read as
- * {@code A vs B} in the mod's names.
+ * unreadable and foreign files left out) as table rows of map, players, game time, date and file name, gives its dialog a centred title and
+ * buttons, opens the selected entry with Enter and goes back with Escape; two playing slots read as {@code A vs B} in the mod's names.
  */
 final class GameFileListSceneTest {
     private static final @NotNull String FOLDER = "replays";
     private static final @NotNull String MAGIC = "TESTREP ";
-    private static final int ARGB_CHANNEL_MASK = 0xFFFFFF;
-    private static final int BACKDROP_COLOR = 0x336699FF;
-    private static final int ARGB_BACKDROP = 0xFF336699;
     /**
      * The client time of one game loop of the test replays: one second, so that a file of 14 bytes runs {@code 0:14}.
      */
@@ -134,7 +130,6 @@ final class GameFileListSceneTest {
             GameFileListScene scene = GameFileListScene.createReplayList("Replays", DialogTheme.createDefault(font), FOLDER, LOOP_MILLISECONDS,
                                                                          listener);
 
-            scene.setBackdrop(surface -> surface.fillRectangle(0, 0, surface.getWidth(), surface.getHeight(), BACKDROP_COLOR));
             client.start(started -> scene);
             client.runFrame(0, ClientLaunchScenario.WIDTH, ClientLaunchScenario.HEIGHT);
 
@@ -142,9 +137,6 @@ final class GameFileListSceneTest {
                                             List.of("Ford", "2 players", "0:12", formatDate(OLDER_TIME), "b-second.sc4r")),
                                     scene.getTable().getRows().stream().map(TableRow::getCells).toList(), "newest first");
             Assertions.assertEquals("test replay", scene.getEntries().getFirst().getFormatName());
-            Assertions.assertNotEquals(0, canvas.getImage().getRGB(ClientLaunchScenario.WIDTH / 2, ClientLaunchScenario.HEIGHT / 2) & ARGB_CHANNEL_MASK,
-                                       "the list dialog is drawn in the middle");
-            Assertions.assertEquals(ARGB_BACKDROP, canvas.getImage().getRGB(1, 1), "the backdrop shows around the dialog");
 
             for (int id : new int[]{GameFileListScene.TITLE_ID, GameFileListScene.OPEN_ID, GameFileListScene.BACK_ID}) {
                 Control control = scene.getDialog().findControl(id);

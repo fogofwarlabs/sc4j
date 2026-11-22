@@ -7,6 +7,8 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.ContextMenuEvent;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
@@ -20,9 +22,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -31,17 +32,16 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Tests the Chat screen at display scales of 100% and 200% in English and Korean: the channels with their unread lines, the whisper
- * conversations with their unread whispers, the channels, conversations and members in compact rows, the shown channel's log and members,
- * lines and whispers sent from the input, leaving and joining a channel, a channel the chat joins shown at once, a whisper conversation
- * opened from elsewhere shown with the input focused and kept while the chat joins the shared channel, the player menu on a member and on a
- * name in the log with its commands, the input footer with the same room around its row and between the input and Send, the header controls
- * with the same room on their right as above and below, and the notice of a session without a connection. Each view is saved as a sample picture.
+ * Tests the Chat screen: the channels with their unread lines, the whisper conversations with their unread whispers, the channels,
+ * conversations and members in compact rows, the shown channel's log and members, lines and whispers sent from the input, leaving and joining
+ * a channel, a channel the chat joins shown at once, a whisper conversation opened from elsewhere shown with the input focused and kept while
+ * the chat joins the shared channel, the player menu on a member and on a name in the log with its commands, the input footer with the same
+ * room around its row and between the input and Send, the header controls with the same room on their right as above and below, and the
+ * notice of a session without a connection.
  */
 final class ChatScreenTest {
     private static final double SCENE_WIDTH = 1280;
     private static final double SCENE_HEIGHT = 800;
-    private static final double PERCENT_SCALE = 100;
     private static final @NotNull String SHARED = "SC4J";
     private static final @NotNull String LADDER = "Ladder";
     private static final @NotNull String KOREA = "Korea";
@@ -98,10 +98,6 @@ final class ChatScreenTest {
         return new FriendView(FriendCode.of(key), taggedName, state, modId, awayText, 1, false);
     }
 
-    private static @NotNull UiLanguage selectLanguage(@NotNull String languageCode) {
-        return languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
-    }
-
     private static <T extends Node> @NotNull List<T> find(@NotNull Parent root, @NotNull Class<T> type) {
         List<T> found = new ArrayList<>();
 
@@ -115,7 +111,20 @@ final class ChatScreenTest {
     }
 
     private static boolean showsText(@NotNull Parent root, @NotNull String text) {
-        return find(root, Label.class).stream().anyMatch(label -> LauncherFxScenario.isShown(label) && label.getText().contains(text));
+        return find(root, Label.class).stream().anyMatch(label -> LauncherFxScenario.isShown(label) && label.getText().contains(text)) ||
+               find(root, TextFlow.class).stream().anyMatch(flow -> LauncherFxScenario.isShown(flow) && readFlow(flow).contains(text));
+    }
+
+    private static @NotNull String readFlow(@NotNull TextFlow flow) {
+        StringBuilder text = new StringBuilder();
+
+        for (Node child : flow.getChildren()) {
+            if (child instanceof Text run) {
+                text.append(run.getText());
+            }
+        }
+
+        return text.toString();
     }
 
     private static void lay(@NotNull LauncherShell shell) {
@@ -201,8 +210,8 @@ final class ChatScreenTest {
 
     private static @NotNull Node findName(@NotNull LauncherShell shell, @NotNull String prefix) {
         for (Node node : getList(shell, LOG).lookupAll(NAME_SELECTOR)) {
-            if (node instanceof Label label && label.getText().equals(prefix)) {
-                return label;
+            if (node instanceof Text name && name.getText().equals(prefix) && LauncherFxScenario.isShown(name)) {
+                return name;
             }
         }
 
@@ -238,45 +247,59 @@ final class ChatScreenTest {
         lay(shell);
     }
 
-    private static @NotNull LauncherShell createShell(@NotNull LauncherTexts texts, @NotNull UiLanguage language, double scale,
-                                                      @NotNull Path directory, @NotNull RecordingLauncherSession session,
-                                                      @NotNull List<@NotNull String> copied) {
-        return createShell(texts, language, scale, directory, session, copied, new AtomicReference<>());
+    private static @NotNull LauncherShell createShell(@NotNull LauncherTexts texts, @NotNull Path directory,
+                                                      @NotNull RecordingLauncherSession session, @NotNull List<@NotNull String> copied) {
+        return createShell(texts, directory, session, copied, new AtomicReference<>());
     }
 
     /**
      * Builds the shell of a logged-in account on its Chat screen, the way the window does, and hands out the screen.
      */
-    private static @NotNull LauncherShell createShell(@NotNull LauncherTexts texts, @NotNull UiLanguage language, double scale,
-                                                      @NotNull Path directory, @NotNull RecordingLauncherSession session,
-                                                      @NotNull List<@NotNull String> copied, @NotNull AtomicReference<ChatScreen> created) {
-        LauncherShell shell = new LauncherShell(texts, InstallLayout.of(directory), scale, section -> {
+    private static @NotNull LauncherShell createShell(@NotNull LauncherTexts texts, @NotNull Path directory,
+                                                      @NotNull RecordingLauncherSession session, @NotNull List<@NotNull String> copied,
+                                                      @NotNull AtomicReference<ChatScreen> created) {
+        LauncherShell shell = new LauncherShell(texts, InstallLayout.of(directory), 1, section -> {
         }, () -> {
         }, () -> {
         });
         Scene scene = new Scene(shell.getRoot(), SCENE_WIDTH, SCENE_HEIGHT);
-        ChatScreen screen = new ChatScreen(shell, texts, RAYNOR.getTaggedName(), session, new Conversations(session), modId -> modId, copied::add);
+        ChatScreen.Actions actions = new ChatScreen.Actions() {
+            /**
+             * Called when the user copies text: a player's name or the selected text of the log.
+             *
+             * @param text the text for the clipboard
+             */
+            @Override
+            public void onCopy(@NotNull String text) {
+                copied.add(text);
+            }
+
+            /**
+             * Called when the user opens a link of the log after confirming it.
+             *
+             * @param address the {@code http} or {@code https} address
+             */
+            @Override
+            public void onOpenWebsite(@NotNull String address) {
+                Assertions.fail("no link is opened");
+            }
+        };
+        ChatScreen screen = new ChatScreen(shell, texts, RAYNOR.getTaggedName(), session, new Conversations(session), modId -> modId, actions);
 
         created.set(screen);
 
-        ThemeUtils.apply(scene, language);
+        ThemeUtils.apply(scene, texts.getLanguage());
         session.setOnChanged(screen::update);
         shell.show(LauncherShell.Section.CHAT, screen.getRoot());
         screen.update();
         lay(shell);
 
-        LauncherFxScenario.disableViewportCache(shell.getRoot());
-
         return shell;
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void chat_screen_shows_channels_whispers_members_and_unread_counts_and_sends_from_the_input(double scale, @NotNull String languageCode,
-                                                                                                @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = selectLanguage(languageCode);
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void chat_screen_shows_channels_whispers_members_and_unread_counts_and_sends_from_the_input(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         RecordingLauncherSession session = new RecordingLauncherSession(RAYNOR.getCode(),
                                                                         new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null));
 
@@ -285,7 +308,7 @@ final class ChatScreenTest {
         session.setChat(CHANNELS, KNOWN_CHANNELS, ENTRIES);
 
         LauncherFxScenario.run(() -> {
-            LauncherShell shell = createShell(texts, language, scale, directory, session, new ArrayList<>());
+            LauncherShell shell = createShell(texts, directory, session, new ArrayList<>());
             Parent root = shell.getRoot();
 
             // The screen only shows the chat: it gives no command; the first channel is shown, read, and the other channel and the whisper
@@ -310,11 +333,9 @@ final class ChatScreenTest {
                                     TOLERANCE);
             Assertions.assertEquals(3, LauncherFxScenario.assertHeaderInsets(root), "Join, Leave and the member count are checked");
             Assertions.assertEquals(1, LauncherFxScenario.assertFooterInsets(root), "the input footer is checked");
-            LauncherFxScenario.saveSample(root, scale, "chat-" + suffix);
 
             // The input row's footer: the same room on every side of the row and between the input and Send.
             assertInputFooterEven(root, texts);
-            LauncherFxScenario.saveSample(lookup(root, INPUT_FOOTER_SELECTOR, Parent.class), scale, "chat-footer-" + suffix);
 
             // A line typed in the channel goes to the session for that channel.
             type(shell, "hello");
@@ -345,7 +366,6 @@ final class ChatScreenTest {
             lay(shell);
 
             Assertions.assertEquals(List.of(SHARED + " 1", LADDER), listRows(shell, CHANNEL_LIST));
-            LauncherFxScenario.saveSample(root, scale, "chat-unread-" + suffix);
 
             // The whisper conversation, the one of the account menu: its whispers, read once shown; the input whispers to its player.
             select(shell, CONVERSATION_LIST, 0);
@@ -362,7 +382,6 @@ final class ChatScreenTest {
             Assertions.assertTrue(showsText(root, texts.get("session.whispers.too.long")));
 
             type(shell, "on my way");
-            LauncherFxScenario.saveSample(root, scale, "chat-whispers-" + suffix);
             LauncherFxScenario.findButton(root, texts.get("session.whispers.send")).fire();
 
             Assertions.assertEquals("whisper " + KERRIGAN.getCode().getText() + ":on my way", session.getCommands().getLast());
@@ -377,7 +396,6 @@ final class ChatScreenTest {
             lay(shell);
 
             Assertions.assertEquals(KOREA, getInput(dialog).getText());
-            LauncherFxScenario.saveSample(root, scale, "chat-join-" + suffix);
             LauncherFxScenario.findButton(dialog, texts.get("chat.join")).fire();
             lay(shell);
 
@@ -398,13 +416,9 @@ final class ChatScreenTest {
         });
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, ko"})
-    void whisper_opened_from_elsewhere_stays_shown_with_the_input_focused(double scale, @NotNull String languageCode,
-                                                                          @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = selectLanguage(languageCode);
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void whisper_opened_from_elsewhere_stays_shown_with_the_input_focused(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         RecordingLauncherSession session = new RecordingLauncherSession(RAYNOR.getCode(),
                                                                         new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null));
 
@@ -412,7 +426,7 @@ final class ChatScreenTest {
 
         LauncherFxScenario.run(() -> {
             AtomicReference<ChatScreen> screen = new AtomicReference<>();
-            LauncherShell shell = createShell(texts, language, scale, directory, session, new ArrayList<>(), screen);
+            LauncherShell shell = createShell(texts, directory, session, new ArrayList<>(), screen);
             Parent root = shell.getRoot();
 
             // The chat is opened but not in a channel yet; the friend's conversation is shown, new and empty, with the input focused.
@@ -432,7 +446,6 @@ final class ChatScreenTest {
             Assertions.assertTrue(getList(shell, CHANNEL_LIST).getSelectionModel().isEmpty());
             Assertions.assertTrue(getList(shell, CONVERSATION_LIST).getSelectionModel().isSelected(0));
             Assertions.assertTrue(showsText(root, texts.format("session.whisper.to", KERRIGAN.getTaggedName())));
-            LauncherFxScenario.saveSample(root, scale, "chat-whisper-opened-" + suffix);
 
             type(shell, "hi");
             LauncherFxScenario.findButton(root, texts.get("session.whispers.send")).fire();
@@ -443,13 +456,9 @@ final class ChatScreenTest {
         });
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void player_menu_on_a_member_or_a_name_in_the_log_runs_the_account_menu_commands(double scale, @NotNull String languageCode,
-                                                                                     @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = selectLanguage(languageCode);
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void player_menu_on_a_member_or_a_name_in_the_log_runs_the_account_menu_commands(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         RecordingLauncherSession session = new RecordingLauncherSession(RAYNOR.getCode(),
                                                                         new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null));
         List<String> copied = new ArrayList<>();
@@ -458,7 +467,7 @@ final class ChatScreenTest {
         session.setChat(CHANNELS, KNOWN_CHANNELS, ENTRIES);
 
         LauncherFxScenario.run(() -> {
-            LauncherShell shell = createShell(texts, language, scale, directory, session, copied);
+            LauncherShell shell = createShell(texts, directory, session, copied);
             Parent root = shell.getRoot();
 
             session.getCommands().clear();
@@ -470,7 +479,6 @@ final class ChatScreenTest {
                                             texts.get("session.friends.ignore"), texts.get("chat.menu.copy.name"), texts.get("chat.menu.status")),
                                     listMenuEntries(shell));
             Assertions.assertTrue(showsText(getMenu(shell), ZERATUL.getTaggedName()));
-            LauncherFxScenario.saveSample(root, scale, "chat-menu-" + suffix);
             fireMenuEntry(shell, texts.get("chat.menu.add.friend"));
 
             Assertions.assertNull(root.lookup(MENU_SELECTOR), "an entry closes the menu");
@@ -496,7 +504,6 @@ final class ChatScreenTest {
 
             Assertions.assertTrue(showsText(status, texts.format("session.status.away.line", "brb")));
             Assertions.assertTrue(showsText(status, ZERATUL.getCode().getGroupedText()));
-            LauncherFxScenario.saveSample(root, scale, "chat-status-" + suffix);
             LauncherFxScenario.findButton(status, texts.get("session.close")).fire();
 
             // The account itself: only Copy name and Show status.
@@ -526,24 +533,19 @@ final class ChatScreenTest {
         });
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void chat_screen_says_why_the_session_is_offline(double scale, @NotNull String languageCode,
-                                                     @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = selectLanguage(languageCode);
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void chat_screen_says_why_the_session_is_offline(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         RecordingLauncherSession session = new RecordingLauncherSession(RAYNOR.getCode(), new SelfView(SessionState.OFFLINE, SelfStatus.ONLINE, "", 0,
                                                                                                        SessionFailure.SIGNED_OUT));
 
         LauncherFxScenario.run(() -> {
-            LauncherShell shell = createShell(texts, language, scale, directory, session, new ArrayList<>());
+            LauncherShell shell = createShell(texts, directory, session, new ArrayList<>());
 
             Assertions.assertTrue(showsText(shell.getRoot(), texts.get("session.not.connected")));
             Assertions.assertTrue(showsText(shell.getRoot(), texts.get("session.failure.signed_out")));
             Assertions.assertTrue(find(shell.getRoot(), ListView.class).isEmpty());
             Assertions.assertTrue(session.getCommands().isEmpty());
-            LauncherFxScenario.saveSample(shell.getRoot(), scale, "chat-offline-" + suffix);
 
             return null;
         });

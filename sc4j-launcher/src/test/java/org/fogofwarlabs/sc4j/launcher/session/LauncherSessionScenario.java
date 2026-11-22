@@ -124,7 +124,7 @@ public final class LauncherSessionScenario implements AutoCloseable {
         }
 
         LauncherNode started = LauncherNode.start(InstallLayout.of(directory), new NodeSettings(NodeRole.AUTOMATIC, port), LOOPBACK,
-                                                  ClientScenario.createNodeBuilder(), ProtocolClock.SYSTEM);
+                                                  ClientScenario.createNodeBuilder(), ProtocolClock.SYSTEM, null);
 
         Assertions.assertNotNull(started, "the node's install has no other launcher");
 

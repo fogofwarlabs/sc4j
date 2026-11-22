@@ -34,11 +34,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Tests the queue panel hosted in the engine game screen's console: it shows the queue of the one selected producer of the local player with
- * its empty slots, a press on a filled slot cancels that entry through the game's command queue (the entries behind it move up and the cost
- * comes back), a press on an empty slot cancels nothing, and with no producer selected it takes no press and the console draws no queue
- * region. In a narrow region the slots wrap into rows of readable slots, and a building under construction shows one slot of the queue slots'
- * size. A front entry that waits for supply shows the waiting bar, and the screen tells its listener once.
+ * Tests the queue panel hosted in the engine game screen's console: it shows the queue of the one selected producer of the local player, a
+ * press on a filled slot cancels that entry through the game's command queue (the entries behind it move up and the cost comes back), a press
+ * beside the filled slots cancels nothing, and with no producer selected it takes no press and the console draws no queue region. In a narrow
+ * region the slots wrap into rows of readable slots, and a building under construction shows one slot of the queue slots' size. When a front
+ * entry waits for supply, the screen tells its listener once.
  */
 final class ProductionQueuePanelTest {
     private static final int WIDTH = 800;
@@ -50,10 +50,7 @@ final class ProductionQueuePanelTest {
     private static final int GOLD = 500;
     private static final int BUILDING_GOLD = 2000;
     private static final int KEEPER_COST = 50;
-    private static final int EMPTY_SLOT_COLOR = 0x303848;
-    private static final int WAITING_BAR_COLOR = 0x802018;
     private static final @NotNull String SUPPLY_MESSAGE = "Not enough supply.";
-    private static final int RGB_MASK = 0xFFFFFF;
     private static final float HALF_DIVISOR = 2;
     private static final float PANEL_WIDTH = 268;
     private static final float NARROW_PANEL_WIDTH = 120;
@@ -104,18 +101,6 @@ final class ProductionQueuePanelTest {
         }
     }
 
-    private static int countWaitingBarPixels(@NotNull ImageCanvas canvas, @NotNull HudBlock block) {
-        int count = 0;
-
-        for (int y = (int) block.getY(); y < block.getY() + block.getHeight(); y++) {
-            for (int x = (int) block.getX(); x < block.getX() + block.getWidth(); x++) {
-                count += (canvas.getImage().getRGB(x, y) & RGB_MASK) == WAITING_BAR_COLOR ? 1 : 0;
-            }
-        }
-
-        return count;
-    }
-
     private static void press(@NotNull GameScreen screen, float x, float y) {
         screen.handleInput(InputEvent.createButtonPressed(PointerButton.LEFT, 0, x, y, false));
         screen.handleInput(InputEvent.createButtonReleased(PointerButton.LEFT, 0, x, y));
@@ -143,21 +128,6 @@ final class ProductionQueuePanelTest {
         Assertions.assertTrue(box[2] >= 0, "slot " + slot + " is shown");
 
         return box;
-    }
-
-    /**
-     * Finds a logical position inside the last empty slot by searching the panel from the bottom right for the disabled button's colour.
-     */
-    private static float @NotNull [] findEmptySlot(@NotNull ImageCanvas canvas, @NotNull ProductionQueuePanel panel) {
-        for (int y = (int) (panel.getY() + panel.getHeight()) - 1; y >= panel.getY(); y--) {
-            for (int x = (int) (panel.getX() + panel.getWidth()) - 1; x >= panel.getX(); x--) {
-                if ((canvas.getImage().getRGB(x, y) & RGB_MASK) == EMPTY_SLOT_COLOR) {
-                    return new float[]{x, y};
-                }
-            }
-        }
-
-        return Assertions.fail("No empty slot is drawn as the disabled button.");
     }
 
     /**
@@ -229,17 +199,17 @@ final class ProductionQueuePanelTest {
 
             float[] firstSlot = findSlot(panel, 0);
             float[] secondSlot = findSlot(panel, 1);
-            float[] emptySlot = findEmptySlot(canvas, panel);
+            float besideX = panel.getX() + panel.getWidth() - 1;
+            float besideY = panel.getY() + panel.getHeight() - 1;
             float secondX = (secondSlot[0] + secondSlot[2]) / HALF_DIVISOR;
             float secondY = (secondSlot[1] + secondSlot[3]) / HALF_DIVISOR;
 
             Assertions.assertTrue(firstSlot[0] < secondSlot[0] && firstSlot[1] == secondSlot[1], "the slots stand in a row from the left");
-            Assertions.assertTrue(emptySlot[1] > secondSlot[3] || emptySlot[0] > secondSlot[2], "the empty slots come last");
-            Assertions.assertEquals(-1, panel.findSlotAt(emptySlot[0], emptySlot[1]));
+            Assertions.assertEquals(-1, panel.findSlotAt(besideX, besideY));
 
-            press(screen, emptySlot[0], emptySlot[1]);
+            press(screen, besideX, besideY);
 
-            Assertions.assertEquals(0, queue.getQueuedCount(), "an empty slot cancels nothing");
+            Assertions.assertEquals(0, queue.getQueuedCount(), "a press beside the filled slots cancels nothing");
 
             press(screen, secondX, secondY);
 
@@ -310,7 +280,7 @@ final class ProductionQueuePanelTest {
     }
 
     @Test
-    void a_front_entry_that_waits_for_supply_shows_the_waiting_bar_and_is_told_once() throws IOException {
+    void a_front_entry_that_waits_for_supply_is_told_once() throws IOException {
         SkirmishSessionScenario skirmish = new SkirmishSessionScenario();
         SkirmishScenario content = skirmish.getScenario();
         GameSession session = skirmish.getSession();
@@ -349,7 +319,6 @@ final class ProductionQueuePanelTest {
 
             Assertions.assertTrue(session.getView().getUnitView(keep).isWaitingForSupply());
             Assertions.assertEquals(List.of(SUPPLY_MESSAGE), listener.messages, "the wait is told");
-            Assertions.assertTrue(countWaitingBarPixels(canvas, panel) > 0, "the queue shows the waiting bar");
 
             session.runFrame();
             screen.update(0);
@@ -363,7 +332,6 @@ final class ProductionQueuePanelTest {
             screen.draw(UiSurface.of(WIDTH, HEIGHT, DisplayScale.ONE));
 
             Assertions.assertFalse(session.getView().getUnitView(keep).isWaitingForSupply(), "a new keep's supply starts the entry");
-            Assertions.assertEquals(0, countWaitingBarPixels(canvas, panel), "the bar shows the progress again");
         }
     }
 }

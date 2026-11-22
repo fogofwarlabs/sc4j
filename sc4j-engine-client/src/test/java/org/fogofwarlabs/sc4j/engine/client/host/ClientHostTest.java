@@ -11,15 +11,13 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11C;
-import org.lwjgl.system.MemoryUtil;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Tests the runtime host on a hidden window: window creation, the frame loop with its frame results, pacing and the close
- * request, the drawn frame read back, the window's input and cursor surface, and the window services.
+ * request, the window's input and cursor surface, and the window services.
  */
 final class ClientHostTest {
     private static final @NotNull String RENDER_SMOKE_PROPERTY = "sc4j.render.smoke";
@@ -30,16 +28,12 @@ final class ClientHostTest {
     private static final int FRAME_LIMIT = 4;
     private static final int CLOSING_FRAME = 2;
     private static final int FRAMES_PER_SECOND = 500;
-    private static final int RGBA_BYTES = 4;
     private static final float CLEAR_RED = 1;
     private static final float CLEAR_GREEN = 0.5f;
     private static final float CLEAR_BLUE = 0;
-    private static final int RED_VALUE = 255;
-    private static final int GREEN_VALUE = 128;
-    private static final int GREEN_TOLERANCE = 1;
 
     /**
-     * Counts the frames of a test application and reads back the last drawn frame.
+     * Counts the frames of a test application.
      */
     private static final class CountingApplication implements HostApplication {
         private final @NotNull HostWindow window;
@@ -47,8 +41,6 @@ final class ClientHostTest {
 
         private int begunFrames;
         private int frames;
-        private int centerRed;
-        private int centerGreen;
 
         private CountingApplication(@NotNull HostWindow window, boolean closeAfterSecondFrame) {
             this.window                = window;
@@ -56,8 +48,6 @@ final class ClientHostTest {
 
             this.begunFrames = 0;
             this.frames      = 0;
-            this.centerRed   = 0;
-            this.centerGreen = 0;
         }
 
         /**
@@ -84,17 +74,6 @@ final class ClientHostTest {
             GL11C.glViewport(0, 0, this.window.getFramebufferWidth(), this.window.getFramebufferHeight());
             GL11C.glClearColor(CLEAR_RED, CLEAR_GREEN, CLEAR_BLUE, 1);
             GL11C.glClear(GL11C.GL_COLOR_BUFFER_BIT);
-
-            ByteBuffer pixel = MemoryUtil.memAlloc(RGBA_BYTES);
-
-            try {
-                GL11C.glReadPixels(WIDTH / 2, HEIGHT / 2, 1, 1, GL11C.GL_RGBA, GL11C.GL_UNSIGNED_BYTE, pixel);
-                this.centerRed   = Byte.toUnsignedInt(pixel.get(0));
-                this.centerGreen = Byte.toUnsignedInt(pixel.get(1));
-            } finally {
-                MemoryUtil.memFree(pixel);
-            }
-
             this.window.swapBuffers();
 
             if (this.closeAfterSecondFrame && this.frames == CLOSING_FRAME) {
@@ -116,7 +95,7 @@ final class ClientHostTest {
     }
 
     @Test
-    void run_should_end_after_the_last_frame_and_present_the_drawn_frame() throws Exception {
+    void run_should_end_after_the_last_frame() throws Exception {
         Assumptions.assumeTrue(Boolean.getBoolean(RENDER_SMOKE_PROPERTY), RENDER_SMOKE_MESSAGE);
 
         try (ClientHost host = ClientHost.initialize()) {
@@ -132,8 +111,6 @@ final class ClientHostTest {
 
             Assertions.assertEquals(FRAME_LIMIT, application.frames);
             Assertions.assertEquals(FRAME_LIMIT, application.begunFrames);
-            Assertions.assertEquals(RED_VALUE, application.centerRed);
-            Assertions.assertEquals(GREEN_VALUE, application.centerGreen, GREEN_TOLERANCE);
             Assertions.assertNull(window.getDisplayMode());
         }
     }

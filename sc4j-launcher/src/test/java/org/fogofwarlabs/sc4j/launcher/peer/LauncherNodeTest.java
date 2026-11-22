@@ -6,6 +6,8 @@ import org.fogofwarlabs.sc4j.beaconlink.client.BeaconLinkClient;
 import org.fogofwarlabs.sc4j.beaconlink.client.ClientBeaconLink;
 import org.fogofwarlabs.sc4j.beaconlink.client.ClientConfiguration;
 import org.fogofwarlabs.sc4j.beaconlink.client.ClientSetup;
+import org.fogofwarlabs.sc4j.beaconlink.client.mapping.MappingProtocol;
+import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMapping;
 import org.fogofwarlabs.sc4j.beaconlink.peer.MeshPeer;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.Account;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.AccountStore;
@@ -22,6 +24,7 @@ import org.fogofwarlabs.sc4j.beaconlink.protocol.identity.PlayerStamp;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.message.Envelope;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.message.NodeEndpoint;
 import org.fogofwarlabs.sc4j.beaconlink.test.client.ClientScenario;
+import org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.*;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
@@ -69,6 +72,9 @@ final class LauncherNodeTest {
     private static final long STEPPED_WAIT_MILLIS = 300_000L;
     private static final int BUFFER_LENGTH = Envelope.MAXIMUM_DATAGRAM_LENGTH + 1;
     private static final @NotNull String CHANNEL = "General";
+    private static final @NotNull InetAddress MAPPED_ADDRESS = InetAddress.ofLiteral("203.0.113.7");
+    private static final int MAPPING_LEASE_SECONDS = 3_600;
+    private static final long QUIET_MILLIS = 1_500L;
     private static final @NotNull RoomSettings SETTINGS = new RoomSettings("Evening game", "Ashen Ford", 1, 4);
 
     /**
@@ -285,7 +291,7 @@ final class LauncherNodeTest {
 
     private static @NotNull LauncherNode start(@NotNull InstallLayout install, @NotNull NodeSettings settings,
                                                @NotNull PeerConfiguration.Builder configuration, @NotNull ProtocolClock clock) throws IOException {
-        LauncherNode node = LauncherNode.start(install, settings, LOOPBACK, configuration, clock);
+        LauncherNode node = LauncherNode.start(install, settings, LOOPBACK, configuration, clock, null);
 
         if (node == null) {
             throw Exceptions.newAssertionError("Another launcher holds the node of {0}.", install.getRoot());
@@ -490,7 +496,7 @@ final class LauncherNodeTest {
         try (LauncherNode first = start(install, settings, createConfiguration())) {
             key = first.getKey();
 
-            Assertions.assertNull(LauncherNode.start(install, settings, LOOPBACK, createConfiguration(), ProtocolClock.SYSTEM),
+            Assertions.assertNull(LauncherNode.start(install, settings, LOOPBACK, createConfiguration(), ProtocolClock.SYSTEM, null),
                                   "a second launcher of the install does not take the node");
         }
 
@@ -499,6 +505,46 @@ final class LauncherNodeTest {
         try (LauncherNode later = start(install, settings, createConfiguration())) {
             Assertions.assertEquals(key, later.getKey(), "the node keeps its key");
             Assertions.assertEquals(settings.getPort(), later.getLocalAddress().getPort(), "the node keeps its port");
+        }
+    }
+
+    @Test
+    @Timeout(TEST_SECONDS)
+    void the_node_maps_its_port_only_in_the_automatic_role_with_port_mapping_on(@TempDir @NotNull Path directory) throws IOException,
+                                                                                                                         InterruptedException {
+        try (GatewayScenario gateway = GatewayScenario.open(MAPPED_ADDRESS)) {
+            NodeSettings automatic = new NodeSettings(NodeRole.AUTOMATIC, findFreePort());
+
+            try (LauncherNode node = LauncherNode.start(InstallLayout.of(directory.resolve("automatic")), automatic, LOOPBACK, createConfiguration(),
+                                                        ProtocolClock.SYSTEM, gateway.createConfiguration().build())) {
+                Assertions.assertNotNull(node);
+                await(() -> node.getPortMapping() != null, "the node maps its port");
+
+                PortMapping mapping = node.getPortMapping();
+
+                Assertions.assertNotNull(mapping);
+                Assertions.assertEquals(node.getLocalAddress().getPort(), mapping.getInternalPort());
+                Assertions.assertEquals(new InetSocketAddress(MAPPED_ADDRESS, automatic.getPort()), mapping.getExternalAddress());
+            }
+
+            await(() -> gateway.getRequestedLifetimes(MappingProtocol.PCP).size() > 1, "the router receives the release");
+            Assertions.assertEquals(List.of(MAPPING_LEASE_SECONDS, 0), gateway.getRequestedLifetimes(MappingProtocol.PCP),
+                                    "the node's close releases the mapping");
+
+            int datagrams = gateway.getDatagramCount();
+
+            List<NodeSettings> unmapped = List.of(new NodeSettings(NodeRole.OFF, findFreePort()), new NodeSettings(NodeRole.AUTOMATIC, findFreePort(), false));
+
+            for (NodeSettings settings : unmapped) {
+                try (LauncherNode node = LauncherNode.start(InstallLayout.of(directory.resolve(settings.getRole().getName())), settings, LOOPBACK,
+                                                            createConfiguration(), ProtocolClock.SYSTEM, gateway.createConfiguration().build())) {
+                    Assertions.assertNotNull(node);
+                    Thread.sleep(QUIET_MILLIS);
+                    Assertions.assertNull(node.getPortMapping());
+                }
+            }
+
+            Assertions.assertEquals(datagrams, gateway.getDatagramCount(), "the off role and the setting off ask the router nothing");
         }
     }
 

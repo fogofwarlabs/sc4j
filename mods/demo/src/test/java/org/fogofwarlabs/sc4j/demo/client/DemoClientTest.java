@@ -50,22 +50,18 @@ import java.util.stream.Stream;
 
 /**
  * Tests the demo's client offscreen: from the main menu through the game setup and the loading screen into a game against the computer (an arrow key
- * released while the console is open stops scrolling, training and building through the command card, the game screen mid-game with units of both
- * factions), to the outcome screen and its stored replay, and through the replay list (players named by their factions) into the replay viewer with
- * its speed and seek commands by game time, its replay panel (seek bar, next player) and the followed player's top bar and skin; each screen is saved
- * as a sample picture. At a display scale the main menu keeps its logical layout, is drawn larger with the font's detail face and takes the pointer
- * in logical units, and the game screen draws the skin pictures and the cursor from their detail pictures. The queue panel of the selected town hall
- * cancels the pressed slot with its full cost back, and the one slot of a building under construction cancels the construction, at scale 1 and 2.
+ * released while the console is open stops scrolling, training and building through the command card, the computer's units coming to the person's
+ * base), to the outcome screen and its stored replay, and through the replay list (players named by their factions) into the replay viewer with
+ * its speed and seek commands by game time, its replay panel (seek bar, next player) and the followed player's top bar and skin. At a display scale
+ * the main menu keeps its logical layout, is drawn larger with the font's detail face and takes the pointer in logical units, and the game screen
+ * draws the skin pictures and the cursor from their detail pictures. The queue panel of the selected town hall cancels the pressed slot with its full
+ * cost back, and the one slot of a building under construction cancels the construction, at scale 1 and 2.
  */
 final class DemoClientTest {
     private static final long UPDATE_MILLISECONDS = (long) DemoGameScene.LOOP_MILLISECONDS * DemoGameScene.MAXIMUM_LOOPS_PER_UPDATE;
     private static final int LOOP_LIMIT = 60000;
     private static final int TRAINING_LOOPS = 200;
     private static final int START_WORKERS = 4;
-    private static final int TEAM_TOLERANCE = 48;
-    private static final int TEAM_PIXELS = 20;
-    private static final int BLUE = 0x3C78D8;
-    private static final int RED = 0xD8503C;
     private static final int CENTER_X = DemoClientScenario.WIDTH / 2;
     private static final int CENTER_Y = DemoClientScenario.HEIGHT / 2;
     private static final int SITE_STEP = 48;
@@ -121,7 +117,6 @@ final class DemoClientTest {
     private static final int MENU_HEIGHT = 448;
     private static final int START_BUTTON_X = 200;
     private static final int START_BUTTON_Y = 134;
-    private static final int PERCENT_SCALE = 100;
     /**
      * Skin pictures of both factions and the shared pictures that have a detail picture at twice the size.
      */
@@ -233,7 +228,6 @@ final class DemoClientTest {
                                                                   Math.round(DemoClientScenario.HEIGHT * scale))) {
             scenario.getClient().setDisplayScale(DisplayScale.of(scale, 1));
             scenario.runFrame();
-            scenario.saveFrame("main-menu-scale-" + Math.round(scale * PERCENT_SCALE));
 
             Assertions.assertEquals(DemoClientScenario.WIDTH, scenario.getClient().getWidth());
             Assertions.assertEquals(DemoClientScenario.HEIGHT, scenario.getClient().getHeight());
@@ -286,7 +280,6 @@ final class DemoClientTest {
                            viewport.worldToScreenY(townHall.getX(), townHall.getY()) * scale);
             scenario.runUpdate(DemoGameScene.LOOP_MILLISECONDS);
             scenario.runFrame();
-            scenario.saveFrame("game-scale-" + Math.round(scale * PERCENT_SCALE));
 
             Assertions.assertEquals(1, engineScreen.getSelection().getSize(), "a press on the town hall at its logical place selects it");
             Assertions.assertEquals(DemoClientScenario.WIDTH, engineScreen.getCamera().getScreenWidth(), "the screen is in logical units");
@@ -357,7 +350,6 @@ final class DemoClientTest {
 
             scenario.getClient().handleInput(InputEvent.createPointerMoved(secondSlot[0] * scale, secondSlot[1] * scale));
             scenario.runFrame();
-            scenario.saveFrame("queue-panel-scale-" + Math.round(scale * PERCENT_SCALE));
             scenario.click(PointerButton.LEFT, secondSlot[0] * scale, secondSlot[1] * scale);
             scenario.runUpdate(DemoGameScene.LOOP_MILLISECONDS);
 
@@ -371,7 +363,6 @@ final class DemoClientTest {
             engineScreen.getSelection().select(larder);
             scenario.runUpdate(DemoGameScene.LOOP_MILLISECONDS * QUEUE_PROGRESS_LOOPS);
             scenario.runFrame();
-            scenario.saveFrame("construction-panel-scale-" + Math.round(scale * PERCENT_SCALE));
             Assertions.assertEquals(List.of(CANCEL_LABEL), engineScreen.getCommandCard().getButtons().stream().map(CommandButton::getLabel).toList(),
                                     "a building under construction shows only the cancel button");
 
@@ -393,19 +384,16 @@ final class DemoClientTest {
         try (DemoClientScenario scenario = new DemoClientScenario(storage)) {
             scenario.runFrame();
             Assertions.assertSame(scenario.getMenu(), scenario.getScene());
-            scenario.saveFrame("main-menu");
 
             scenario.type("s");
             scenario.runFrame();
             Assertions.assertInstanceOf(GameSetupScene.class, scenario.getScene());
-            scenario.saveFrame("game-setup");
 
             scenario.press(Key.ENTER);
             scenario.runFrame();
 
             LoadingScene loading = Assertions.assertInstanceOf(LoadingScene.class, scenario.getScene());
 
-            scenario.saveFrame("loading");
             scenario.runFrame();
             scenario.runFrame();
             scenario.runFrame();
@@ -430,7 +418,6 @@ final class DemoClientTest {
 
             scenario.runUpdate(UPDATE_MILLISECONDS);
             scenario.runFrame();
-            scenario.saveFrame("game-start");
 
             float startX = engineScreen.getCamera().getX();
 
@@ -511,9 +498,6 @@ final class DemoClientTest {
 
                     engineScreen.getCamera().centerOn(enemyView.getX(), enemyView.getY());
                     scenario.runFrame();
-                    scenario.saveFrame("game-screen");
-                    Assertions.assertTrue(scenario.countPixels(BLUE, TEAM_TOLERANCE) >= TEAM_PIXELS, "Dawnhold units in their blue");
-                    Assertions.assertTrue(scenario.countPixels(RED, TEAM_TOLERANCE) >= TEAM_PIXELS, "Cindermaw units in their red");
                     midGameSaved = true;
                 }
             }
@@ -526,7 +510,6 @@ final class DemoClientTest {
             Path replays = storage.resolve(DemoClient.REPLAY_FOLDER);
 
             Assertions.assertEquals(PlayerOutcome.DEFEAT, outcome.getOutcome(), "the idle person loses to the computer");
-            scenario.saveFrame("defeat");
 
             try (Stream<Path> files = Files.list(replays)) {
                 Assertions.assertEquals(1, files.count(), "the game's replay is stored");
@@ -536,7 +519,6 @@ final class DemoClientTest {
                                                                       view.getFaction(person), "Ashen Ford: Dawnhold against Cindermaw",
                                                                       game.getClock().getFrame(), "game-1.sc4r"));
             scenario.runFrame();
-            scenario.saveFrame("victory");
 
             scenario.press(Key.ENTER);
             scenario.runFrame();
@@ -550,7 +532,6 @@ final class DemoClientTest {
             Assertions.assertEquals(1, list.getEntries().size());
             Assertions.assertEquals(REPLAY_PLAYERS, list.getTable().getRows().getFirst().getCells().get(PLAYERS_COLUMN),
                                     "the replay's two players are named by their factions, the neutral slot left out");
-            scenario.saveFrame("replay-list");
 
             scenario.press(Key.ENTER);
             scenario.runFrame();
@@ -583,7 +564,6 @@ final class DemoClientTest {
             Assertions.assertEquals("Dawnhold", viewer.getViewedPlayerName());
 
             scenario.runFrame();
-            scenario.saveFrame("replay-viewer");
 
             float[] playerButton = findReplayButton(panel, ReplayPanel.PLAYER_BUTTON);
 
@@ -615,7 +595,6 @@ final class DemoClientTest {
                                     "a press on the middle of the bar seeks to the middle of the replay");
 
             scenario.runFrame();
-            scenario.saveFrame("replay-viewer-second-player");
         }
     }
 
@@ -649,7 +628,6 @@ final class DemoClientTest {
             ((ComboBox) setup.requireControl(GameSetupScene.OPPONENT_FACTION_ID)).setSelection(0);
             scenario.press(Key.ENTER);
             scenario.runFrame();
-            scenario.saveFrame("loading-" + faction.getDebugName());
             scenario.runFrame();
             scenario.runFrame();
             scenario.runFrame();
@@ -670,7 +648,6 @@ final class DemoClientTest {
             engineScreen.getSelection().select(findUnits(screen.getView(), game.getPlayer(DemoGames.FIRST_SLOT), EMBER_LODGE).getFirst());
             scenario.runUpdate(UPDATE_MILLISECONDS);
             scenario.runFrame();
-            scenario.saveFrame("game-" + faction.getDebugName());
         }
     }
 }

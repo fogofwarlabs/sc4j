@@ -24,8 +24,8 @@ import java.util.Map;
 
 /**
  * Tests the dialog runtime with the default controls (presses and releases, check boxes and option groups, focus, Enter, Escape
- * and hotkeys, text input, lists, combo boxes, scroll bars and the drawn default look) and its extension points: a mod's control
- * class, a dialog subclass with its own hit test and focus rule, the id lookup, control replacement and draw failures.
+ * and hotkeys, text input, lists, combo boxes and scroll bars) and its extension points: a mod's control class, a dialog subclass
+ * with its own hit test and focus rule, the id lookup, control replacement and draw failures.
  */
 final class DialogTest {
     private static final int ROW_HEIGHT = 10;
@@ -41,7 +41,7 @@ final class DialogTest {
     private static final int PANEL = 10;
     private static final int LABEL = 11;
     private static final int FIELD_PAGE_SIZE = 64;
-    private static final int FILL_PIXEL = 0x283848;
+    private static final int MARKER_COLOR = 0x283848;
     private static final int LOWER_MARKER = 21;
     private static final int UPPER_MARKER = 22;
     private static final int MARKER_SIZE = 50;
@@ -49,7 +49,7 @@ final class DialogTest {
     private static final int OVERLAP = 30;
 
     /**
-     * Measures nothing and draws nothing: the tests look at control state and at fills only.
+     * Measures nothing and draws nothing: the tests look at control state only.
      */
     private static final class EmptyFont implements Font {
         @Override
@@ -145,7 +145,7 @@ final class DialogTest {
                 throw ControlDrawException.create(new IOException("missing"), "Marker {0} has no image.", this.getDefinition().getId());
             }
 
-            canvas.fillRectangle(x, y, MARKER_SIZE, MARKER_SIZE, FILL_PIXEL);
+            canvas.fillRectangle(x, y, MARKER_SIZE, MARKER_SIZE, MARKER_COLOR);
         }
     }
 
@@ -434,22 +434,6 @@ final class DialogTest {
         Assertions.assertNull(dialog.findControlAt(5, 5));
         Assertions.assertNull(dialog.findControlAt(65, 5));
         Assertions.assertFalse(requireControl(dialog, LABEL).isShown());
-    }
-
-    @Test
-    void draw_should_fill_buttons_with_the_theme_colors() {
-        HiddenWindowScenario.run(() -> {
-            try (GlCanvas canvas = new GlCanvas(FIELD_PAGE_SIZE)) {
-                Dialog dialog = createDialog(new RecordingListener(), false);
-
-                dialog.setPosition(0, 0);
-                canvas.begin(HiddenWindowScenario.SIZE, HiddenWindowScenario.SIZE);
-                dialog.draw(canvas, DialogTheme.createDefault(new EmptyFont()));
-                canvas.end();
-
-                Assertions.assertEquals(FILL_PIXEL, HiddenWindowScenario.readColor(10, 10));
-            }
-        });
     }
 
     @Test

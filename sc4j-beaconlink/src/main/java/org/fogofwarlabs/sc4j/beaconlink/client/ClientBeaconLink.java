@@ -1,6 +1,7 @@
 package org.fogofwarlabs.sc4j.beaconlink.client;
 
 import org.fogofwarlabs.sc4j.base.exception.IgnoreException;
+import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMappingConfiguration;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.Account;
 import org.fogofwarlabs.sc4j.beaconlink.peer.bootstrap.KnownNodes;
 import org.fogofwarlabs.sc4j.beaconlink.peer.bootstrap.LearnedPeer;
@@ -47,14 +48,19 @@ public final class ClientBeaconLink implements BeaconLink, Closeable {
 
     /**
      * Creates a {@link ClientBeaconLink} instance with the default timings, a leaf embedded peer with the default limits, the system clock and
-     * a socket on any local address and port, so that the nodes of the internet are reachable.
+     * a socket on any local address and port, so that the nodes of the internet are reachable; with port mapping, each session's socket is
+     * mapped on the router with the default mapping settings ({@link PortMappingConfiguration#createDefault()}).
      *
-     * @param setup    the run's account, seeds and shared peers file
-     * @param identity the run's mod identity
+     * @param setup       the run's account, seeds and shared peers file
+     * @param identity    the run's mod identity
+     * @param portMapping whether the sessions' sockets are mapped on the router
      * @return the created {@link ClientBeaconLink} instance
      */
-    public static @NotNull ClientBeaconLink create(@NotNull ClientSetup setup, @NotNull ModIdentity identity) {
-        return new ClientBeaconLink(setup, identity, ClientConfiguration.createDefault(), new InetSocketAddress(0), ProtocolClock.SYSTEM);
+    public static @NotNull ClientBeaconLink create(@NotNull ClientSetup setup, @NotNull ModIdentity identity, boolean portMapping) {
+        PortMappingConfiguration mapping = portMapping ? PortMappingConfiguration.createDefault() : null;
+        ClientConfiguration configuration = new ClientConfiguration.Builder().setPortMapping(mapping).build();
+
+        return new ClientBeaconLink(setup, identity, configuration, new InetSocketAddress(0), ProtocolClock.SYSTEM);
     }
 
     /**
@@ -129,7 +135,8 @@ public final class ClientBeaconLink implements BeaconLink, Closeable {
 
     /**
      * Opens a session: reads the account's player key and stamp (a guest's are made at the first session), opens one UDP socket, runs the
-     * runtime's embedded peer on it (none without a peer configuration) and starts registering at the run's seeds and the best learned peers
+     * runtime's embedded peer on it (none without a peer configuration), maps its port on the router when the configuration names a port
+     * mapping and the socket is not on the loopback address, and starts registering at the run's seeds and the best learned peers
      * of the shared peers file with a connection number of its own; it records what it learns into that file (a damaged peers file is read as
      * empty with a warning). The session shows the account's name, or {@value BeaconLink#GUEST_NAME} for a guest. The session belongs to the
      * caller, who polls and closes it; the sessions still open are closed with this object.

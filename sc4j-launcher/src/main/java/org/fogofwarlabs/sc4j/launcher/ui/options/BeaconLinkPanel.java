@@ -28,7 +28,8 @@ import java.util.List;
 
 /**
  * Shows the Beacon.Link panel of the Settings screen: the node setting ("Help other players connect", the automatic role, with a short help
- * text, and its UDP port, applied with Apply, which restarts the launcher's node) and the node's status, refreshed every second while the panel is shown: how far it
+ * text), the port mapping setting (the router opens the ports of the node and of the games) and the node's UDP port, applied with Apply,
+ * which restarts the launcher's node, and the node's status, refreshed every second while the panel is shown: how far it
  * joined the network and its peer counts, in the automatic role also its reachability from the Internet and its local and external
  * addresses, or that another launcher runs the node. Keys are automatic and never shown; the Peers button shows and hides the peer list.
  */
@@ -70,6 +71,7 @@ final class BeaconLinkPanel {
     private final @NotNull Node advanced;
 
     private final @NotNull CheckBox helping;
+    private final @NotNull CheckBox mapping;
     private final @NotNull TextField port;
     private final @NotNull Label message;
     private final @NotNull Label state;
@@ -100,6 +102,7 @@ final class BeaconLinkPanel {
         this.advanced = advanced;
 
         this.helping        = new CheckBox(texts.get("beaconlink.node"));
+        this.mapping        = new CheckBox(texts.get("beaconlink.port.mapping"));
         this.port           = new TextField(Integer.toString(saved.getPort()));
         this.message        = ComponentUtils.createParagraph("", "field-message");
         this.state          = ComponentUtils.createParagraph("", "list-title");
@@ -109,6 +112,7 @@ final class BeaconLinkPanel {
         this.advancedToggle = ComponentUtils.createSmallButton(texts.get("beaconlink.advanced.show"), ButtonRole.SECONDARY);
 
         this.helping.setSelected(saved.getRole() == NodeRole.AUTOMATIC);
+        this.mapping.setSelected(saved.isPortMapping());
         ComponentUtils.setControlWidth(this.port, ControlWidth.S);
         setShown(this.message, false);
         setShown(this.advanced, false);
@@ -117,7 +121,7 @@ final class BeaconLinkPanel {
 
         portRow = ComponentUtils.createRow(Spacing.M, ComponentUtils.createLabel(texts.get("beaconlink.port"), "field-label"), this.port, apply);
         portRow.setAlignment(Pos.CENTER_LEFT);
-        settings = ComponentUtils.createColumn(Spacing.S, this.helping, help, portRow);
+        settings = ComponentUtils.createColumn(Spacing.S, this.helping, help, this.mapping, portRow);
         status   = ComponentUtils.createColumn(Spacing.XS, this.state, this.reachability, this.addresses, this.peers);
 
         this.root = ComponentUtils.createPanel(texts.get("beaconlink.title"),
@@ -156,7 +160,8 @@ final class BeaconLinkPanel {
             return;
         }
 
-        String problem = this.runner.changeSettings(new NodeSettings(this.helping.isSelected() ? NodeRole.AUTOMATIC : NodeRole.OFF, chosenPort));
+        NodeRole role = this.helping.isSelected() ? NodeRole.AUTOMATIC : NodeRole.OFF;
+        String problem = this.runner.changeSettings(new NodeSettings(role, chosenPort, this.mapping.isSelected()));
 
         this.showMessage(problem == null ? null : this.texts.format("beaconlink.apply.failed", problem));
         this.showStatus();

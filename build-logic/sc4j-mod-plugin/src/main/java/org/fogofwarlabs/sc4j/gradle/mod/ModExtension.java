@@ -20,7 +20,7 @@ import org.jetbrains.annotations.NotNull;
  * <ul>
  *     <li>{@code jar}: packs the classes and resources of the source sets into {@code build/libs/<id>.jar} without file times in a fixed
  *     order, with the licence files in {@code META-INF/}, and checks that its manifest {@code sc4j-mod.json} names the mod id, the
- *     versions below and an entry class of the jar.</li>
+ *     versions below, an entry class of the jar and a class of the jar as the {@code main} of each tool.</li>
  *     <li>{@code run}: runs the mod jar in the engine runtime of the plugin's version, with the user data of the install or of
  *     {@code build/sc4j-run}; {@code --args} passes runtime options (such as {@code --headless}) and {@code --debug-jvm} waits for a
  *     debugger. {@code prepareRun} stages the runtime's native libraries for it.</li>

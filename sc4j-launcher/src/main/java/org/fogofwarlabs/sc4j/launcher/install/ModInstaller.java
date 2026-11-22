@@ -1,5 +1,6 @@
 package org.fogofwarlabs.sc4j.launcher.install;
 
+import org.fogofwarlabs.sc4j.base.exception.Exceptions;
 import org.fogofwarlabs.sc4j.catalog.ReleaseVersion;
 import org.fogofwarlabs.sc4j.catalog.github.ReleaseClient;
 import org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
@@ -7,6 +8,7 @@ import org.fogofwarlabs.sc4j.catalog.mods.ModRelease;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModCatalog;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModEntry;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModStatus;
+import org.fogofwarlabs.sc4j.launcher.update.PackageSwap;
 import org.fogofwarlabs.sc4j.launcher.update.UpdateFolder;
 import org.fogofwarlabs.sc4j.manifest.ModManifest;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
@@ -29,9 +31,11 @@ import java.util.function.DoubleConsumer;
  * <p>
  * A downloaded jar waits in the update folder ({@link UpdateFolder#getModsDirectory()}) until it is checked: its checksum must match, and
  * the launcher's own checks ({@link ModCatalog#checkNewJar}) must pass: a valid manifest and images, an engine version this launcher supports
- * and an id that no other jar of {@code mods/} declares. A refused jar never joins {@code mods/}. The repository and release of each
- * installed mod are recorded in {@code userdata/mod-sources.json} ({@link ModSourcesFile}), so that newer releases can be found
- * ({@link #findUpdates}); removing a mod removes its record.
+ * and an id that no other jar of {@code mods/} declares, the jar it replaces aside. A jar whose id one installed jar declares replaces that jar,
+ * so any release, the installed one or an older one included, can be installed over the installed mod. A refused jar never joins
+ * {@code mods/}. The repository and release of each installed mod are recorded in {@code userdata/mod-sources.json} ({@link ModSourcesFile}),
+ * so that newer releases can be found ({@link #findUpdates}) and a jar that is not its latest release can be told ({@link #findReleaseState});
+ * removing a mod removes its record.
  */
 public final class ModInstaller {
     private static final @NotNull String SOURCES_FILE = "mod-sources.json";
@@ -88,12 +92,13 @@ public final class ModInstaller {
 
     /**
      * Installs a downloaded jar when it passes the launcher's checks: as {@code mods/<id>.jar}, or in place of the jar it replaces, and records
-     * its repository and release. A refused jar is deleted.
+     * its repository and release. Without a replaced mod, the one installed jar that declares the downloaded jar's id is replaced. A refused jar
+     * is deleted.
      *
      * @param release    the release the jar was downloaded from
      * @param downloaded the downloaded jar ({@link #download})
      * @param catalog    the mods of the install, for the id check
-     * @param replaced   the installed mod the jar replaces, or {@code null} when it is added
+     * @param replaced   the installed mod the jar replaces, or {@code null} to replace the installed jar of the same id, if there is one
      * @return the installed jar, or the reasons it was refused
      * @throws IOException if the jar cannot be moved into {@code mods/}, a jar of that name exists already, or the record cannot be written
      */
@@ -101,6 +106,15 @@ public final class ModInstaller {
                                              @Nullable ModEntry replaced) throws IOException {
         ModEntry checked = catalog.checkNewJar(downloaded, replaced == null ? null : replaced.getJarName());
         ModManifest manifest = checked.getManifest();
+        ModEntry target = replaced;
+
+        if (target == null && manifest != null) {
+            target = findInstalled(catalog, manifest.getId());
+
+            if (target != null) {
+                checked = catalog.checkNewJar(downloaded, target.getJarName());
+            }
+        }
 
         if (checked.getStatus() == ModStatus.ERROR || manifest == null) {
             Files.deleteIfExists(downloaded);
@@ -109,20 +123,84 @@ public final class ModInstaller {
         }
 
         Path modsDirectory = this.install.getModsDirectory();
-        Path target = replaced != null ? replaced.getJar() : modsDirectory.resolve(manifest.getId() + JAR_EXTENSION);
-        String jarName = String.valueOf(target.getFileName());
+        Path targetJar = target != null ? target.getJar() : modsDirectory.resolve(manifest.getId() + JAR_EXTENSION);
+        String jarName = String.valueOf(targetJar.getFileName());
 
         Files.createDirectories(modsDirectory);
 
-        if (replaced != null) {
-            Files.move(downloaded, target, StandardCopyOption.REPLACE_EXISTING);
+        if (target != null) {
+            Files.move(downloaded, targetJar, StandardCopyOption.REPLACE_EXISTING);
         } else {
-            Files.move(downloaded, target);
+            Files.move(downloaded, targetJar);
         }
 
         this.record(jarName, new ModSource(jarName, release.getRepository(), release.getTag()));
 
         return new ModInstallResult(jarName, List.of());
+    }
+
+    /**
+     * Finds the record of an installed jar.
+     *
+     * @param jarName the jar file name, such as {@code my-mod.jar}
+     * @return the repository and release the jar was installed from, or {@code null} when the jar has no record
+     * @throws IOException if the record cannot be read
+     */
+    public @Nullable ModSource findSource(@NotNull String jarName) throws IOException {
+        for (ModSource source : this.sourcesFile.read()) {
+            if (source.getJarName().equals(jarName)) {
+                return source;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Tells how an installed mod stands to the releases of its repository ({@link ModReleaseState#decide}): from its record, the newer release
+     * found for it and whether the install ships it ({@link PackageSwap#readPackageMods}).
+     *
+     * @param entry      the installed mod, with a valid manifest
+     * @param newerKnown whether a newer release of the mod is known ({@link #findUpdates})
+     * @return the state of the mod
+     * @throws IOException              if the record or the list of the jars the install ships cannot be read
+     * @throws IllegalArgumentException if the mod has no valid manifest
+     */
+    public @NotNull ModReleaseState findReleaseState(@NotNull ModEntry entry, boolean newerKnown) throws IOException {
+        ModManifest manifest = entry.getManifest();
+
+        if (manifest == null) {
+            throw Exceptions.newIllegalArgumentException("The mod {0} has no valid manifest.", entry.getJar());
+        }
+
+        ModSource source = this.findSource(entry.getJarName());
+        List<String> shippedJars = PackageSwap.readPackageMods(this.install.getRoot());
+
+        return ModReleaseState.decide(manifest.getVersion(), source == null ? null : source.getRelease(), newerKnown,
+                                      shippedJars != null && shippedJars.contains(entry.getJarName()));
+    }
+
+    /**
+     * Finds the one installed jar that declares a mod id.
+     *
+     * @return the jar, or {@code null} when no jar or more than one declares the id
+     */
+    private static @Nullable ModEntry findInstalled(@NotNull ModCatalog catalog, @NotNull String modId) {
+        ModEntry found = null;
+
+        for (ModEntry entry : catalog.getEntries()) {
+            ModManifest manifest = entry.getManifest();
+
+            if (manifest != null && manifest.getId().equals(modId)) {
+                if (found != null) {
+                    return null;
+                }
+
+                found = entry;
+            }
+        }
+
+        return found;
     }
 
     /**

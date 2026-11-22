@@ -20,28 +20,58 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Locale;
-import java.util.Properties;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * Tests the launcher texts: every language has every text, and problems (also those of the node list) and the states of the account's
- * session and friends are described in the display language.
+ * Tests the launcher texts: every language has every text with the same {@code {index}} placeholders, every brace of a text belongs to a
+ * placeholder, and problems (also those of the node list) and the states of the account's session and friends are described in the display
+ * language.
  */
 final class LauncherTextsTest {
     private static final @NotNull String BASE_BUNDLE = "messages.properties";
     private static final @NotNull String KOREAN_BUNDLE = "messages_ko.properties";
+    private static final @NotNull String CHINESE_BUNDLE = "messages_zh.properties";
     private static final @NotNull List<@NotNull String> REMOVED_KEY_TEXTS = List.of("nodes.key", "nodes.key.prompt", "nodes.pinned",
                                                                                     "nodes.ping.wrong_key", "nodes.entry.key_invalid");
     private static final @NotNull List<@NotNull String> SEED_TEXT_PREFIXES = List.of("nodes.", "beaconlink.", "status.nodes.");
-    private static final @NotNull List<@NotNull String> NODE_KEY_WORDS = List.of("key", "키");
+    private static final @NotNull List<@NotNull String> NODE_KEY_WORDS = List.of("key", "키", "密钥");
+    private static final @NotNull Pattern PLACEHOLDER = Pattern.compile("\\{(\\d+)}");
 
     @Test
     void every_language_has_every_text_of_the_base_bundle() throws IOException {
         Properties base = readBundle(BASE_BUNDLE);
-        Properties korean = readBundle(KOREAN_BUNDLE);
 
-        Assertions.assertEquals(base.stringPropertyNames(), korean.stringPropertyNames());
+        for (String bundle : List.of(KOREAN_BUNDLE, CHINESE_BUNDLE)) {
+            Assertions.assertEquals(base.stringPropertyNames(), readBundle(bundle).stringPropertyNames(), bundle);
+        }
+    }
+
+    @Test
+    void every_text_has_the_same_arguments_in_every_language() throws IOException {
+        Properties base = readBundle(BASE_BUNDLE);
+
+        for (String bundle : List.of(KOREAN_BUNDLE, CHINESE_BUNDLE)) {
+            Properties texts = readBundle(bundle);
+
+            for (String name : base.stringPropertyNames()) {
+                Assertions.assertEquals(listArguments(base.getProperty(name)), listArguments(texts.getProperty(name, "")), bundle + " " + name);
+            }
+        }
+    }
+
+    @Test
+    void every_text_is_a_valid_message_format() throws IOException {
+        for (String bundle : List.of(BASE_BUNDLE, KOREAN_BUNDLE, CHINESE_BUNDLE)) {
+            Properties texts = readBundle(bundle);
+
+            for (String name : texts.stringPropertyNames()) {
+                String withoutPlaceholders = PLACEHOLDER.matcher(texts.getProperty(name)).replaceAll("");
+
+                Assertions.assertFalse(withoutPlaceholders.contains("{") || withoutPlaceholders.contains("}"), bundle + " " + name);
+            }
+        }
     }
 
     @Test
@@ -150,7 +180,7 @@ final class LauncherTextsTest {
 
     @Test
     void no_launcher_text_shows_a_node_key() throws IOException {
-        for (String bundle : List.of(BASE_BUNDLE, KOREAN_BUNDLE)) {
+        for (String bundle : List.of(BASE_BUNDLE, KOREAN_BUNDLE, CHINESE_BUNDLE)) {
             Properties texts = readBundle(bundle);
 
             for (String removed : REMOVED_KEY_TEXTS) {
@@ -180,6 +210,7 @@ final class LauncherTextsTest {
 
             Assertions.assertEquals("Run", LauncherTexts.of(UiLanguage.ENGLISH).get("detail.run"));
             Assertions.assertEquals("실행", LauncherTexts.of(UiLanguage.KOREAN).get("detail.run"));
+            Assertions.assertEquals("启动", LauncherTexts.of(UiLanguage.CHINESE).get("detail.run"));
         } finally {
             Locale.setDefault(defaultLocale);
         }
@@ -191,6 +222,17 @@ final class LauncherTextsTest {
 
         Assertions.assertEquals("1 mod", texts.formatCount("status.mods", 1));
         Assertions.assertEquals("3 mods", texts.formatCount("status.mods", 3));
+    }
+
+    private static @NotNull Set<@NotNull Integer> listArguments(@NotNull String text) {
+        Set<Integer> arguments = new TreeSet<>();
+        Matcher matcher = PLACEHOLDER.matcher(text);
+
+        while (matcher.find()) {
+            arguments.add(Integer.parseInt(matcher.group(1)));
+        }
+
+        return arguments;
     }
 
     private static @NotNull Properties readBundle(@NotNull String name) throws IOException {

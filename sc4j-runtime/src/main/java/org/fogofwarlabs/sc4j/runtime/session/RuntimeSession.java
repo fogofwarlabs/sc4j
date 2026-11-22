@@ -500,7 +500,8 @@ public final class RuntimeSession {
 
         Path replay = this.commandLine.getReplay();
         ReplayFormat replayFormat = replay == null ? null : this.findReplayFormat(replay, identity, replayFormats);
-        ClientBeaconLink beaconLink = beaconLinkSetup == null ? null : ClientBeaconLink.create(beaconLinkSetup, identity);
+        ClientBeaconLink beaconLink = beaconLinkSetup == null ? null
+                                                              : ClientBeaconLink.create(beaconLinkSetup, identity, this.commandLine.isPortMapping());
 
         if (beaconLink != null) {
             this.shutdownSteps.push(beaconLink::close);

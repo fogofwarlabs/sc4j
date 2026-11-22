@@ -16,13 +16,13 @@ import java.util.Set;
  * Holds the parsed command line of the runtime:
  * {@snippet lang = "text":
  * sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>]
- *              [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>]
+ *              [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--no-port-mapping]
  *              [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]
  *}
  * Paths are made absolute against the working directory. Every argument after {@code --} belongs to the mod. The settings, storage and log
  * options that are not given take their defaults from the install layout once the mod id is known. Beacon.Link takes nothing from the install
  * layout: its account folder, seeds and peers file are what the command line names, and a run without any seed source offers no Beacon.Link.
- * Only {@code --seed} may be given more than once.
+ * Its sessions map their socket on the router unless {@code --no-port-mapping} is given. Only {@code --seed} may be given more than once.
  */
 public final class RuntimeCommandLine {
     /**
@@ -39,6 +39,7 @@ public final class RuntimeCommandLine {
                                                   --seeds <file>       a Beacon.Link node list to contact first
                                                   --seed <host:port>   a Beacon.Link node to contact first (repeatable)
                                                   --peers <file>       the Beacon.Link peers file shared with the computer's other programs (default: none kept)
+                                                  --no-port-mapping    do not ask the router to open the Beacon.Link port
                                                   --headless           run without window, audio and input
                                                   --replay <file>      play a replay (passed to the mod)
                                                   --join <address>     join a game (passed to the mod)
@@ -56,6 +57,7 @@ public final class RuntimeCommandLine {
     private static final @NotNull String SEEDS_OPTION = "--seeds";
     private static final @NotNull String SEED_OPTION = "--seed";
     private static final @NotNull String PEERS_OPTION = "--peers";
+    private static final @NotNull String NO_PORT_MAPPING_OPTION = "--no-port-mapping";
     private static final @NotNull String HEADLESS_OPTION = "--headless";
     private static final @NotNull String REPLAY_OPTION = "--replay";
     private static final @NotNull String JOIN_OPTION = "--join";
@@ -83,6 +85,7 @@ public final class RuntimeCommandLine {
         Path seedsFile = null;
         List<ConfiguredNode> seeds = new ArrayList<>();
         Path peersFile = null;
+        boolean portMapping = true;
         Path replay = null;
         String join = null;
         boolean headless = false;
@@ -103,6 +106,7 @@ public final class RuntimeCommandLine {
 
             switch (argument) {
                 case HEADLESS_OPTION -> headless = true;
+                case NO_PORT_MAPPING_OPTION -> portMapping = false;
                 case HELP_OPTION, SHORT_HELP_OPTION -> help = true;
                 case MOD_OPTION, INSTALL_OPTION, SETTINGS_OPTION, STORAGE_OPTION, LOG_OPTION, ACCOUNT_OPTION, SEEDS_OPTION, SEED_OPTION, PEERS_OPTION,
                      REPLAY_OPTION, JOIN_OPTION -> {
@@ -136,7 +140,7 @@ public final class RuntimeCommandLine {
 
         return new RuntimeCommandLine(help, mod,
                                       install, settings, storage, log,
-                                      account, seedsFile, seeds, peersFile,
+                                      account, seedsFile, seeds, peersFile, portMapping,
                                       headless, replay, join,
                                       modArguments);
     }
@@ -162,6 +166,7 @@ public final class RuntimeCommandLine {
     private final @Nullable Path seedsFile;
     private final @NotNull List<@NotNull ConfiguredNode> seeds;
     private final @Nullable Path peersFile;
+    private final boolean portMapping;
 
     private final boolean headless;
     private final @Nullable Path replay;
@@ -182,6 +187,7 @@ public final class RuntimeCommandLine {
      * @param seedsFile    the node list of seeds, or {@code null} for none
      * @param seeds        the seeds named one by one, in command line order
      * @param peersFile    the shared peers file, or {@code null} for none
+     * @param portMapping  whether the Beacon.Link sessions map their socket on the router
      * @param headless     whether the run has no window, audio and input
      * @param replay       the replay to play, or {@code null}
      * @param join         the address of the game to join, or {@code null}
@@ -190,6 +196,7 @@ public final class RuntimeCommandLine {
     private RuntimeCommandLine(boolean help, @Nullable Path mod,
                                @Nullable Path install, @Nullable Path settings, @Nullable Path storage, @Nullable Path log,
                                @Nullable Path account, @Nullable Path seedsFile, @NotNull List<@NotNull ConfiguredNode> seeds, @Nullable Path peersFile,
+                               boolean portMapping,
                                boolean headless, @Nullable Path replay, @Nullable String join,
                                @NotNull List<@NotNull String> modArguments) {
         this.help = help;
@@ -200,10 +207,11 @@ public final class RuntimeCommandLine {
         this.storage  = storage;
         this.log      = log;
 
-        this.account   = account;
-        this.seedsFile = seedsFile;
-        this.seeds     = List.copyOf(seeds);
-        this.peersFile = peersFile;
+        this.account     = account;
+        this.seedsFile   = seedsFile;
+        this.seeds       = List.copyOf(seeds);
+        this.peersFile   = peersFile;
+        this.portMapping = portMapping;
 
         this.headless = headless;
         this.replay   = replay;
@@ -280,6 +288,13 @@ public final class RuntimeCommandLine {
      */
     public @Nullable Path getPeersFile() {
         return this.peersFile;
+    }
+
+    /**
+     * @return {@code true} if the Beacon.Link sessions map their socket on the router, {@code false} if {@code --no-port-mapping} was given
+     */
+    public boolean isPortMapping() {
+        return this.portMapping;
     }
 
     /**

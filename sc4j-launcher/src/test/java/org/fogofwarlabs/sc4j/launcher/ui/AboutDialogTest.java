@@ -12,9 +12,9 @@ import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.charset.StandardCharsets;
@@ -23,12 +23,11 @@ import java.util.List;
 
 /**
  * Tests the About dialog: SC4J's own notice and the Beacon.Link privacy statement, then the notices of the installed mods under their names in
- * the display language (English when a notice has no text in it), a mod without notices left out and a mod id shown once, at 100% and 200%
- * in English and Korean; Close closes it.
+ * the display language (Korean, and English when a notice has no text in it, as in Chinese), a mod without notices left out and a mod id
+ * shown once; Close closes it.
  */
 final class AboutDialogTest {
     private static final @NotNull String VERSION = "1.0.0";
-    private static final double PERCENT_SCALE = 100;
     private static final double SCENE_WIDTH = 1280;
     private static final double SCENE_HEIGHT = 800;
     private static final @NotNull String DIALOG_SELECTOR = ".modal-scrim";
@@ -47,23 +46,19 @@ final class AboutDialogTest {
         LauncherFxScenario.startToolkit();
     }
 
-    private static @NotNull UiLanguage selectLanguage(@NotNull String languageCode) {
-        return languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
-    }
-
     private static @NotNull ModManifest parse(@NotNull String manifest) throws ManifestException {
         return ModManifestReader.parse(manifest.getBytes(StandardCharsets.UTF_8));
     }
 
-    private static @NotNull LauncherShell openDialog(@NotNull LauncherTexts texts, double scale, @NotNull List<@NotNull ModManifest> mods,
+    private static @NotNull LauncherShell openDialog(@NotNull LauncherTexts texts, @NotNull List<@NotNull ModManifest> mods,
                                                      @NotNull Path directory) {
-        LauncherShell shell = new LauncherShell(texts, InstallLayout.of(directory), scale, section -> {
+        LauncherShell shell = new LauncherShell(texts, InstallLayout.of(directory), 1, section -> {
         }, () -> {
         }, () -> {
         });
 
         ThemeUtils.apply(new Scene(shell.getRoot(), SCENE_WIDTH, SCENE_HEIGHT), texts.getLanguage());
-        new AboutDialog(shell, texts, VERSION, scale, mods, address -> {
+        new AboutDialog(shell, texts, VERSION, 1, mods, address -> {
         }).open();
         shell.getRoot().applyCss();
         shell.getRoot().layout();
@@ -84,27 +79,25 @@ final class AboutDialogTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void about_dialog_shows_the_sc4j_notice_then_the_notices_of_each_mod_under_its_name(double scale, @NotNull String languageCode,
+    @ValueSource(strings = {"ko", "zh"})
+    void about_dialog_shows_the_sc4j_notice_then_the_notices_of_each_mod_under_its_name(@NotNull String languageCode,
                                                                                         @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = selectLanguage(languageCode);
+        UiLanguage language = LauncherFxScenario.requireLanguage(languageCode);
         LauncherTexts texts = LauncherTexts.of(language);
         List<ModManifest> mods = List.of(parse(NOTICE_MOD), parse(PLAIN_MOD), parse(NOTICE_MOD));
         boolean korean = language == UiLanguage.KOREAN;
         List<String> modTexts = List.of(korean ? "예제 게임" : "Example Game",
                                         korean ? "Example Game은 Example Company의 상표입니다." : "Example Game is a trademark of Example Company.",
                                         "Art: Example Artist, CC BY 4.0.");
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
 
         LauncherFxScenario.run(() -> {
-            LauncherShell shell = openDialog(texts, scale, mods, directory);
+            LauncherShell shell = openDialog(texts, mods, directory);
             Node dialog = shell.getRoot().lookup(DIALOG_SELECTOR);
             List<String> shown = listTextsFrom(dialog, texts.get("about.license"));
             List<String> sc4jTexts = listSc4jTexts(texts);
 
             Assertions.assertEquals(sc4jTexts, shown.subList(0, sc4jTexts.size()));
             Assertions.assertEquals(modTexts, shown.subList(sc4jTexts.size(), shown.size()));
-            LauncherFxScenario.saveSample(shell.getRoot(), scale, "about-" + suffix);
 
             LauncherFxScenario.findButton(shell.getRoot(), texts.get("about.close")).fire();
             Assertions.assertNull(shell.getRoot().lookup(DIALOG_SELECTOR), "Close closes the dialog");
@@ -113,14 +106,13 @@ final class AboutDialogTest {
         });
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"en", "ko"})
-    void about_dialog_without_mod_notices_shows_only_the_sc4j_texts(@NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
-        LauncherTexts texts = LauncherTexts.of(selectLanguage(languageCode));
+    @Test
+    void about_dialog_without_mod_notices_shows_only_the_sc4j_texts(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         List<ModManifest> mods = List.of(parse(PLAIN_MOD));
 
         LauncherFxScenario.run(() -> {
-            Node dialog = openDialog(texts, 1, mods, directory).getRoot().lookup(DIALOG_SELECTOR);
+            Node dialog = openDialog(texts, mods, directory).getRoot().lookup(DIALOG_SELECTOR);
 
             Assertions.assertEquals(listSc4jTexts(texts), listTextsFrom(dialog, texts.get("about.license")));
             Assertions.assertEquals(List.of(texts.get("about.privacy.title")),

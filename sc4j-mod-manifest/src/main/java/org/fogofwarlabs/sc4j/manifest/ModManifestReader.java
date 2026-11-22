@@ -14,10 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -27,8 +24,9 @@ import java.util.zip.ZipFile;
  * It never loads or runs a class of the mod, so a broken mod cannot harm the launcher or the runtime that reads it.
  * <p>
  * Reading validates the manifest: the required fields {@code format}, {@code id}, {@code name}, {@code version},
- * {@code engine} and {@code entry}, their syntax, the optional fields' types, the settings schema and the presence of every named
- * image. Every problem found is reported together in one {@link ManifestException}. Whether the runtime
+ * {@code engine} and {@code entry}, their syntax, the optional fields' types, the settings schema, the tools (each with an id of the mod id's
+ * syntax, unique within the mod, and a Java class name as {@code main}) and the presence of every named image. Every problem found is
+ * reported together in one {@link ManifestException}. Whether the runtime
  * supports the mod's engine version is a separate check ({@link ModManifest#checkEngine}).
  */
 public final class ModManifestReader {
@@ -74,6 +72,9 @@ public final class ModManifestReader {
     private static final @NotNull String BANNER_FIELD = "banner";
     private static final @NotNull String SCREENSHOTS_FIELD = "screenshots";
     private static final @NotNull String SETTINGS_FIELD = "settings";
+    private static final @NotNull String TOOLS_FIELD = "tools";
+    private static final @NotNull String TOOL_ID_FIELD = "id";
+    private static final @NotNull String TOOL_MAIN_FIELD = "main";
 
     /**
      * Reads and validates a mod jar's manifest and images.
@@ -173,6 +174,7 @@ public final class ModManifestReader {
         String website = root.readOptionalString(WEBSITE_FIELD);
         ModImages images = readImages(root.readOptionalObject(IMAGES_FIELD));
         SettingsSchema settings = SettingsSchema.read(root.readOptionalList(SETTINGS_FIELD), SETTINGS_FIELD, problems);
+        List<ModTool> tools = readTools(root);
 
         if (!problems.isValid() || format == null || id == null || version == null || engine == null || entry == null || name == null) {
             throw new ManifestException(problems.build());
@@ -181,7 +183,54 @@ public final class ModManifestReader {
         return new ModManifest(format.intValue(), id, version, engine, entry,
                                name, description, authors == null ? List.of() : authors, license,
                                notices == null ? List.of() : notices, website, images,
-                               settings);
+                               settings, tools);
+    }
+
+    /**
+     * Reads the optional {@code tools}: a list of objects, each with an {@code id} of the mod id's syntax, unique within the list, and a Java
+     * class name as {@code main}.
+     */
+    private static @NotNull List<@NotNull ModTool> readTools(@NotNull JsonFieldReader root) {
+        List<?> entries = root.readOptionalList(TOOLS_FIELD);
+
+        if (entries == null) {
+            return List.of();
+        }
+
+        List<ModTool> tools = new ArrayList<>(entries.size());
+        Set<String> toolIds = new HashSet<>();
+
+        for (int index = 0; index < entries.size(); index++) {
+            JsonFieldReader tool = JsonFieldReader.of(entries.get(index), TOOLS_FIELD + "[" + index + "]", root.getProblems());
+
+            if (tool == null) {
+                continue;
+            }
+
+            String toolId = tool.readRequiredString(TOOL_ID_FIELD);
+            String main = tool.readRequiredString(TOOL_MAIN_FIELD);
+
+            if (toolId != null && !ID_PATTERN.matcher(toolId).matches()) {
+                tool.getProblems().add(ProblemCode.FIELD_VALUE, tool.getPath(TOOL_ID_FIELD),
+                                       "Invalid tool id {0}: expected lower case letters and digits, separated by single hyphens.", toolId);
+                toolId = null;
+            } else if (toolId != null && !toolIds.add(toolId)) {
+                tool.getProblems().add(ProblemCode.FIELD_VALUE, tool.getPath(TOOL_ID_FIELD), "Duplicate tool id {0}.", toolId);
+                toolId = null;
+            }
+
+            if (main != null && !ENTRY_PATTERN.matcher(main).matches()) {
+                tool.getProblems().add(ProblemCode.FIELD_VALUE, tool.getPath(TOOL_MAIN_FIELD),
+                                       "Invalid main class {0}: expected a Java class name such as org.example.ExampleTool.", main);
+                main = null;
+            }
+
+            if (toolId != null && main != null) {
+                tools.add(new ModTool(toolId, main));
+            }
+        }
+
+        return tools;
     }
 
     private static @Nullable ModVersion parseVersion(@Nullable String text, @NotNull ValidationResult.Builder problems) {

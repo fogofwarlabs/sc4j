@@ -13,7 +13,8 @@
  *   5. Surfaces: panel, panel header, sunken area, banner, notices, modal scrim.
  *   6. Controls: button, text input, combo box, check box, spinner, list view, tab pane, scroll bar, progress, tooltip,
  *      separator, hyperlink.
- *   7. Launcher specific parts: badges, dot badges, status markers, form fields, log and code areas.
+ *   7. Launcher specific parts: badges, dot badges, status markers, form fields, log and code areas, chat lines,
+ *      link addresses.
  *
  * State pseudo-classes added by the launcher (set with Node.pseudoClassStateChanged):
  *   :invalid   on a text field, combo box, spinner or check box whose value fails declarative validation.
@@ -1436,6 +1437,49 @@
 .text-area.log-area .content,
 .text-area.code-area .content {
     -fx-padding: 8 12;
+}
+
+/* ---- Chat log lines: text runs that a press and drag selects across lines, with links. ---- */
+
+.chat-line {
+    -fx-line-spacing: 2px;
+}
+
+.chat-line > .text-body {
+    -fx-fill: -sc4j-text;
+}
+
+.chat-line > .text-caption {
+    -fx-fill: -sc4j-text-muted;
+}
+
+.chat-line > .text-accent {
+    -fx-fill: -sc4j-accent;
+}
+
+.chat-line > .text-accent-strong {
+    -fx-fill: -sc4j-accent-strong;
+}
+
+.chat-line > .text-danger {
+    -fx-fill: -sc4j-danger;
+}
+
+.chat-line > .chat-link {
+    -fx-fill: -sc4j-accent;
+    -fx-underline: true;
+}
+
+/* The selected part of a line, in the highlight of the log area. */
+.chat-line > .chat-selection {
+    -fx-fill: #1a9fd880;
+    -fx-stroke: transparent;
+    -fx-stroke-width: 0;
+}
+
+/* The address of a link the user is asked to open. */
+.link-address > .text-mono {
+    -fx-fill: -sc4j-accent-strong;
 }
 
 /* Last log lines inside the failure report. */

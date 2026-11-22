@@ -15,7 +15,8 @@ import java.util.List;
 
 /**
  * Replaces the programs of an install with those of an unpacked user package: the items {@link #ITEMS}, that is {@code java/},
- * {@code launcher/}, {@code runtime/}, the start program {@code SC4J.exe} with its folder {@code app/}, the start files, {@code LICENSE},
+ * {@code launcher/}, {@code runtime/}, the start program {@code SC4J.exe} and the console program {@code SC4J-cli.exe} with their folder
+ * {@code app/}, the start files, {@code LICENSE},
  * {@code NOTICE} and {@code licenses/}. Only the Windows package has the items {@link #WINDOWS_ITEMS}; an install updated from a package without
  * them loses its own.
  * <p>
@@ -41,7 +42,12 @@ public final class PackageSwap {
     public static final @NotNull String WINDOWS_PROGRAM = "SC4J.exe";
 
     /**
-     * The folder of the configuration of {@link #WINDOWS_PROGRAM}.
+     * The console program of the launcher on Windows, which runs the launcher's console commands in the console it is started from.
+     */
+    public static final @NotNull String WINDOWS_CONSOLE_PROGRAM = "SC4J-cli.exe";
+
+    /**
+     * The folder of the configurations of {@link #WINDOWS_PROGRAM} and {@link #WINDOWS_CONSOLE_PROGRAM}.
      */
     public static final @NotNull String WINDOWS_PROGRAM_FOLDER = "app";
 
@@ -59,13 +65,13 @@ public final class PackageSwap {
      * The items of the install an update replaces, in the order they are replaced.
      */
     public static final @NotNull List<@NotNull String> ITEMS = List.of(JAVA_FOLDER, InstallLayout.LAUNCHER_FOLDER, InstallLayout.RUNTIME_FOLDER,
-                                                                       WINDOWS_PROGRAM, WINDOWS_PROGRAM_FOLDER, WINDOWS_START_FILE, UNIX_START_FILE,
-                                                                       "LICENSE", "NOTICE", "licenses");
+                                                                       WINDOWS_PROGRAM, WINDOWS_CONSOLE_PROGRAM, WINDOWS_PROGRAM_FOLDER,
+                                                                       WINDOWS_START_FILE, UNIX_START_FILE, "LICENSE", "NOTICE", "licenses");
 
     /**
      * The items of {@link #ITEMS} that only the Windows package has.
      */
-    public static final @NotNull List<@NotNull String> WINDOWS_ITEMS = List.of(WINDOWS_PROGRAM, WINDOWS_PROGRAM_FOLDER);
+    public static final @NotNull List<@NotNull String> WINDOWS_ITEMS = List.of(WINDOWS_PROGRAM, WINDOWS_CONSOLE_PROGRAM, WINDOWS_PROGRAM_FOLDER);
 
     /**
      * The file of a package, kept in the install, that lists the jars of {@code mods/} the package ships, one file name per line.

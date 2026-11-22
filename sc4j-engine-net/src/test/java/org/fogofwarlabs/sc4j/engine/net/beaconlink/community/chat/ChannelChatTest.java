@@ -22,6 +22,7 @@ import java.util.function.Consumer;
 final class ChannelChatTest {
     private static final @NotNull Locale ENGLISH = Locale.ENGLISH;
     private static final @NotNull Locale KOREAN = Locale.KOREAN;
+    private static final @NotNull Locale CHINESE = Locale.SIMPLIFIED_CHINESE;
     private static final @NotNull String BASE = "Demo";
     private static final @NotNull String FIRST_CHANNEL = BASE + "-1";
     private static final @NotNull String SECOND_CHANNEL = BASE + "-2";
@@ -343,6 +344,23 @@ final class ChannelChatTest {
         chat.submit("x".repeat(TOO_LONG_LENGTH));
 
         Assertions.assertEquals(List.of("ERROR 알 수 없는 명령: /dance", "ERROR 너무 김"), this.describeEntries());
+        Assertions.assertTrue(this.requireChannel(FIRST_CHANNEL).getSaid().isEmpty());
+    }
+
+    @Test
+    void help_and_errors_use_the_chinese_texts_for_a_chinese_locale() {
+        ChannelChat chat = this.openChat(CHINESE);
+
+        chat.submit("/help");
+
+        Assertions.assertEquals(HELP_LINES, this.entries.size());
+        Assertions.assertEquals("INFO 命令", this.entries.getFirst().toString());
+
+        this.entries.clear();
+        chat.submit("/dance");
+        chat.submit("x".repeat(TOO_LONG_LENGTH));
+
+        Assertions.assertEquals(List.of("ERROR 未知命令：/dance", "ERROR 太长"), this.describeEntries());
         Assertions.assertTrue(this.requireChannel(FIRST_CHANNEL).getSaid().isEmpty());
     }
 

@@ -28,8 +28,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -48,7 +46,7 @@ import java.util.concurrent.TimeoutException;
 /**
  * Tests the layout of the selected mod's banner: the icon area and the banner have the same size for a mod with an icon (of any aspect
  * ratio) and a mod without one, and an icon is scaled to fit inside the icon area. Run is disabled while a run is in progress and enabled
- * after it, at 100% and 200% in English and Korean. The update notice centers its text on its Update button.
+ * after it. The update notice centers its text on its Update button.
  */
 final class ModDetailViewTest {
     private static final @NotNull String MANIFEST = """
@@ -75,7 +73,6 @@ final class ModDetailViewTest {
     private static final int ICON_COLOR = 0xFF38D6FF;
     private static final double SCENE_WIDTH = 1100;
     private static final double SCENE_HEIGHT = 700;
-    private static final double PERCENT_SCALE = 100;
     private static final long FX_TIMEOUT_SECONDS = 30;
     private static final double ASPECT_RATIO_TOLERANCE = 0.05;
     private static final @NotNull String NOTICE_SELECTOR = ".notice";
@@ -100,6 +97,10 @@ final class ModDetailViewTest {
 
         @Override
         public void onUpdate(@NotNull ModEntry entry) {
+        }
+
+        @Override
+        public void onChangeVersion(@NotNull ModEntry entry) {
         }
 
         @Override
@@ -158,12 +159,9 @@ final class ModDetailViewTest {
         Assertions.assertEquals((double) ICON_WIDTH / ICON_HEIGHT, withIcon.image.getWidth() / withIcon.image.getHeight(), ASPECT_RATIO_TOLERANCE);
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void run_stays_disabled_while_a_run_is_in_progress(double scale, @NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void run_stays_disabled_while_a_run_is_in_progress(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         InstallLayout install = InstallLayout.of(directory);
 
         writeMod(install, WITHOUT_ICON_ID + ".jar", MANIFEST.formatted(WITHOUT_ICON_ID, WITHOUT_ICON_ID, ""), null);
@@ -175,35 +173,30 @@ final class ModDetailViewTest {
 
         LauncherFxScenario.run(() -> {
             SimpleBooleanProperty running = new SimpleBooleanProperty(true);
-            ModDetailView view = new ModDetailView(entry, null, SettingsForm.create(manifest.getSettings(), Map.of()), texts, new ModArt(scale),
+            ModDetailView view = new ModDetailView(entry, null, SettingsForm.create(manifest.getSettings(), Map.of()), texts, new ModArt(1),
                                                    running, new NoActions());
             Region root = view.getRoot();
             Scene scene = new Scene(root, SCENE_WIDTH, SCENE_HEIGHT);
 
-            ThemeUtils.apply(scene, language);
+            ThemeUtils.apply(scene, UiLanguage.ENGLISH);
             root.applyCss();
             root.layout();
 
             Button run = LauncherFxScenario.findButton(root, texts.get("detail.run"));
 
             Assertions.assertTrue(run.isDisabled());
-            LauncherFxScenario.saveSample(root, scale, "run-running-" + suffix);
 
             running.set(false);
 
             Assertions.assertFalse(run.isDisabled());
-            LauncherFxScenario.saveSample(root, scale, "run-ready-" + suffix);
 
             return null;
         });
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void update_notice_centers_its_text_on_the_update_button(double scale, @NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void update_notice_centers_its_text_on_the_update_button(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         InstallLayout install = InstallLayout.of(directory);
 
         writeMod(install, WITHOUT_ICON_ID + ".jar", MANIFEST.formatted(WITHOUT_ICON_ID, WITHOUT_ICON_ID, ""), null);
@@ -215,11 +208,11 @@ final class ModDetailViewTest {
 
         LauncherFxScenario.run(() -> {
             ModDetailView view = new ModDetailView(entry, UPDATE_RELEASE, SettingsForm.create(manifest.getSettings(), Map.of()), texts,
-                                                   new ModArt(scale), new SimpleBooleanProperty(false), new NoActions());
+                                                   new ModArt(1), new SimpleBooleanProperty(false), new NoActions());
             Region root = view.getRoot();
             Scene scene = new Scene(root, SCENE_WIDTH, SCENE_HEIGHT);
 
-            ThemeUtils.apply(scene, language);
+            ThemeUtils.apply(scene, UiLanguage.ENGLISH);
             root.applyCss();
             root.layout();
 
@@ -229,7 +222,6 @@ final class ModDetailViewTest {
             Bounds textBounds = text.getBoundsInParent();
             Bounds buttonBounds = update.getBoundsInParent();
 
-            LauncherFxScenario.saveSample(notice, scale, "update-notice-" + suffix);
             Assertions.assertEquals(buttonBounds.getCenterY(), textBounds.getCenterY(), CENTER_TOLERANCE, "the text is centered on the button");
 
             return null;

@@ -29,8 +29,8 @@ import java.util.List;
 /**
  * Shows the selected mod. A mod that can be started shows its banner, the details of its manifest, its screenshots and
  * the generated settings form with the Run button; a mod with an error shows the reasons and cannot be started. The
- * reasons of a warning are shown above the form. Either view offers Remove, and a newer release of a mod installed from a release is shown
- * with its Update button.
+ * reasons of a warning are shown above the form. Either view offers Change version and Remove, and a newer release of a mod installed from a
+ * release is shown with its Update button.
  */
 public final class ModDetailView {
     private static final @NotNull BackgroundSize BANNER_COVER = new BackgroundSize(BackgroundSize.AUTO, BackgroundSize.AUTO, true, true, false, true);
@@ -72,6 +72,13 @@ public final class ModDetailView {
          * @param entry the mod
          */
         void onUpdate(@NotNull ModEntry entry);
+
+        /**
+         * Called when the user installs another release of the mod, or the installed one again.
+         *
+         * @param entry the mod
+         */
+        void onChangeVersion(@NotNull ModEntry entry);
 
         /**
          * Called when the user removes the mod.
@@ -146,6 +153,14 @@ public final class ModDetailView {
         update.setOnAction(event -> this.actions.onUpdate(this.entry));
 
         return ComponentUtils.createNotice(Tone.ACCENT, this.texts.format("mods.update.available", release), update);
+    }
+
+    private @NotNull Button createVersionButton() {
+        Button version = ComponentUtils.createButton(this.texts.get("mods.version.change"), ButtonRole.SECONDARY);
+
+        version.setOnAction(event -> this.actions.onChangeVersion(this.entry));
+
+        return version;
     }
 
     private @NotNull Button createRemoveButton() {
@@ -238,7 +253,8 @@ public final class ModDetailView {
         }
 
         panel = ComponentUtils.createPanelWithFooter(this.texts.get("detail.about"), body,
-                                                     ComponentUtils.createPanelFooter(ComponentUtils.createGrowingSpacer(), this.createRemoveButton()));
+                                                     ComponentUtils.createPanelFooter(ComponentUtils.createGrowingSpacer(), this.createVersionButton(),
+                                                                                      this.createRemoveButton()));
         ComponentUtils.fillHeight(panel);
 
         return panel;
@@ -334,7 +350,8 @@ public final class ModDetailView {
 
         body.getChildren().add(report);
         panel = ComponentUtils.createPanelWithFooter(this.texts.get("detail.title"), body,
-                                                     ComponentUtils.createPanelFooter(copy, this.createRemoveButton(), ComponentUtils.createGrowingSpacer(), run));
+                                                     ComponentUtils.createPanelFooter(copy, this.createRemoveButton(), ComponentUtils.createGrowingSpacer(),
+                                                                                      this.createVersionButton(), run));
         HBox.setHgrow(panel, Priority.ALWAYS);
         ComponentUtils.fillHeight(panel);
 

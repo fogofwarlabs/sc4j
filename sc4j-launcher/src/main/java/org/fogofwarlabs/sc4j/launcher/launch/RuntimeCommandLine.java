@@ -28,6 +28,7 @@ import java.util.Locale;
  *     --account <install>/userdata/beaconlink/accounts/<account id>
  *     --seeds <install>/userdata/beaconlink/nodes.json, or <install>/launcher/seeds.json until the user saved a node list
  *     --peers <install>/userdata/beaconlink/peers.json
+ *     --no-port-mapping, when the launcher's port mapping setting is off
  *}
  * {@code --seeds} is left out while neither seed list exists. Each path is one argument. A program file the install lacks is reported by
  * {@link #getMissingProgram()}.
@@ -58,6 +59,7 @@ public final class RuntimeCommandLine {
     private static final @NotNull String ACCOUNT_OPTION = "--account";
     private static final @NotNull String SEEDS_OPTION = "--seeds";
     private static final @NotNull String PEERS_OPTION = "--peers";
+    private static final @NotNull String NO_PORT_MAPPING_OPTION = "--no-port-mapping";
     private static final @NotNull String QUOTE = "\"";
     private static final @NotNull String ARGUMENT_SEPARATOR = " ";
     private static final @NotNull String WINDOWS_NAME_PREFIX = "windows";
@@ -70,36 +72,25 @@ public final class RuntimeCommandLine {
      * @param modId            the mod id, which names the settings file, the storage folder and the log folder
      * @param modJar           the mod jar
      * @param accountDirectory the folder of the account the game runs with
+     * @param portMapping      whether the game's Beacon.Link sessions map their socket on the router
      * @param javaHome         the Java runtime that runs the runtime
      * @param windows          whether the runtime runs on Windows (Java program {@value #WINDOWS_JAVA})
      * @return the created {@link RuntimeCommandLine} instance
      */
     public static @NotNull RuntimeCommandLine create(@NotNull InstallLayout install, @NotNull String modId, @NotNull Path modJar,
-                                                     @NotNull Path accountDirectory, @NotNull Path javaHome, boolean windows) {
+                                                     @NotNull Path accountDirectory, boolean portMapping,
+                                                     @NotNull Path javaHome, boolean windows) {
         List<String> arguments = new ArrayList<>();
         Path settingsFile = install.getSettingsFile(modId);
         Path seedsFile = new NodeListFile(install.getNodesFile()).selectExistingOr(new NodeListFile(install.getSeedsFile())).getPath();
-        Path java = javaHome.resolve(BINARY_FOLDER).resolve(windows ? WINDOWS_JAVA : UNIX_JAVA);
-        Path launchFile = install.getRuntimeScript(LAUNCH_FILE);
-        Path libraries = install.getRuntimeDirectory().resolve(LIBRARY_FOLDER);
-        Path missingProgram = null;
+        Path java = getJavaProgram(javaHome, windows);
+        List<String> launchArguments = readLaunchArguments(install);
+        Path missingProgram = findMissingProgram(install, java, launchArguments != null);
 
         arguments.add(java.toString());
 
-        try {
-            for (String line : Files.readAllLines(launchFile, StandardCharsets.UTF_8)) {
-                if (!line.isBlank()) {
-                    arguments.add(line.strip().replace(APPLICATION_HOME_TOKEN, install.getRuntimeDirectory().toString()));
-                }
-            }
-        } catch (IOException exception) {
-            missingProgram = launchFile;
-        }
-
-        if (!Files.isRegularFile(java)) {
-            missingProgram = java;
-        } else if (missingProgram == null && !Files.isDirectory(libraries, LinkOption.NOFOLLOW_LINKS)) {
-            missingProgram = libraries;
+        if (launchArguments != null) {
+            arguments.addAll(launchArguments);
         }
 
         arguments.add(INSTALL_OPTION);
@@ -123,6 +114,10 @@ public final class RuntimeCommandLine {
         arguments.add(PEERS_OPTION);
         arguments.add(install.getBeaconLinkDirectory().resolve(PeerStore.FILE_NAME).toString());
 
+        if (!portMapping) {
+            arguments.add(NO_PORT_MAPPING_OPTION);
+        }
+
         return new RuntimeCommandLine(arguments, install.getRoot(), settingsFile, install.getLogDirectory(modId), missingProgram);
     }
 
@@ -138,6 +133,78 @@ public final class RuntimeCommandLine {
      */
     public static boolean isWindows() {
         return System.getProperty(OPERATING_SYSTEM_PROPERTY, "").toLowerCase(Locale.ROOT).startsWith(WINDOWS_NAME_PREFIX);
+    }
+
+    /**
+     * Gives the Java program of a Java runtime.
+     *
+     * @param javaHome the Java runtime
+     * @param windows  whether the program runs on Windows (Java program {@value #WINDOWS_JAVA})
+     * @return the Java program {@code <java home>/bin/java}
+     */
+    static @NotNull Path getJavaProgram(@NotNull Path javaHome, boolean windows) {
+        return javaHome.resolve(BINARY_FOLDER).resolve(windows ? WINDOWS_JAVA : UNIX_JAVA);
+    }
+
+    /**
+     * Reads the Java arguments of the runtime's {@link #LAUNCH_FILE}: one per non-blank line, stripped, with {@link #APPLICATION_HOME_TOKEN}
+     * replaced by the runtime distribution's folder.
+     *
+     * @param install the install
+     * @return the arguments, or {@code null} when the file cannot be read
+     */
+    static @Nullable List<@NotNull String> readLaunchArguments(@NotNull InstallLayout install) {
+        List<String> arguments = new ArrayList<>();
+
+        try {
+            for (String line : Files.readAllLines(install.getRuntimeScript(LAUNCH_FILE), StandardCharsets.UTF_8)) {
+                if (!line.isBlank()) {
+                    arguments.add(line.strip().replace(APPLICATION_HOME_TOKEN, install.getRuntimeDirectory().toString()));
+                }
+            }
+        } catch (IOException exception) {
+            return null;
+        }
+
+        return arguments;
+    }
+
+    /**
+     * Finds the program file an install lacks to start a Java program of the runtime distribution.
+     *
+     * @param install        the install
+     * @param java           the Java program
+     * @param launchFileRead whether the runtime's {@link #LAUNCH_FILE} could be read
+     * @return the Java program, else the launch file, else the runtime library folder when it is missing; {@code null} when none is
+     */
+    static @Nullable Path findMissingProgram(@NotNull InstallLayout install, @NotNull Path java, boolean launchFileRead) {
+        Path libraries = install.getRuntimeDirectory().resolve(LIBRARY_FOLDER);
+
+        if (!Files.isRegularFile(java)) {
+            return java;
+        }
+
+        if (!launchFileRead) {
+            return install.getRuntimeScript(LAUNCH_FILE);
+        }
+
+        return Files.isDirectory(libraries, LinkOption.NOFOLLOW_LINKS) ? null : libraries;
+    }
+
+    /**
+     * Finds the JVM's temporary folder that a command line names.
+     *
+     * @param arguments the Java program followed by its arguments
+     * @return the folder of the first {@code -Djava.io.tmpdir=} option, or {@code null} when there is none
+     */
+    static @Nullable Path findTemporaryDirectory(@NotNull List<@NotNull String> arguments) {
+        for (String argument : arguments) {
+            if (argument.startsWith(TEMPORARY_DIRECTORY_OPTION)) {
+                return Path.of(argument.substring(TEMPORARY_DIRECTORY_OPTION.length()));
+            }
+        }
+
+        return null;
     }
 
 
@@ -183,13 +250,7 @@ public final class RuntimeCommandLine {
      * @return the JVM's temporary folder the command line names, or {@code null} when it names none
      */
     public @Nullable Path getTemporaryDirectory() {
-        for (String argument : this.arguments) {
-            if (argument.startsWith(TEMPORARY_DIRECTORY_OPTION)) {
-                return Path.of(argument.substring(TEMPORARY_DIRECTORY_OPTION.length()));
-            }
-        }
-
-        return null;
+        return findTemporaryDirectory(this.arguments);
     }
 
     /**

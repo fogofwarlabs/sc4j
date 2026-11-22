@@ -40,7 +40,8 @@ import java.util.stream.Stream;
  * Tests the built user package as a user unpacks it on a fresh computer without Java: it holds the start of the launcher, its own Java
  * runtime, the launcher with the shipped seed list and its empty JVM temporary folder, the runtime, mods and the licence files but no user
  * data and no cache file, with its programs executable on Unix; the launcher, started from the package root by the start file and on Windows
- * by {@code SC4J.exe}, lists the mods with the package's Java without a JVM warning; and its runtime, started headless with no user data and
+ * by {@code SC4J.exe} and {@code SC4J-cli.exe}, lists the mods with the package's Java without a JVM warning; and its runtime, started
+ * headless with no user data and
  * no Java of the computer and with the Beacon.Link options the launcher passes a fresh install (the shipped seed list, here naming a node on
  * 127.0.0.1, and the install's peers file), opens a Beacon.Link session and keeps the node in the peers file without writing a node list of the user.
  */
@@ -56,6 +57,7 @@ final class DistributionTest {
     private static final @NotNull String WINDOWS_START = "SC4J.bat";
     private static final @NotNull String UNIX_START = "SC4J";
     private static final @NotNull String WINDOWS_PROGRAM = "SC4J.exe";
+    private static final @NotNull String WINDOWS_CONSOLE_PROGRAM = "SC4J-cli.exe";
     private static final @NotNull String LIST_OPTION = "--list";
     private static final @NotNull String TEMPORARY_DIRECTORY_PROPERTY = "java.io.tmpdir";
     private static final @NotNull String JAVA_HOME_VARIABLE = "JAVA_HOME";
@@ -273,6 +275,17 @@ final class DistributionTest {
         InstallLayout install = unpack(directory);
 
         listMods(directory, install, install.getRoot().resolve(WINDOWS_PROGRAM));
+    }
+
+    @Test
+    @Timeout(TEST_SECONDS)
+    void the_windows_console_program_of_the_package_lists_the_mods_with_the_package_java(@TempDir @NotNull Path directory) throws IOException,
+                                                                                                                                  InterruptedException {
+        Assumptions.assumeTrue(isWindows(), "only the Windows package has " + WINDOWS_CONSOLE_PROGRAM);
+
+        InstallLayout install = unpack(directory);
+
+        listMods(directory, install, install.getRoot().resolve(WINDOWS_CONSOLE_PROGRAM));
     }
 
     @Test

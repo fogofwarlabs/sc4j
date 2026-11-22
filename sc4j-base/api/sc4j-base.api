@@ -112,6 +112,22 @@ public final class org.fogofwarlabs.sc4j.base.text.AsciiCaseUtils {
   public static java.lang.String toLowerCase(java.lang.String);
 }
 
+public final class org.fogofwarlabs.sc4j.base.text.LogSelectionModel {
+  public boolean hasSelection();
+  public boolean isDragging();
+  public boolean isSelected(int);
+  public int getSelectionEnd(int, int);
+  public int getSelectionStart(int);
+  public java.lang.String getSelectedText(java.util.List<java.lang.String>);
+  public org.fogofwarlabs.sc4j.base.text.LogSelectionModel();
+  public void clear();
+  public void drag(int, int);
+  public void press(int, int, boolean);
+  public void release();
+  public void removeFirstLines(int);
+  public void selectWord(int, java.lang.String, int);
+}
+
 public final class org.fogofwarlabs.sc4j.base.text.TerminatedStringUtils {
   public static byte[] copyPrintableText(byte[], int);
   public static byte[] cutText(byte[], int);
@@ -125,4 +141,10 @@ public final class org.fogofwarlabs.sc4j.base.text.TerminatedStringUtils {
   public static java.lang.String readText(byte[]);
   public static void putText(byte[], int, int, byte[], int, int);
   public static void putWholeCharacters(byte[], int, int, byte[], int, int);
+}
+
+public final class org.fogofwarlabs.sc4j.base.text.TextBoundaryUtils {
+  public static int findIndexAt(java.lang.String, float, java.util.function.ToDoubleFunction<java.lang.String>);
+  public static int findWordEnd(java.lang.String, int);
+  public static int findWordStart(java.lang.String, int);
 }

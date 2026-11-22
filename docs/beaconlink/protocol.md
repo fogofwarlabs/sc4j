@@ -238,7 +238,7 @@ Vivaldi with 3 dimensions and a height: the estimated round trip time of two hos
 
 ### Signals (`ChannelSignal`)
 
-The `SIGNAL` payload is kind (1), the sender's connection number (8) and fields. The signed sender key with that connection is the sending participant; the `SIGNAL` names the target key and connection, so a join names the room by the host connection it goes to and the room number of its offer. Address candidates are a count (1, at most 8) and addresses.
+The `SIGNAL` payload is kind (1), the sender's connection number (8) and fields. The signed sender key with that connection is the sending participant; the `SIGNAL` names the target key and connection, so a join names the room by the host connection it goes to and the room number of its offer. Address candidates are a count (1, at most 8) and addresses: the client's port mapping on its router first, when it holds one, then the addresses its nodes observed, then its local addresses.
 
 | Kind | Fields after the sender's connection |
 |---|---|
@@ -275,7 +275,7 @@ Shared files (`SharedFile`) are used by several processes at once (launcher node
 |---|---|
 | `<install>/launcher/seeds.json` | shipped seed list, replaced per release; same format as `nodes.json` |
 | `<install>/userdata/beaconlink/nodes.json` | the user's node list (`NodeListFile`); written when the user saves it and passed as `--seeds`; until it exists, `seeds.json` stands in. `{"format": 1, "nodes": [...]}` with `"host:port"` (any key) or `{"address": "host:port", "key": "<64 hex digits>"}` (pinned key); at most 64 KiB, nesting at most 8, IPv6 hosts in brackets |
-| `<install>/userdata/beaconlink/node.json` | launcher node settings `{"format": 1, "role": "automatic", "port": 7455}`; `automatic` (listens on the port, full peer once its self-test passes) or `off` (leaf-only on a free port); missing: automatic on 7455 |
+| `<install>/userdata/beaconlink/node.json` | launcher Beacon.Link settings `{"format": 1, "role": "automatic", "port": 7455, "portMapping": true}`; `automatic` (listens on the port, full peer once its self-test passes) or `off` (leaf-only on a free port); `portMapping` (optional, default `true`): the router is asked to open the ports of the node and the games; missing: automatic on 7455 with port mapping |
 | `<install>/userdata/beaconlink/peers.json`, a node's `<state>/peers.json` | learned peers (`PeerStore`, shared), below |
 | `<install>/userdata/beaconlink/peer.key`, a node's `<state>/identity.key` | key files; the proof nonce is found again at each start |
 | `<install>/userdata/beaconlink/node.lock` | empty; locked by the launcher running the node |

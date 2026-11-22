@@ -22,7 +22,6 @@ import org.fogofwarlabs.sc4j.engine.client.audio.SilentAudioDevice;
 import org.fogofwarlabs.sc4j.engine.client.input.InputEvent;
 import org.fogofwarlabs.sc4j.engine.client.input.Key;
 import org.fogofwarlabs.sc4j.engine.client.input.PointerButton;
-import org.fogofwarlabs.sc4j.engine.client.render.Canvas;
 import org.fogofwarlabs.sc4j.engine.client.render.image.ImageCanvas;
 import org.fogofwarlabs.sc4j.engine.game.GameDefinition;
 import org.fogofwarlabs.sc4j.engine.game.GameSetupCodec;
@@ -41,7 +40,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 
-import javax.imageio.ImageIO;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -50,13 +48,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.List;
-import java.util.function.UnaryOperator;
 
 /**
  * Runs the demo's client offscreen like the runtime runs it on a window: the demo's content, maps and game definition from the test class
  * loader, a launch request with the engine replay and save formats, a mod storage folder, an image canvas (by default {@value #WIDTH} by
- * {@value #HEIGHT}) and silent audio, the first scene of the demo, and the person's input as engine input events. Frames are saved as
- * sample pictures under the build folder.
+ * {@value #HEIGHT}) and silent audio, the first scene of the demo, and the person's input as engine input events.
  */
 public final class DemoClientScenario implements Closeable {
     /**
@@ -68,10 +64,6 @@ public final class DemoClientScenario implements Closeable {
      */
     public static final int HEIGHT = 720;
     /**
-     * The folder of the sample pictures.
-     */
-    public static final @NotNull String SAMPLE_FOLDER = "build/demo-frames";
-    /**
      * The folder of a client's Beacon.Link key and node list in its storage folder.
      */
     public static final @NotNull String BEACON_LINK_FOLDER = "beaconlink";
@@ -79,15 +71,12 @@ public final class DemoClientScenario implements Closeable {
     private static final @NotNull String MANIFEST = "sc4j-mod.json";
     private static final int DIGEST_LENGTH = 32;
     private static final long FRAME_MILLISECONDS = 16;
-    private static final int CHANNEL_MASK = 0xFF;
-    private static final int RGB_MASK = 0xFFFFFF;
 
     private final @NotNull DemoContent content;
     private final @NotNull DemoMaps maps;
     private final @Nullable ClientBeaconLink beaconLink;
     private final int width;
     private final int height;
-    private final @NotNull ImageCanvas canvas;
     private final @NotNull SceneClient client;
     private final @NotNull MainMenuScene menu;
 
@@ -102,7 +91,7 @@ public final class DemoClientScenario implements Closeable {
      * @throws ModException      if the demo refuses the launch
      */
     public DemoClientScenario(@NotNull Path storage) throws IOException, ManifestException, ModException {
-        this(storage, null, null, null, WIDTH, HEIGHT, UnaryOperator.identity());
+        this(storage, null, null, null, WIDTH, HEIGHT);
     }
 
     /**
@@ -121,7 +110,7 @@ public final class DemoClientScenario implements Closeable {
     public DemoClientScenario(@NotNull Path storage, @NotNull String node, @NotNull String accountName) throws IOException,
                                                                                                                ManifestException,
                                                                                                                ModException {
-        this(storage, node, accountName, null, WIDTH, HEIGHT, UnaryOperator.identity());
+        this(storage, node, accountName, null, WIDTH, HEIGHT);
     }
 
     /**
@@ -135,25 +124,7 @@ public final class DemoClientScenario implements Closeable {
      * @throws ModException      if the demo refuses the launch
      */
     public DemoClientScenario(@NotNull Path storage, int width, int height) throws IOException, ManifestException, ModException {
-        this(storage, null, null, null, width, height, UnaryOperator.identity());
-    }
-
-    /**
-     * Creates a {@link DemoClientScenario} instance with frames of a given size whose client draws on a wrapper of the offscreen canvas, for
-     * example one that checks the drawing, and starts the demo's first scene, the main menu.
-     *
-     * @param storage the folder of the mod storage
-     * @param width   the width of the offscreen frames in pixels
-     * @param height  the height of the offscreen frames in pixels
-     * @param wrapper the wrapper of the offscreen canvas, drawing on it
-     * @throws IOException       if the demo's pack, maps or manifest cannot be read
-     * @throws ManifestException if the demo's manifest is invalid
-     * @throws ModException      if the demo refuses the launch
-     */
-    public DemoClientScenario(@NotNull Path storage, int width, int height, @NotNull UnaryOperator<Canvas> wrapper) throws IOException,
-                                                                                                                           ManifestException,
-                                                                                                                           ModException {
-        this(storage, null, null, null, width, height, wrapper);
+        this(storage, null, null, null, width, height);
     }
 
     /**
@@ -171,13 +142,13 @@ public final class DemoClientScenario implements Closeable {
     public DemoClientScenario(@NotNull Path storage, @NotNull BeaconLink beaconLink, int width, int height) throws IOException,
                                                                                                                    ManifestException,
                                                                                                                    ModException {
-        this(storage, null, null, beaconLink, width, height, UnaryOperator.identity());
+        this(storage, null, null, beaconLink, width, height);
     }
 
     private DemoClientScenario(@NotNull Path storage, @Nullable String node, @Nullable String accountName, @Nullable BeaconLink givenLink,
-                               int width, int height, @NotNull UnaryOperator<Canvas> wrapper) throws IOException,
-                                                                                                     ManifestException,
-                                                                                                     ModException {
+                               int width, int height) throws IOException,
+                                                             ManifestException,
+                                                             ModException {
         ClassLoader loader = DemoClientScenario.class.getClassLoader();
         GameDefinition.Builder builder = new GameDefinition.Builder();
         byte[] manifestBytes;
@@ -222,9 +193,7 @@ public final class DemoClientScenario implements Closeable {
 
         this.width  = width;
         this.height = height;
-        this.canvas = new ImageCanvas(width, height);
-        this.client = new SceneClient(launch, modStorage, wrapper.apply(this.canvas),
-                                      new AudioMixer(new SilentAudioDevice(() -> this.time)));
+        this.client = new SceneClient(launch, modStorage, new ImageCanvas(width, height), new AudioMixer(new SilentAudioDevice(() -> this.time)));
         this.time   = 0;
 
         this.client.start(started -> first[0] = MainMenuScene.createFirstScene(started, this.content, this.maps));
@@ -303,56 +272,6 @@ public final class DemoClientScenario implements Closeable {
         this.client.handleInput(InputEvent.createPointerMoved(x, y));
         this.client.handleInput(InputEvent.createButtonPressed(button, 0, x, y, false));
         this.client.handleInput(InputEvent.createButtonReleased(button, 0, x, y));
-    }
-
-    /**
-     * Saves the last drawn frame as a sample picture.
-     *
-     * @param name the picture's name without extension
-     * @throws IOException if the picture cannot be written
-     */
-    public void saveFrame(@NotNull String name) throws IOException {
-        Path sample = Path.of(SAMPLE_FOLDER, name + ".png");
-
-        Files.createDirectories(sample.getParent());
-        Assertions.assertTrue(ImageIO.write(this.canvas.getImage(), "png", sample.toFile()));
-    }
-
-    /**
-     * Reads one pixel of the last drawn frame.
-     *
-     * @param x the framebuffer column
-     * @param y the framebuffer row
-     * @return the colour, packed {@code 0xRRGGBB}
-     */
-    public int readColor(int x, int y) {
-        return this.canvas.getImage().getRGB(x, y) & RGB_MASK;
-    }
-
-    /**
-     * Counts the pixels of the last drawn frame whose colour is near a colour, for checks that a picture shows a team colour.
-     *
-     * @param rgb       the colour, packed {@code 0xRRGGBB}
-     * @param tolerance the largest difference of each channel
-     * @return the number of pixels
-     */
-    public int countPixels(int rgb, int tolerance) {
-        int count = 0;
-
-        for (int y = 0; y < this.height; y++) {
-            for (int x = 0; x < this.width; x++) {
-                int pixel = this.canvas.getImage().getRGB(x, y);
-                boolean near = true;
-
-                for (int shift = 0; shift <= Short.SIZE; shift += Byte.SIZE) {
-                    near &= Math.abs((pixel >> shift & CHANNEL_MASK) - (rgb >> shift & CHANNEL_MASK)) <= tolerance;
-                }
-
-                count += near ? 1 : 0;
-            }
-        }
-
-        return count;
     }
 
     /**

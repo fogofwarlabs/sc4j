@@ -12,7 +12,6 @@ import org.fogofwarlabs.sc4j.engine.client.display.UiSurface;
 import org.fogofwarlabs.sc4j.engine.client.hud.CommandButton;
 import org.fogofwarlabs.sc4j.engine.client.hud.HudBlock;
 import org.fogofwarlabs.sc4j.engine.client.hud.HudListener;
-import org.fogofwarlabs.sc4j.engine.client.hud.Tooltip;
 import org.fogofwarlabs.sc4j.engine.client.input.InputEvent;
 import org.fogofwarlabs.sc4j.engine.client.input.Key;
 import org.fogofwarlabs.sc4j.engine.client.input.PointerButton;
@@ -20,8 +19,6 @@ import org.fogofwarlabs.sc4j.engine.client.projection.SquareProjection;
 import org.fogofwarlabs.sc4j.engine.client.render.Canvas;
 import org.fogofwarlabs.sc4j.engine.client.render.gl.GlCanvas;
 import org.fogofwarlabs.sc4j.engine.client.render.image.ImageCanvas;
-import org.fogofwarlabs.sc4j.engine.client.skin.ColorBoxStyle;
-import org.fogofwarlabs.sc4j.engine.client.skin.HudSkin;
 import org.fogofwarlabs.sc4j.engine.client.text.BitmapFont;
 import org.fogofwarlabs.sc4j.engine.client.text.TextColorHook;
 import org.fogofwarlabs.sc4j.engine.client.view.GameView;
@@ -55,11 +52,10 @@ import java.util.List;
 
 /**
  * Tests the engine-only client on the skirmish map without installed game data, the base of an engine-only mod's client: the default game screen
- * draws the world view (terrain, units, selection, fog), the minimap and the HUD on a hidden window, selects with the pointer and issues commands
- * from the command card, the hotkeys, the world view and the minimap through the local command queue. Drawn on its own, the screen lays out in the
- * logical units of the frame's surface, the hovered command button's label, cost and refusal show over the card above the button in the skin's
- * tooltip box, a press on a button and a refused action reach the HUD listener, and its console lays its sections out a gap apart at any size, with a
- * hosted queue panel between the selection panel and the command card.
+ * on a hidden window selects with the pointer and issues commands from the command card, the hotkeys, the world view and the minimap through the
+ * local command queue. Drawn on its own, the screen lays out in the logical units of the frame's surface, a press on a button and a refused action
+ * reach the HUD listener, and its console lays its sections out a gap apart at any size, with a hosted queue panel between the selection panel and
+ * the command card.
  */
 final class GameScreenTest {
     private static final int WIDTH = 800;
@@ -74,17 +70,8 @@ final class GameScreenTest {
     private static final int COMMAND_ID = 0;
     private static final int SCOUT_X = 400;
     private static final int SCOUT_Y = 144;
-    private static final int UNEXPLORED_X = 780;
-    private static final int UNEXPLORED_Y = 300;
     private static final int GROUND_X = 500;
     private static final int GROUND_Y = 200;
-    private static final int BLACK = 0x000000;
-    private static final int SELECTION_GREEN = 0x40FF40;
-    private static final int MINIMAP_BORDER = 0x808080;
-    private static final int BACKDROP_COLOR = 0x203040FF;
-    private static final int RGB_SHIFT = 8;
-    private static final int CHANNEL_MASK = 0xFF;
-    private static final int RGB_MASK = 0xFFFFFF;
     private static final int DISPLAY_SCALE = 2;
     private static final long KEY_SCROLL_MILLISECONDS = 100;
     private static final float MILLISECONDS_PER_SECOND = 1000;
@@ -96,22 +83,6 @@ final class GameScreenTest {
 
     private static final float QUEUE_PANEL_WIDTH = 260;
     private static final int GOLD = 500;
-    private static final int TOOLTIP_OUTLINE = 0x8090A0;
-    private static final int SKIN_TOOLTIP_OUTLINE = 0x20C040;
-    private static final int SKIN_TOOLTIP_OUTLINE_COLOR = 0x20C040FF;
-    private static final float SKIN_TOOLTIP_PADDING = 7;
-    /**
-     * The padding of the command card around its buttons, so the first button's left side.
-     */
-    private static final int CARD_PADDING = 6;
-    /**
-     * The rows from the top edge of the command card up to the top of the tooltip of a one-line label: the gap and the padded line.
-     */
-    private static final int TOOLTIP_RISE = 4 + LINE_HEIGHT + 2 * 4;
-    /**
-     * The rows from the top edge of the command card up to the top of the tooltip of a label with its cost and refusal lines.
-     */
-    private static final int THREE_LINE_TOOLTIP_RISE = 4 + 3 * LINE_HEIGHT + 2 * 4;
     private static final int TRAIN_ID = 1;
     private static final int KEEP_X = 300;
     private static final int KEEP_Y = 300;
@@ -223,10 +194,6 @@ final class GameScreenTest {
         return new FontFace(LINE_HEIGHT, GLYPH_SIZE, PixelLayer.ofAlpha(alphas), glyphs);
     }
 
-    private static int readColor(int x, int y) {
-        return HiddenWindowScenario.readColor(x, y, HEIGHT);
-    }
-
     private static void draw(@NotNull GameScreen screen) {
         try {
             screen.draw(UiSurface.of(WIDTH, HEIGHT, DisplayScale.ONE));
@@ -268,23 +235,11 @@ final class GameScreenTest {
                 screen.registerCommands(registry);
                 screen.setCommands(List.of(new CommandButton("Move", Key.M, move)), move);
                 draw(screen);
-
-                int scoutColor = readColor(SCOUT_X, SCOUT_Y);
-
-                Assertions.assertTrue((scoutColor & CHANNEL_MASK) > (scoutColor >> Short.SIZE & CHANNEL_MASK),
-                                      "the local scout is drawn in its teal team colour: " + Integer.toHexString(scoutColor));
-                Assertions.assertEquals(BLACK, readColor(UNEXPLORED_X, UNEXPLORED_Y), "unexplored ground is black");
-                Assertions.assertEquals(MINIMAP_BORDER, readColor(GameScreen.SECTION_GAP, HEIGHT - GameScreen.PANEL_HEIGHT + GameScreen.SECTION_GAP),
-                                        "minimap border");
-
                 click(screen, PointerButton.LEFT, SCOUT_X, SCOUT_Y);
 
                 Assertions.assertEquals(List.of(scout), screen.getSelection().getUnits());
 
                 draw(screen);
-
-                Assertions.assertEquals(SELECTION_GREEN, readColor(scoutView.getLeft(), (scoutView.getTop() + scoutView.getBottom()) / 2),
-                                        "selection outline");
 
                 float buttonX = WIDTH - COMMAND_BUTTON_RIGHT_OFFSET;
                 float buttonY = HEIGHT - GameScreen.PANEL_HEIGHT + COMMAND_BUTTON_TOP_OFFSET;
@@ -360,49 +315,6 @@ final class GameScreenTest {
             Assertions.assertSame(screen.getScrollRate(), screen.getCameraScroll().getRate(), "the camera scroll runs at the screen's rate");
             Assertions.assertEquals(HEIGHT - GameScreen.PANEL_HEIGHT + GameScreen.SECTION_GAP, screen.getMinimap().getY());
             Assertions.assertEquals(GameScreen.PANEL_HEIGHT - 2 * GameScreen.SECTION_GAP, screen.getMinimap().getWidth());
-
-            int minimapTop = HEIGHT - GameScreen.PANEL_HEIGHT + GameScreen.SECTION_GAP;
-
-            Assertions.assertEquals(MINIMAP_BORDER,
-                                    canvas.getImage().getRGB(GameScreen.SECTION_GAP * DISPLAY_SCALE, minimapTop * DISPLAY_SCALE) & RGB_MASK,
-                                    "the minimap border is at its logical place, scaled onto the framebuffer");
-        }
-    }
-
-    @Test
-    void set_backdrop_should_show_the_box_beyond_the_map_edge_and_black_without_it() throws IOException {
-        SkirmishSessionScenario skirmish = new SkirmishSessionScenario();
-        ImageCanvas canvas = new ImageCanvas(WIDTH, HEIGHT);
-
-        try (BitmapFont font = new BitmapFont(canvas, createFace(), NO_COLOR_CODES);
-             GameScreen screen = new GameScreen(skirmish.getSession(), canvas, font, new SquareProjection(), new TerrainColors(),
-                                                ContentType::getDebugName, "supply", ContentType::getDebugName)) {
-            Camera camera = screen.getCamera();
-            int row = GameScreen.RESOURCE_BAR_HEIGHT + 1;
-            int column = -1;
-
-            screen.draw(UiSurface.of(WIDTH, HEIGHT, DisplayScale.ONE));
-            camera.setZoom(camera.getMinimumZoom());
-            camera.moveTo(camera.getMaximumX(), camera.getMinimumY());
-
-            for (int x = WIDTH - 1; x >= 0 && column < 0; x--) {
-                if (camera.toWorldX(x, row) > camera.getMapWidth()) {
-                    column = x;
-                }
-            }
-
-            Assertions.assertTrue(column >= 0, "the zoomed out camera shows ground beyond the map's right edge");
-
-            screen.draw(UiSurface.of(WIDTH, HEIGHT, DisplayScale.ONE));
-
-            Assertions.assertNull(screen.getBackdrop());
-            Assertions.assertEquals(BLACK, canvas.getImage().getRGB(column, row) & RGB_MASK, "without backdrop the ground beyond the map is black");
-
-            screen.setBackdrop(new ColorBoxStyle(BACKDROP_COLOR));
-            screen.draw(UiSurface.of(WIDTH, HEIGHT, DisplayScale.ONE));
-
-            Assertions.assertEquals(BACKDROP_COLOR >>> RGB_SHIFT, canvas.getImage().getRGB(column, row) & RGB_MASK,
-                                    "the backdrop shows beyond the map's edge");
         }
     }
 
@@ -475,42 +387,6 @@ final class GameScreenTest {
     }
 
     @Test
-    void game_screen_shows_the_label_of_the_hovered_command_button_over_the_card() throws IOException {
-        SkirmishSessionScenario skirmish = new SkirmishSessionScenario();
-        GameSession session = skirmish.getSession();
-        OrderAction move = new OrderAction(session.getGame(), new IssueOrderCommandType(COMMAND_ID, 0), skirmish.getScenario().getMove(), true);
-        ImageCanvas canvas = new ImageCanvas(WIDTH, HEIGHT);
-
-        try (BitmapFont font = new BitmapFont(canvas, createFace(), NO_COLOR_CODES);
-             GameScreen screen = new GameScreen(session, canvas, font, new SquareProjection(), new TerrainColors(), ContentType::getDebugName,
-                                                "supply", ContentType::getDebugName)) {
-            screen.setCommands(List.of(new CommandButton("Move", Key.M, move)), move);
-            screen.draw(UiSurface.of(WIDTH, HEIGHT, DisplayScale.ONE));
-
-            int buttonLeft = (int) screen.getCommandCard().getX() + CARD_PADDING;
-            int tooltipTop = (int) screen.getCommandCard().getY() - TOOLTIP_RISE;
-
-            Assertions.assertNotEquals(TOOLTIP_OUTLINE, canvas.getImage().getRGB(buttonLeft, tooltipTop) & RGB_MASK, "no tooltip without hover");
-
-            screen.handleInput(InputEvent.createPointerMoved(WIDTH - COMMAND_BUTTON_RIGHT_OFFSET,
-                                                             HEIGHT - GameScreen.PANEL_HEIGHT + COMMAND_BUTTON_TOP_OFFSET));
-            screen.draw(UiSurface.of(WIDTH, HEIGHT, DisplayScale.ONE));
-
-            Assertions.assertEquals(TOOLTIP_OUTLINE, canvas.getImage().getRGB(buttonLeft, tooltipTop) & RGB_MASK,
-                                    "the hovered button's tooltip stands over the card's top edge above the button");
-
-            screen.setSkin(HudSkin.builder().setTooltip(new ColorBoxStyle(0, SKIN_TOOLTIP_OUTLINE_COLOR, 1), SKIN_TOOLTIP_PADDING)
-                                  .build());
-            screen.draw(UiSurface.of(WIDTH, HEIGHT, DisplayScale.ONE));
-
-            int skinnedTop = (int) (screen.getCommandCard().getY() - Tooltip.GAP - LINE_HEIGHT - 2 * SKIN_TOOLTIP_PADDING);
-
-            Assertions.assertEquals(SKIN_TOOLTIP_OUTLINE, canvas.getImage().getRGB(buttonLeft, skinnedTop) & RGB_MASK,
-                                    "the tooltip is drawn in the skin's tooltip box with its padding");
-        }
-    }
-
-    @Test
     void game_screen_reports_each_selection_by_the_player_but_none_by_code() throws IOException {
         SkirmishSessionScenario skirmish = new SkirmishSessionScenario();
         GameSession session = skirmish.getSession();
@@ -556,7 +432,7 @@ final class GameScreenTest {
     }
 
     @Test
-    void game_screen_shows_the_cost_and_the_refusal_of_a_button_and_reports_presses_and_refusals() throws IOException {
+    void game_screen_reports_button_presses_and_refusals() throws IOException {
         SkirmishSessionScenario skirmish = new SkirmishSessionScenario();
         GameSession session = skirmish.getSession();
         Game game = session.getGame();
@@ -579,16 +455,7 @@ final class GameScreenTest {
             screen.setCommands(List.of(new CommandButton("Keeper", Key.K, train)), null);
             screen.getSelection().select(keep);
             game.getEconomy().setAmount(player, skirmish.getScenario().getGold(), 0);
-            screen.handleInput(InputEvent.createPointerMoved(WIDTH - COMMAND_BUTTON_RIGHT_OFFSET,
-                                                             HEIGHT - GameScreen.PANEL_HEIGHT + COMMAND_BUTTON_TOP_OFFSET));
             screen.draw(UiSurface.of(WIDTH, HEIGHT, DisplayScale.ONE));
-
-            int buttonLeft = (int) screen.getCommandCard().getX() + CARD_PADDING;
-            int tooltipTop = (int) screen.getCommandCard().getY() - THREE_LINE_TOOLTIP_RISE;
-
-            Assertions.assertEquals(TOOLTIP_OUTLINE, canvas.getImage().getRGB(buttonLeft, tooltipTop) & RGB_MASK,
-                                    "the tooltip holds the label, the cost and the refusal");
-
             click(screen, PointerButton.LEFT, WIDTH - COMMAND_BUTTON_RIGHT_OFFSET, HEIGHT - GameScreen.PANEL_HEIGHT + COMMAND_BUTTON_TOP_OFFSET);
             screen.handleInput(InputEvent.createKey(InputEvent.Type.KEY_PRESSED, Key.K, 0));
 

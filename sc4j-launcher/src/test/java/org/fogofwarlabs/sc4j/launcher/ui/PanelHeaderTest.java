@@ -58,9 +58,9 @@ final class PanelHeaderTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"en", "ko"})
+    @ValueSource(strings = {"en", "ko", "zh"})
     void every_header_should_keep_one_height_whatever_its_controls(@NotNull String languageCode) throws Exception {
-        UiLanguage language = languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
+        UiLanguage language = LauncherFxScenario.requireLanguage(languageCode);
 
         LauncherFxScenario.run(() -> {
             Label count = ComponentUtils.createLabel("3 peers", "text-caption");

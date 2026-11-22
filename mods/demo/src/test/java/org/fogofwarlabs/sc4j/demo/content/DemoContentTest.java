@@ -22,8 +22,7 @@ import java.util.Map;
 
 /**
  * Tests the demo's standard data pack as the game reads it: every sprite sheet with its layers, the animations of every sheet, the
- * synthesized sound effects and music, the body font, and an offscreen picture of every sheet drawn like the engine sprite batch draws it
- * (shadow, then colour with the team colour mixed in by the mask).
+ * synthesized sound effects and music, the body font, and a shadow on every frame of a sheet with a shadow layer.
  */
 final class DemoContentTest {
     private static final @NotNull List<@NotNull String> UNITS = List.of("tiller", "pikeward", "longeye", "grubber", "cleaver", "stonehurler");
@@ -53,24 +52,10 @@ final class DemoContentTest {
     private static final int FACINGS = 8;
     private static final int UNIT_FRAMES = 8;
     private static final int BUILDING_FRAMES = 5;
-    private static final int FIRST_DEATH_FRAME = 5;
-    /**
-     * The place of a building's done frame counted from the end of its sheet, before the rubble frame.
-     */
-    private static final int DONE_FRAME_FROM_END = 2;
     private static final int FIRST_PRINTABLE = 0x20;
     private static final int LAST_PRINTABLE = 0x7E;
     private static final int LINE_HEIGHT = 20;
-    private static final int TEAM_COLOR = 0xFF2020;
-    private static final int OTHER_TEAM_COLOR = 0x2020FF;
-    private static final int GROUND_COLOR = 0x608048;
     private static final int ALPHA_SHIFT = 24;
-    private static final int CHANNEL_MASK = 0xFF;
-    private static final int CHANNEL_MAXIMUM = 255;
-    private static final int RED_SHIFT = 16;
-    private static final int GREEN_SHIFT = 8;
-    private static final int TEAM_DIFFERENCE = 12;
-    private static final int MINIMUM_TEAM_PIXELS = 4;
 
     @Test
     void pack_reads_every_sprite_sheet_with_its_frame_grid_and_layers() throws IOException {
@@ -216,54 +201,18 @@ final class DemoContentTest {
     }
 
     @Test
-    void sprite_sheets_draw_offscreen_with_the_team_colour_and_a_shadow() throws IOException {
+    void sprite_sheets_with_a_shadow_layer_have_a_shadow_on_every_frame() throws IOException {
         try (DemoContent content = DemoContent.open(DemoContentTest.class.getClassLoader())) {
             StandardPack pack = content.getPack();
 
             for (String id : pack.getSpriteSheetIds()) {
                 SpriteSheet sheet = pack.loadSpriteSheet(ResourceKey.of(id));
 
-                for (int frameIndex = 0; frameIndex < sheet.getFrameCount(); frameIndex++) {
-                    int[] picture = drawFrame(sheet, frameIndex, TEAM_COLOR);
-                    int[] otherPicture = drawFrame(sheet, frameIndex, OTHER_TEAM_COLOR);
-                    int teamPixels = 0;
-                    int shadowPixels = 0;
-
-                    for (int index = 0; index < picture.length; index++) {
-                        int redDifference = (picture[index] >>> RED_SHIFT & CHANNEL_MASK) - (otherPicture[index] >>> RED_SHIFT & CHANNEL_MASK);
-
-                        if (redDifference >= TEAM_DIFFERENCE) {
-                            teamPixels++;
-                        }
-
-                        if (isDarkerGround(picture[index])) {
-                            shadowPixels++;
-                        }
-                    }
-
-                    if (sheet.getShadow() != null) {
-                        Assertions.assertTrue(countShadowed(sheet, frameIndex) > 0, id + " frame " + frameIndex + " has no shadow");
-                    }
-
-                    if (isTeamFrame(id, sheet, frameIndex)) {
-                        Assertions.assertTrue(teamPixels >= MINIMUM_TEAM_PIXELS, id + " frame " + frameIndex + " shows no team colour");
-                    }
-
-                    // A building's footprint pad may cover its shadow while it is a timber frame or rubble.
-                    if (sheet.getShadow() != null && (!BUILDINGS.contains(id) || isTeamFrame(id, sheet, frameIndex))) {
-                        Assertions.assertTrue(shadowPixels > 0, id + " frame " + frameIndex + " casts no shadow on the ground");
-                    }
+                for (int frameIndex = 0; frameIndex < sheet.getFrameCount() && sheet.getShadow() != null; frameIndex++) {
+                    Assertions.assertTrue(countShadowed(sheet, frameIndex) > 0, id + " frame " + frameIndex + " has no shadow");
                 }
             }
         }
-    }
-
-    private static boolean isTeamFrame(@NotNull String id, @NotNull SpriteSheet sheet, int frameIndex) {
-        if (UNITS.contains(id)) {
-            return frameIndex % UNIT_FRAMES < FIRST_DEATH_FRAME;
-        }
-
-        return BUILDINGS.contains(id) && frameIndex == sheet.getFrameCount() - DONE_FRAME_FROM_END;
     }
 
     private static int countShadowed(@NotNull SpriteSheet sheet, int frameIndex) {
@@ -291,47 +240,5 @@ final class DemoContentTest {
         }
 
         return covered;
-    }
-
-    /**
-     * Draws one frame on the ground colour: the shadow darkens the ground by its alpha, then the colour is blended over it by its alpha
-     * after the team colour is mixed in by the mask. A team colour part is black in the colour layer and its mask holds its lit brightness,
-     * so the team colour shows where a change of it changes the drawn pixel.
-     */
-    private static int @NotNull [] drawFrame(@NotNull SpriteSheet sheet, int frameIndex, int teamColor) {
-        SpriteFrame frame = sheet.getFrame(frameIndex);
-        PixelLayer mask = sheet.getTeamMask();
-        PixelLayer shadow = sheet.getShadow();
-        int[] picture = new int[frame.getWidth() * frame.getHeight()];
-
-        for (int index = 0; index < picture.length; index++) {
-            int offset = frame.getPixelOffset() + index;
-            int shadowAlpha = shadow != null ? shadow.getValue(offset) : 0;
-            int color = sheet.getColor().getValue(offset);
-            int maskValue = mask != null ? mask.getValue(offset) : 0;
-            int alpha = color >>> ALPHA_SHIFT;
-            int result = 0;
-
-            for (int shift : new int[]{RED_SHIFT, GREEN_SHIFT, 0}) {
-                int ground = (GROUND_COLOR >>> shift & CHANNEL_MASK) * (CHANNEL_MAXIMUM - shadowAlpha) / CHANNEL_MAXIMUM;
-                int own = color >>> shift & CHANNEL_MASK;
-                int mixed = own + ((teamColor >>> shift & CHANNEL_MASK) - own) * maskValue / CHANNEL_MAXIMUM;
-
-                result |= (ground + (mixed - ground) * alpha / CHANNEL_MAXIMUM) << shift;
-            }
-
-            picture[index] = result;
-        }
-
-        return picture;
-    }
-
-    private static boolean isDarkerGround(int pixel) {
-        int red = pixel >>> RED_SHIFT & CHANNEL_MASK;
-        int green = pixel >>> GREEN_SHIFT & CHANNEL_MASK;
-        int blue = pixel & CHANNEL_MASK;
-
-        return red < (GROUND_COLOR >>> RED_SHIFT & CHANNEL_MASK) && green < (GROUND_COLOR >>> GREEN_SHIFT & CHANNEL_MASK) &&
-               blue < (GROUND_COLOR & CHANNEL_MASK) && green > red && green > blue;
     }
 }

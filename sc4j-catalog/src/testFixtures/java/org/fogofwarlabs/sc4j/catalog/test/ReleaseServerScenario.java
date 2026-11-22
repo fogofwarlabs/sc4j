@@ -21,11 +21,13 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Stands in for GitHub on 127.0.0.1: the REST API's latest release of a repository ({@code /api/repos/<owner>/<name>/releases/latest}), the
- * release files, which are served through a redirect as GitHub serves them, and other files such as a mod catalog. A release file can be
- * paused halfway, so that its download stays in progress until the test resumes it.
+ * Stands in for GitHub on 127.0.0.1: the REST API's latest release of a repository ({@code /api/repos/<owner>/<name>/releases/latest}) and
+ * its list of releases, newest first ({@code /api/repos/<owner>/<name>/releases}), the release files, which are served through a redirect as
+ * GitHub serves them, and other files such as a mod catalog. A release file can be paused halfway, so that its download stays in progress
+ * until the test resumes it.
  */
 public final class ReleaseServerScenario implements AutoCloseable {
     /**
@@ -35,11 +37,15 @@ public final class ReleaseServerScenario implements AutoCloseable {
 
     private static final @NotNull String API_PATH = "/api/";
     private static final @NotNull String LATEST_RELEASE_PATH = API_PATH + "repos/{0}/releases/latest";
+    private static final @NotNull String RELEASES_PATH = API_PATH + "repos/{0}/releases";
     private static final @NotNull String DOWNLOAD_PATH = "/download/{0}/{1}/{2}";
     private static final @NotNull String FILE_PATH = "/files/";
     private static final @NotNull String LOCATION_HEADER = "Location";
+    private static final @NotNull String ENTITY_TAG_HEADER = "ETag";
+    private static final @NotNull String IF_NONE_MATCH_HEADER = "If-None-Match";
     private static final int OK_STATUS = 200;
     private static final int FOUND_STATUS = 302;
+    private static final int NOT_MODIFIED_STATUS = 304;
     private static final int NOT_FOUND_STATUS = 404;
     private static final int NO_BODY = -1;
     private static final int HALF = 2;
@@ -72,6 +78,17 @@ public final class ReleaseServerScenario implements AutoCloseable {
         }
     }
 
+    /**
+     * Gives the entity tag of an API answer: its quoted SHA-256 checksum, so it changes exactly when the answer does.
+     */
+    private static @NotNull String createEntityTag(byte @NotNull [] contents) {
+        try {
+            return '"' + HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(contents)) + '"';
+        } catch (NoSuchAlgorithmException exception) {
+            throw Exceptions.newIllegalStateException(exception, "The Java runtime has no SHA-256.");
+        }
+    }
+
     private static void awaitResume(@NotNull CountDownLatch resume) throws IOException {
         try {
             if (!resume.await(PAUSE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
@@ -89,6 +106,8 @@ public final class ReleaseServerScenario implements AutoCloseable {
     private final @NotNull Map<@NotNull String, byte @NotNull []> files;
     private final @NotNull Map<@NotNull String, @NotNull String> redirects;
     private final @NotNull Map<@NotNull String, @NotNull CountDownLatch> pauses;
+    private final @NotNull Map<@NotNull String, @NotNull List<@NotNull Object>> releases;
+    private final @NotNull AtomicInteger notModifiedAnswers;
 
     /**
      * Creates a {@link ReleaseServerScenario} instance and starts the server.
@@ -96,10 +115,12 @@ public final class ReleaseServerScenario implements AutoCloseable {
      * @param server the bound server
      */
     private ReleaseServerScenario(@NotNull HttpServer server) {
-        this.server    = server;
-        this.files     = new ConcurrentHashMap<>();
-        this.redirects = new ConcurrentHashMap<>();
-        this.pauses    = new ConcurrentHashMap<>();
+        this.server             = server;
+        this.files              = new ConcurrentHashMap<>();
+        this.redirects          = new ConcurrentHashMap<>();
+        this.pauses             = new ConcurrentHashMap<>();
+        this.releases           = new ConcurrentHashMap<>();
+        this.notModifiedAnswers = new AtomicInteger();
 
         this.server.createContext("/", this::answer);
         this.server.start();
@@ -110,6 +131,13 @@ public final class ReleaseServerScenario implements AutoCloseable {
      */
     public @NotNull URI getApi() {
         return this.resolve(API_PATH);
+    }
+
+    /**
+     * @return the number of API answers sent as "not modified", for a conditional request whose entity tag still matched
+     */
+    public int getNotModifiedAnswerCount() {
+        return this.notModifiedAnswers.get();
     }
 
     /**
@@ -174,6 +202,13 @@ public final class ReleaseServerScenario implements AutoCloseable {
 
         release.put("assets", listed);
         this.setLatestRelease(repository, JsonWriterUtils.write(release).getBytes(StandardCharsets.UTF_8));
+
+        List<Object> releases = this.releases.computeIfAbsent(repository, name -> new ArrayList<>());
+
+        synchronized (releases) {
+            releases.addFirst(release);
+            this.setReleases(repository, JsonWriterUtils.write(releases).getBytes(StandardCharsets.UTF_8));
+        }
     }
 
     /**
@@ -184,6 +219,16 @@ public final class ReleaseServerScenario implements AutoCloseable {
      */
     public void setLatestRelease(@NotNull String repository, byte @NotNull [] contents) {
         this.files.put(Exceptions.format(LATEST_RELEASE_PATH, repository), contents);
+    }
+
+    /**
+     * Sets the REST API's answer for the list of the releases of a repository; a release published later replaces it.
+     *
+     * @param repository the repository {@code owner/name}
+     * @param contents   the answer
+     */
+    public void setReleases(@NotNull String repository, byte @NotNull [] contents) {
+        this.files.put(Exceptions.format(RELEASES_PATH, repository), contents);
     }
 
     /**
@@ -248,8 +293,15 @@ public final class ReleaseServerScenario implements AutoCloseable {
                 exchange.sendResponseHeaders(FOUND_STATUS, NO_BODY);
             } else if (contents == null) {
                 exchange.sendResponseHeaders(NOT_FOUND_STATUS, NO_BODY);
+            } else if (path.startsWith(API_PATH) && createEntityTag(contents).equals(exchange.getRequestHeaders().getFirst(IF_NONE_MATCH_HEADER))) {
+                this.notModifiedAnswers.incrementAndGet();
+                exchange.sendResponseHeaders(NOT_MODIFIED_STATUS, NO_BODY);
             } else {
                 CountDownLatch pause = this.takePause(path);
+
+                if (path.startsWith(API_PATH)) {
+                    exchange.getResponseHeaders().add(ENTITY_TAG_HEADER, createEntityTag(contents));
+                }
 
                 exchange.sendResponseHeaders(OK_STATUS, contents.length == 0 ? NO_BODY : contents.length);
 

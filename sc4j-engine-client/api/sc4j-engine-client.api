@@ -878,6 +878,7 @@ public final class org.fogofwarlabs.sc4j.engine.client.dialog.TextEditKey extend
 public final class org.fogofwarlabs.sc4j.engine.client.dialog.TextEditModel {
   public boolean apply(org.fogofwarlabs.sc4j.engine.client.dialog.TextEditOperation, org.fogofwarlabs.sc4j.engine.client.dialog.TextClipboard);
   public boolean press(org.fogofwarlabs.sc4j.engine.client.dialog.TextEditKey);
+  public boolean press(org.fogofwarlabs.sc4j.engine.client.dialog.TextEditKey, boolean);
   public boolean type(int);
   public int getCaret();
   public int getMaximumLength();
@@ -887,6 +888,8 @@ public final class org.fogofwarlabs.sc4j.engine.client.dialog.TextEditModel {
   public org.fogofwarlabs.sc4j.engine.client.dialog.TextEditModel(java.lang.String, int, java.lang.String);
   public static final int MAXIMUM_UNDO_STEPS = 64;
   public static final int UNLIMITED = 2147483647;
+  public void moveCaret(int, boolean);
+  public void selectWord(int);
   public void setAcceptance(java.util.function.Predicate<java.lang.String>);
   public void setText(java.lang.String);
 }

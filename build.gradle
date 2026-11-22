@@ -411,12 +411,15 @@ tasks.register('devInstallBrokenMod', Copy) {
 }
 
 // The start program SC4J.exe of the Windows user package and its icon. jpackage makes the program, which starts the launcher without a
-// console window; its configuration app/SC4J.cfg names the Java runtime java/, the jars of launcher/lib and the JVM options of the launcher's
-// start scripts, so the copies of the runtime and the jar that jpackage puts beside it are removed.
+// console window, and the console program SC4J-cli.exe beside it, which starts the same launcher in the console it is run from, so that the
+// launcher's console commands (--list, tool) print there and return their exit status; their configurations app/SC4J.cfg and
+// app/SC4J-cli.cfg name the Java runtime java/, the jars of launcher/lib and the JVM options of the launcher's start scripts, so the copies
+// of the runtime and the jar that jpackage puts beside them are removed.
 def windowsIconSizes = [16, 20, 24, 32, 40, 48, 64, 128, 256]
 def windowsIconSource = file('docs/branding/sc4j-logo-512.png')
 def windowsIcon = layout.buildDirectory.file('windows-icon/SC4J.ico')
 def windowsProgramName = 'SC4J'
+def windowsConsoleProgramName = 'SC4J-cli'
 def windowsProgramImage = layout.buildDirectory.dir('windows-program/' + windowsProgramName)
 // Halves the image with bilinear filtering until one step reaches the size, which keeps the small sizes sharp.
 def scaleIconImage = { java.awt.image.BufferedImage source, int size ->
@@ -496,9 +499,11 @@ def launcherJvmOptions = providers.provider {
 def launcherMainClass = providers.provider { project(':sc4j-launcher').application.mainClass.get() }
 def deleteFiles = { Object... paths -> delete(paths) }
 def createWindowsProgram = tasks.register('createWindowsProgram', Exec) {
-    description = 'Creates the start program SC4J.exe of the Windows user package with its configuration in build/windows-program/SC4J.'
+    description = 'Creates the start programs SC4J.exe and SC4J-cli.exe of the Windows user package with their configurations in ' +
+                  'build/windows-program/SC4J.'
     group = 'distribution'
     def inputDirectory = new File(temporaryDir, 'input')
+    def consoleLauncherFile = new File(temporaryDir, windowsConsoleProgramName + '.properties')
     def imageDirectory = windowsProgramImage.get().asFile
     inputs.files(createWindowsIcon)
     inputs.files(createJavaRuntime)
@@ -514,33 +519,38 @@ def createWindowsProgram = tasks.register('createWindowsProgram', Exec) {
         ['--type', 'app-image', '--name', windowsProgramName, '--dest', imageDirectory.parentFile.absolutePath,
          '--input', inputDirectory.absolutePath, '--main-jar', launcherJar().name, '--main-class', launcherMainClass.get(),
          '--runtime-image', javaRuntimeImage.get().asFile.absolutePath, '--icon', windowsIcon.get().asFile.absolutePath,
-         '--app-version', version.toString().replaceFirst(/-.*/, ''), '--vendor', 'Fog of War Labs', '--description', 'SC4J']
+         '--app-version', version.toString().replaceFirst(/-.*/, ''), '--vendor', 'Fog of War Labs', '--description', 'SC4J',
+         '--add-launcher', windowsConsoleProgramName + '=' + consoleLauncherFile.absolutePath]
     } as CommandLineArgumentProvider)
     // jpackage writes only into a folder that does not exist.
     doFirst {
         deleteFiles(imageDirectory, inputDirectory)
         inputDirectory.mkdirs()
         java.nio.file.Files.copy(launcherJar().toPath(), new File(inputDirectory, launcherJar().name).toPath())
+        consoleLauncherFile.setText('win-console=true\n', 'UTF-8')
     }
     doLast {
+        def programs = [windowsProgramName, windowsConsoleProgramName].collect { name -> new File(imageDirectory, name + '.exe') }
         new File(imageDirectory, 'runtime').deleteDir()
         new File(imageDirectory, 'app').deleteDir()
-        // jpackage leaves the program read-only, which would stop an update from deleting the replaced one.
-        new File(imageDirectory, windowsProgramName + '.exe').setWritable(true)
-        setUtf8CodePage([new File(imageDirectory, windowsProgramName + '.exe')])
+        // jpackage leaves the programs read-only, which would stop an update from deleting the replaced ones.
+        programs.each { program -> program.setWritable(true) }
+        setUtf8CodePage(programs)
         def lines = ['[Application]', 'app.runtime=$ROOTDIR\\java', 'app.classpath=$ROOTDIR\\launcher\\lib\\*',
                      'app.mainclass=' + launcherMainClass.get(), '', '[JavaOptions]'] +
                     launcherJvmOptions.get().collect { option -> 'java-options=' + option }
-        def configuration = new File(imageDirectory, 'app/' + windowsProgramName + '.cfg')
-        configuration.parentFile.mkdirs()
-        configuration.setText(lines.join('\n') + '\n', 'UTF-8')
+        [windowsProgramName, windowsConsoleProgramName].each { name ->
+            def configuration = new File(imageDirectory, 'app/' + name + '.cfg')
+            configuration.parentFile.mkdirs()
+            configuration.setText(lines.join('\n') + '\n', 'UTF-8')
+        }
     }
 }
 
 // The user package build/distributions/SC4J-<version>.zip: one folder SC4J-<version> with the programs of an install and the jars of the
-// mods above in mods/ and the Java runtime that the start scripts and SC4J.exe use (java/); on Windows also SC4J.exe with app/. It holds no
-// userdata/ and no cache file: a fresh install makes them at its first start. It holds the empty JVM temporary folder of the launcher
-// (launcher/.cache/tmp), which the JVM of SC4J.exe expects at its start.
+// mods above in mods/ and the Java runtime that the start scripts and SC4J.exe use (java/); on Windows also SC4J.exe and SC4J-cli.exe with
+// app/. It holds no userdata/ and no cache file: a fresh install makes them at its first start. It holds the empty JVM temporary folder of
+// the launcher (launcher/.cache/tmp), which the JVM of SC4J.exe expects at its start.
 // The package is staged in build/user-package first, where the licence check runs, and zipped without file times in a fixed order, so that
 // the same sources give the same zip.
 def userPackageName = 'SC4J-' + version

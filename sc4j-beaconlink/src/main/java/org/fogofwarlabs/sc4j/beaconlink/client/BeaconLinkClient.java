@@ -5,6 +5,9 @@ import org.fogofwarlabs.sc4j.base.exception.IgnoreException;
 import org.fogofwarlabs.sc4j.base.log.LogLevel;
 import org.fogofwarlabs.sc4j.base.log.Logger;
 import org.fogofwarlabs.sc4j.beaconlink.channel.*;
+import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMapper;
+import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMapping;
+import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMappingConfiguration;
 import org.fogofwarlabs.sc4j.beaconlink.overlay.ChannelOverlay;
 import org.fogofwarlabs.sc4j.beaconlink.peer.MeshPeer;
 import org.fogofwarlabs.sc4j.beaconlink.peer.bootstrap.KnownNodes;
@@ -166,11 +169,13 @@ public final class BeaconLinkClient implements BeaconLinkSession {
     private static final class WaitingOffer {
         private final @NotNull ChannelOffer offer;
         private final @NotNull NodeSession node;
+        private final long signalMillis;
         private final long expiryMillis;
 
-        private WaitingOffer(@NotNull ChannelOffer offer, @NotNull NodeSession node, long expiryMillis) {
+        private WaitingOffer(@NotNull ChannelOffer offer, @NotNull NodeSession node, long signalMillis, long expiryMillis) {
             this.offer        = offer;
             this.node         = node;
+            this.signalMillis = signalMillis;
             this.expiryMillis = expiryMillis;
         }
     }
@@ -272,6 +277,7 @@ public final class BeaconLinkClient implements BeaconLinkSession {
     private @Nullable ChannelOverlay overlay;
     private @Nullable MeshPeer peer;
     private @Nullable ClientCommunity community;
+    private @Nullable PortMapper portMapper;
 
     private long nextRequestNumber;
     private int droppedCount;
@@ -283,7 +289,8 @@ public final class BeaconLinkClient implements BeaconLinkSession {
      * Creates a {@link BeaconLinkClient} instance; the first {@link #poll()} starts the registrations. The session's nodes are the seeds of
      * the known nodes and the best learned peers ({@link KnownNodes#selectPeers}, each counting one failed start until it registers the
      * session). Host names of the list are resolved here; a node listed twice at one address is contacted once. The session's connection
-     * starts now: its registrations carry this time.
+     * starts now: its registrations carry this time. When the configuration names a port mapping, the socket's port is mapped on the router
+     * in the background ({@link PortMapper}); a socket on the loopback address only through gateways the mapping configuration names.
      *
      * @param configuration the timings
      * @param clock         the protocol clock of timestamps, resends and expiries
@@ -340,6 +347,7 @@ public final class BeaconLinkClient implements BeaconLinkSession {
         this.overlay          = null;
         this.peer             = null;
         this.community        = null;
+        this.portMapper       = null;
 
         this.nextRequestNumber = random.nextLong() & REQUEST_NUMBER_MASK;
         this.droppedCount      = 0;
@@ -359,7 +367,14 @@ public final class BeaconLinkClient implements BeaconLinkSession {
             this.addNodeSession(ConfiguredNode.of(learned), true, nowMillis);
         }
 
-        LOGGER.info("BEACON.LINK: session {0} opened with {1} nodes at {2}", this.participant, this.nodes.size(), this.getLocalAddress());
+        InetSocketAddress local = this.getLocalAddress();
+        PortMappingConfiguration mapping = configuration.getPortMapping();
+
+        LOGGER.info("BEACON.LINK: session {0} opened with {1} nodes at {2}", this.participant, this.nodes.size(), local);
+
+        if (mapping != null && local != null && (!local.getAddress().isLoopbackAddress() || mapping.getGateways() != null)) {
+            this.portMapper = PortMapper.start(local.getPort(), mapping);
+        }
     }
 
     private void addNodeSession(@NotNull ConfiguredNode node, boolean learned, long nowMillis) {
@@ -629,14 +644,28 @@ public final class BeaconLinkClient implements BeaconLinkSession {
     }
 
     /**
-     * Lists the session's address candidates for a channel: the addresses its registered nodes observed, then its local address, or for an
-     * endpoint bound to every interface the IPv4 addresses of the machine's interfaces that are up (not the loopback ones) at its port, so
-     * that two participants of one local network find each other directly.
+     * @return the external address the router maps to the session's socket, or {@code null} while the session holds no port mapping
+     */
+    @Nullable InetSocketAddress getMappedAddress() {
+        PortMapping mapping = this.portMapper == null ? null : this.portMapper.getMapping();
+
+        return mapping == null ? null : mapping.getExternalAddress();
+    }
+
+    /**
+     * Lists the session's address candidates for a channel: the external address of the session's port mapping, the addresses its registered
+     * nodes observed, then its local address, or for an endpoint bound to every interface the IPv4 addresses of the machine's interfaces that
+     * are up (not the loopback ones) at its port, so that two participants of one local network find each other directly.
      *
      * @return the candidates, at most {@value ChannelSignal#MAXIMUM_CANDIDATES}
      */
     @NotNull List<@NotNull InetSocketAddress> getCandidates() {
         Set<InetSocketAddress> candidates = new LinkedHashSet<>();
+        InetSocketAddress mapped = this.getMappedAddress();
+
+        if (mapped != null) {
+            candidates.add(mapped);
+        }
 
         for (NodeSession node : this.nodes) {
             InetSocketAddress observed = node.getObservedAddress();
@@ -822,7 +851,7 @@ public final class BeaconLinkClient implements BeaconLinkSession {
         WaitingOffer waiting = this.waitingOffers.remove(peer);
 
         if (waiting != null && channel.isAwaitingOffer() && nowMillis < waiting.expiryMillis &&
-            !channel.acceptOffer(waiting.offer, waiting.node, nowMillis)) {
+            !channel.acceptOffer(waiting.offer, waiting.node, waiting.signalMillis, nowMillis)) {
             LOGGER.debug("BEACON.LINK: the waiting offer of {0} has an invalid key", peer);
         }
 
@@ -1494,7 +1523,7 @@ public final class BeaconLinkClient implements BeaconLinkSession {
         if (payload instanceof ChannelOffer offer) {
             taken = this.handleOffer(envelope, sender, offer, channel, node, nowMillis);
         } else if (payload instanceof ChannelAnswer answer) {
-            taken = channel != null && this.isNewSignal(envelope, nowMillis) && channel.acceptAnswer(answer, nowMillis);
+            taken = channel != null && this.isNewSignal(envelope, nowMillis) && channel.acceptAnswer(answer, envelope.getTimestampMillis(), nowMillis);
         } else if (payload instanceof ChannelRefusal refusal) {
             taken = channel != null && this.isNewSignal(envelope, nowMillis) && channel.acceptRefusal(refusal);
         }
@@ -1519,17 +1548,24 @@ public final class BeaconLinkClient implements BeaconLinkSession {
             return this.handleJoin(envelope, sender, offer, channel, node, nowMillis);
         }
 
+        long signalMillis = envelope.getTimestampMillis();
+
         // A repeated answer changes nothing, so a replayed offer of an answered channel needs no remembered nonce.
         if (channel != null && channel.isAwaitingOffer()) {
-            return this.isNewSignal(envelope, nowMillis) && channel.acceptOffer(offer, node, nowMillis);
+            return this.isNewSignal(envelope, nowMillis) && channel.acceptOffer(offer, node, signalMillis, nowMillis);
         }
 
         if (channel != null && channel.repeatAnswer(offer, node)) {
             return true;
         }
 
+        WaitingOffer waiting = this.waitingOffers.get(sender);
+
+        // An offer signed before the standing channel's signal or the waiting offer is a late copy of an older one.
         if (this.isOfferingTo(sender) ||
-            this.waitingOffers.size() >= MAXIMUM_WAITING_OFFERS && !this.waitingOffers.containsKey(sender) ||
+            channel != null && !channel.isOlderThan(signalMillis) ||
+            waiting != null && signalMillis <= waiting.signalMillis ||
+            waiting == null && this.waitingOffers.size() >= MAXIMUM_WAITING_OFFERS ||
             !this.isNewSignal(envelope, nowMillis)) {
             return false;
         }
@@ -1539,7 +1575,7 @@ public final class BeaconLinkClient implements BeaconLinkSession {
             channel.replace();
         }
 
-        this.waitingOffers.put(sender, new WaitingOffer(offer, node, nowMillis + WAITING_OFFER_MILLIS));
+        this.waitingOffers.put(sender, new WaitingOffer(offer, node, signalMillis, nowMillis + WAITING_OFFER_MILLIS));
 
         return true;
     }
@@ -1553,7 +1589,8 @@ public final class BeaconLinkClient implements BeaconLinkSession {
                 return true;
             }
 
-            if (!this.isNewSignal(envelope, nowMillis)) {
+            // A join signed before the standing channel's offer is a late copy of an older join.
+            if (!channel.isOlderThan(envelope.getTimestampMillis()) || !this.isNewSignal(envelope, nowMillis)) {
                 return false;
             }
 
@@ -1593,7 +1630,7 @@ public final class BeaconLinkClient implements BeaconLinkSession {
 
         accepted.setRoom(room);
 
-        return accepted.acceptOffer(offer, node, nowMillis);
+        return accepted.acceptOffer(offer, node, envelope.getTimestampMillis(), nowMillis);
     }
 
     private void refuseJoin(@NotNull LinkParticipant sender, @NotNull ChannelOffer offer, @Nullable JoinRefusal refusal, @NotNull NodeSession node) {
@@ -1719,8 +1756,31 @@ public final class BeaconLinkClient implements BeaconLinkSession {
             this.peer.maintain();
         }
 
+        if (this.portMapper != null) {
+            this.checkMappedAddress(this.portMapper);
+        }
+
         if (this.knownNodes.isFlushDue(nowMillis)) {
             this.flushKnownNodes(nowMillis);
+        }
+    }
+
+    /**
+     * Hands the port mapper the first public address a registered node observed, so that a mapping behind another NAT is skipped.
+     */
+    private void checkMappedAddress(@NotNull PortMapper mapper) {
+        if (mapper.getMapping() == null) {
+            return;
+        }
+
+        for (NodeSession node : this.nodes) {
+            InetSocketAddress observed = node.getObservedAddress();
+
+            if (node.isRegistered() && observed != null && PortMapper.isPublicAddress(observed.getAddress())) {
+                mapper.checkObservedAddress(observed.getAddress());
+
+                return;
+            }
         }
     }
 
@@ -1755,7 +1815,8 @@ public final class BeaconLinkClient implements BeaconLinkSession {
 
     /**
      * Closes the channels, withdraws the published rooms, removes the registrations (all without waiting for answers), merges the learned
-     * peers into the shared peers file and closes the socket, which ends the embedded peer. Calling it again does nothing.
+     * peers into the shared peers file, releases the port mapping (waiting a few seconds at most) and closes the socket, which ends the
+     * embedded peer. Calling it again does nothing.
      */
     @Override
     public void close() {
@@ -1775,6 +1836,10 @@ public final class BeaconLinkClient implements BeaconLinkSession {
 
         if (this.peer != null) {
             LOGGER.info("BEACON.LINK: peer {0} stops: {1}", this.peer.getKey(), this.peer.getStatistics());
+        }
+
+        if (this.portMapper != null) {
+            this.portMapper.close();
         }
 
         IgnoreException.execute(

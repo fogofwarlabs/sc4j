@@ -538,6 +538,7 @@ public final class org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.Co
   public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText AWAY_ON;
   public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText BLOCK;
   public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText BLOCKED;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText CANNOT_CONNECT;
   public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText CHANNEL;
   public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText CHANNEL_LEFT;
   public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.CommunityText CLOSED_GAMES;

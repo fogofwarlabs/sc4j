@@ -238,7 +238,7 @@ Beacon.Link의 와이어 형식과 파일: 피어와 클라이언트의 메시�
 
 ### 신호 (`ChannelSignal`)
 
-`SIGNAL` 페이로드는 종류(1), 보낸 쪽의 연결 번호(8), 필드입니다. 서명된 보낸 쪽 키와 그 연결이 보낸 참가자이고, `SIGNAL`은 대상 키와 연결을 밝힙니다. 따라서 참가 요청은 보내는 호스트 연결과 제안의 방 번호로 방을 가리킵니다. 주소 후보는 개수(1, 최대 8)와 주소입니다.
+`SIGNAL` 페이로드는 종류(1), 보낸 쪽의 연결 번호(8), 필드입니다. 서명된 보낸 쪽 키와 그 연결이 보낸 참가자이고, `SIGNAL`은 대상 키와 연결을 밝힙니다. 따라서 참가 요청은 보내는 호스트 연결과 제안의 방 번호로 방을 가리킵니다. 주소 후보는 개수(1, 최대 8)와 주소입니다. 클라이언트는 공유기의 포트 매핑이 있으면 그 주소를 맨 앞에, 다음에 노드가 관찰한 주소, 그다음 로컬 주소를 둡니다.
 
 | 종류 | 보낸 쪽 연결 뒤의 필드 |
 |---|---|
@@ -275,7 +275,7 @@ Beacon.Link의 와이어 형식과 파일: 피어와 클라이언트의 메시�
 |---|---|
 | `<install>/launcher/seeds.json` | 함께 배포되는 시드 목록, 릴리즈마다 바뀜. `nodes.json`과 같은 형식 |
 | `<install>/userdata/beaconlink/nodes.json` | 사용자의 노드 목록(`NodeListFile`). 사용자가 저장할 때 쓰고 `--seeds`로 넘김. 없는 동안은 `seeds.json`이 대신함. `{"format": 1, "nodes": [...]}`, 항목은 `"host:port"`(어느 키든) 또는 `{"address": "host:port", "key": "<64 hex digits>"}`(고정 키). 최대 64 KiB, 중첩 최대 8, IPv6 호스트는 대괄호 |
-| `<install>/userdata/beaconlink/node.json` | 런처 노드 설정 `{"format": 1, "role": "automatic", "port": 7455}`. `automatic`(포트에서 수신, 자체 시험을 통과하면 전체 피어) 또는 `off`(빈 포트에서 리프 전용). 없으면 7455에서 자동 |
+| `<install>/userdata/beaconlink/node.json` | 런처 Beacon.Link 설정 `{"format": 1, "role": "automatic", "port": 7455, "portMapping": true}`. `automatic`(포트에서 수신, 자체 시험을 통과하면 전체 피어) 또는 `off`(빈 포트에서 리프 전용). `portMapping`(선택, 기본값 `true`): 공유기에 노드와 게임의 포트를 열어 달라고 요청. 없으면 7455에서 자동, 포트 매핑 켬 |
 | `<install>/userdata/beaconlink/peers.json`, 노드의 `<state>/peers.json` | 학습한 피어(`PeerStore`, 공유 파일), 아래 |
 | `<install>/userdata/beaconlink/peer.key`, 노드의 `<state>/identity.key` | 키 파일. 증명 nonce는 시작할 때마다 다시 찾음 |
 | `<install>/userdata/beaconlink/node.lock` | 빈 파일. 노드를 실행하는 런처가 잠금 |

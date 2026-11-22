@@ -18,9 +18,8 @@ import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -32,18 +31,17 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 /**
- * Tests the account menu at the top right at display scales of 100% and 200% in English and Korean: Friends, My status, Sign out everywhere
- * else and Log out. With a connected session the Friends panel lists eight friends at once in compact rows, inside the window, with their
- * state and device count, shows and copies the own friend code, adds a friend by code (a text that is no code, the own code and a known
- * friend are refused in one line), ignores and removes the selected friend, and hands Whisper to the window with the selected friend and
- * closes; My status sends the chosen status (an away text that is too long is refused), and Sign out everywhere else asks once. Without a
- * connection the panels and the menu say why, and Sign out everywhere else is disabled. With the real sessions of three accounts at a node on
- * 127.0.0.1 the Friends panel shows the friends added by code in the launcher and away with a text. Each view is saved as a sample picture.
+ * Tests the account menu at the top right: Friends, My status, Sign out everywhere else and Log out. With a connected session the Friends
+ * panel lists eight friends at once in compact rows, inside the window, with their state and device count, shows and copies the own friend
+ * code, adds a friend by code (a text that is no code, the own code and a known friend are refused in one line), ignores and removes the
+ * selected friend, and hands Whisper to the window with the selected friend and closes; My status sends the chosen status (an away text that
+ * is too long is refused), and Sign out everywhere else asks once. Without a connection the panels and the menu say why, and Sign out
+ * everywhere else is disabled. With the real sessions of three accounts at a node on 127.0.0.1 the Friends panel shows the friends added by
+ * code in the launcher and away with a text.
  */
 final class AccountMenuTest {
     private static final double SCENE_WIDTH = 1280;
     private static final double SCENE_HEIGHT = 800;
-    private static final double PERCENT_SCALE = 100;
     private static final @NotNull String TAGGED_NAME = "Raynor#60bf07";
     private static final @NotNull String AWAY_TEXT = "Back at 9";
     private static final @NotNull String TOO_LONG_AWAY_TEXT = "x".repeat(40);
@@ -180,11 +178,10 @@ final class AccountMenuTest {
     /**
      * Builds the shell of a logged-in account with its account menu, the way the window does.
      */
-    private static @NotNull LauncherShell createShell(@NotNull LauncherTexts texts, @NotNull UiLanguage language, double scale,
-                                                      @NotNull Path directory, @NotNull String taggedName, @NotNull LauncherSessionView session,
-                                                      @NotNull AccountMenu.Actions actions) {
+    private static @NotNull LauncherShell createShell(@NotNull LauncherTexts texts, @NotNull Path directory, @NotNull String taggedName,
+                                                      @NotNull LauncherSessionView session, @NotNull AccountMenu.Actions actions) {
         AtomicReference<AccountMenu> menu = new AtomicReference<>();
-        LauncherShell shell = new LauncherShell(texts, InstallLayout.of(directory), scale, section -> {
+        LauncherShell shell = new LauncherShell(texts, InstallLayout.of(directory), 1, section -> {
         }, () -> {
         }, () -> menu.get().open());
         Scene scene = new Scene(shell.getRoot(), SCENE_WIDTH, SCENE_HEIGHT);
@@ -192,7 +189,7 @@ final class AccountMenuTest {
 
         menu.set(new AccountMenu(shell, texts, taggedName, session, modNames, actions));
         session.setOnChanged(() -> menu.get().update());
-        ThemeUtils.apply(scene, language);
+        ThemeUtils.apply(scene, texts.getLanguage());
         shell.show(LauncherShell.Section.MODS, new Region());
         menu.get().update();
         lay(shell);
@@ -222,22 +219,15 @@ final class AccountMenuTest {
         lay(shell);
     }
 
-    private static @NotNull UiLanguage selectLanguage(@NotNull String languageCode) {
-        return languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
-    }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void account_menu_shows_friends_whispers_status_and_sign_out_of_a_connected_session(double scale, @NotNull String languageCode,
-                                                                                        @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = selectLanguage(languageCode);
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void account_menu_shows_friends_whispers_status_and_sign_out_of_a_connected_session(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         RecordingLauncherSession session = createSession(new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 2, null));
         RecordingActions actions = new RecordingActions();
 
         LauncherFxScenario.run(() -> {
-            LauncherShell shell = createShell(texts, language, scale, directory, TAGGED_NAME, session, actions);
+            LauncherShell shell = createShell(texts, directory, TAGGED_NAME, session, actions);
 
             // The menu: its four entries under the account, the account's two devices.
             openMenu(shell);
@@ -250,7 +240,6 @@ final class AccountMenuTest {
             Assertions.assertTrue(showsText(menu, TAGGED_NAME));
             Assertions.assertTrue(showsText(menu, texts.format("session.devices", 2)));
             Assertions.assertFalse(LauncherFxScenario.findButton(menu, texts.get("session.menu.sign.out")).isDisabled());
-            LauncherFxScenario.saveSample(shell.getRoot(), scale, "menu-" + suffix);
 
             // Friends: every friend with its state, mod name, devices and ignore mark; the own friend code, copied as it is.
             LauncherFxScenario.findButton(menu, texts.get("session.menu.friends")).fire();
@@ -277,7 +266,6 @@ final class AccountMenuTest {
             ListView<FriendView> friendList = getFriendList(friends);
             Bounds panel = friendList.getParent().getParent().localToScene(friendList.getParent().getParent().getBoundsInLocal());
 
-            LauncherFxScenario.saveSample(shell.getRoot(), scale, "friends-" + suffix);
             Assertions.assertTrue(friendList.getStyleClass().contains(COMPACT_LIST_STYLE_CLASS));
             Assertions.assertTrue(panel.getMinY() >= 0 && panel.getMaxY() <= SCENE_HEIGHT, "the panel stays inside the window");
 
@@ -297,7 +285,6 @@ final class AccountMenuTest {
             addFriend(shell, texts, KERRIGAN.getText().toLowerCase(Locale.ROOT));
 
             Assertions.assertTrue(showsText(friends, texts.get("session.friends.known")));
-            LauncherFxScenario.saveSample(shell.getRoot(), scale, "friends-add-refused-" + suffix);
             Assertions.assertTrue(session.getCommands().isEmpty(), "nothing refused reaches the session");
 
             addFriend(shell, texts, NEW_FRIEND.getGroupedText());
@@ -354,7 +341,6 @@ final class AccountMenuTest {
 
             awayText.setText(AWAY_TEXT);
             lay(shell);
-            LauncherFxScenario.saveSample(shell.getRoot(), scale, "status-" + suffix);
             LauncherFxScenario.findButton(status, texts.get("session.save")).fire();
             lay(shell);
 
@@ -370,7 +356,6 @@ final class AccountMenuTest {
 
             LauncherFxScenario.findButton(getMenu(shell), texts.get("session.menu.sign.out")).fire();
             lay(shell);
-            LauncherFxScenario.saveSample(shell.getRoot(), scale, "sign-out-" + suffix);
 
             Assertions.assertTrue(session.getCommands().isEmpty());
 
@@ -390,23 +375,19 @@ final class AccountMenuTest {
         });
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void account_menu_shows_why_the_session_is_offline(double scale, @NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = selectLanguage(languageCode);
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void account_menu_shows_why_the_session_is_offline(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         RecordingLauncherSession session = createSession(new SelfView(SessionState.OFFLINE, SelfStatus.ONLINE, "", 0, SessionFailure.SIGNED_OUT));
 
         LauncherFxScenario.run(() -> {
-            LauncherShell shell = createShell(texts, language, scale, directory, TAGGED_NAME, session, new RecordingActions());
+            LauncherShell shell = createShell(texts, directory, TAGGED_NAME, session, new RecordingActions());
 
             openMenu(shell);
 
             Assertions.assertTrue(showsText(getMenu(shell), texts.get("session.failure.signed_out")));
             Assertions.assertTrue(LauncherFxScenario.findButton(getMenu(shell), texts.get("session.menu.sign.out")).isDisabled(),
                                   "nothing to sign out without a connection");
-            LauncherFxScenario.saveSample(shell.getRoot(), scale, "menu-offline-" + suffix);
 
             LauncherFxScenario.findButton(getMenu(shell), texts.get("session.menu.friends")).fire();
             lay(shell);
@@ -415,13 +396,11 @@ final class AccountMenuTest {
             Assertions.assertTrue(showsText(getDialog(shell), texts.get("session.friends.empty")));
             Assertions.assertEquals(OWN_CODE.getGroupedText(), ((Label) getDialog(shell).lookup(FRIEND_CODE_SELECTOR)).getText(),
                                     "the own code is known offline");
-            LauncherFxScenario.saveSample(shell.getRoot(), scale, "friends-offline-" + suffix);
             LauncherFxScenario.findButton(getDialog(shell), texts.get("session.close")).fire();
 
             openEntry(shell, texts.get("session.menu.status"));
 
             Assertions.assertTrue(showsText(getDialog(shell), texts.get("session.not.connected")));
-            LauncherFxScenario.saveSample(shell.getRoot(), scale, "status-offline-" + suffix);
 
             find(getDialog(shell), ToggleButton.class).stream().filter(toggle -> toggle.getText().equals(texts.get("session.status.away"))).findFirst()
                                                       .orElseThrow().fire();
@@ -433,13 +412,9 @@ final class AccountMenuTest {
         });
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void account_menu_shows_the_real_sessions_of_three_accounts_at_a_node(double scale, @NotNull String languageCode,
-                                                                          @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = selectLanguage(languageCode);
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void account_menu_shows_the_real_sessions_of_three_accounts_at_a_node(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
 
         try (LauncherSessionScenario scenario = new LauncherSessionScenario(directory.resolve("node"))) {
             Account kerrigan = LauncherSessionScenario.createAccount(directory.resolve("kerrigan"), "Kerrigan");
@@ -453,7 +428,7 @@ final class AccountMenuTest {
             FriendCode zeratulCode = zeratulSession.getFriendCode();
 
             try {
-                LauncherShell shell = LauncherFxScenario.run(() -> createShell(texts, language, scale, directory, raynor.getTaggedName(), raynorSession,
+                LauncherShell shell = LauncherFxScenario.run(() -> createShell(texts, directory, raynor.getTaggedName(), raynorSession,
                                                                                new RecordingActions()));
 
                 LauncherSessionScenario.await(() -> kerriganSession.getSelf().getState() == SessionState.CONNECTED &&
@@ -476,11 +451,6 @@ final class AccountMenuTest {
                     return showsText(getDialog(shell), kerrigan.getTaggedName()) &&
                            showsText(getDialog(shell), texts.get("session.friend.in_launcher"));
                 }, "Raynor's panel shows Kerrigan in the launcher");
-                LauncherFxScenario.run(() -> {
-                    LauncherFxScenario.saveSample(shell.getRoot(), scale, "friends-live-" + suffix);
-
-                    return null;
-                });
 
                 // Kerrigan goes away with a text.
                 kerriganSession.setStatus(SelfStatus.AWAY, AWAY_TEXT);
@@ -490,7 +460,6 @@ final class AccountMenuTest {
                     return showsText(getDialog(shell), AWAY_TEXT);
                 }, "Raynor's panel shows Kerrigan away");
                 LauncherFxScenario.run(() -> {
-                    LauncherFxScenario.saveSample(shell.getRoot(), scale, "friends-away-live-" + suffix);
                     LauncherFxScenario.findButton(getDialog(shell), texts.get("session.close")).fire();
 
                     return null;

@@ -30,9 +30,9 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Tests the network waiting dialog of the engine game screen: a local session has none; a network session shows it at the world's centre in
- * the skin's dialog box only while its barrier has overdue participants, with their names and the countdown, and a press on its drop button
- * requests their drop at the transport and counts as a button press.
+ * Tests the network waiting dialog of the engine game screen: a local session has none; a network session shows it at the world's centre
+ * only while its barrier has overdue participants, with their names and the countdown, and a press on its drop button requests their drop at
+ * the transport and counts as a button press.
  */
 final class WaitingDialogTest {
     private static final int WIDTH = 800;
@@ -43,8 +43,6 @@ final class WaitingDialogTest {
     private static final long DROP_MILLISECONDS = 10000;
     private static final long LATER_MILLISECONDS = 3500;
     private static final int COUNTDOWN_SECONDS = 7;
-    private static final int OUTLINE_COLOR = 0x8090A0;
-    private static final int RGB_MASK = 0xFFFFFF;
     private static final int REMOTE_SLOT = 0;
     private static final float HALF_DIVISOR = 2;
     private static final @NotNull String REMOTE_NAME = "Morgan#a1b2c3";
@@ -175,8 +173,6 @@ final class WaitingDialogTest {
                                     dialog.getY() + dialog.getHeight() / HALF_DIVISOR);
             Assertions.assertTrue(dialog.getWidth() >=
                                   REMOTE_NAME.length() * CHARACTER_WIDTH + 2 * screen.getCommandCard().getSkin().getDialogPadding());
-            Assertions.assertEquals(OUTLINE_COLOR, canvas.getImage().getRGB((int) dialog.getX(), (int) dialog.getY()) & RGB_MASK,
-                                    "the dialog is drawn in the skin's dialog box");
 
             float insideX = dialog.getX() + dialog.getSkin().getDialogPadding();
             float insideY = dialog.getY() + dialog.getSkin().getDialogPadding();

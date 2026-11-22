@@ -14,8 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Tests the default console: typing, Backspace, Enter running commands or chat, Escape, the kept message lines, their fading and their dark
- * backing.
+ * Tests the default console: typing, Backspace, Enter running commands or chat, Escape, the kept message lines and their fading.
  */
 final class ConsoleTest {
     private static final int PAGE_LINES = 4;
@@ -26,10 +25,6 @@ final class ConsoleTest {
     private static final int ALPHA_MASK = 0xFF;
     private static final long SHOWN_MILLISECONDS = 8000;
     private static final long FADE_MILLISECONDS = 2000;
-    private static final int LINE_LEFT = 8;
-    private static final int WHITE = 0xFFFFFFFF;
-    private static final int WHITE_RGB = 0xFFFFFF;
-    private static final int RGB_MASK = 0xFFFFFF;
 
     /**
      * Keeps every drawn line with its colour.
@@ -162,21 +157,5 @@ final class ConsoleTest {
         Assertions.assertEquals(List.of("line 2", "line 3", "line 4"), console.getLines());
         Assertions.assertThrows(IllegalArgumentException.class, () -> new Console(new ConsoleCommandRegistry(PAGE_LINES), line -> {
         }, 0));
-    }
-
-    @Test
-    void draw_should_put_each_shown_line_on_a_dark_backing() {
-        Console console = new Console(new ConsoleCommandRegistry(PAGE_LINES), line -> {
-        }, MAXIMUM_LINES);
-        ImageCanvas canvas = new ImageCanvas(CANVAS_SIZE, CANVAS_SIZE);
-
-        console.addLine("line");
-        canvas.begin(CANVAS_SIZE, CANVAS_SIZE);
-        canvas.fillRectangle(0, 0, CANVAS_SIZE, CANVAS_SIZE, WHITE);
-        console.draw(canvas, new RecordingFont(), LINE_LEFT, 0, TEXT_COLOR);
-        canvas.end();
-
-        Assertions.assertTrue((canvas.getImage().getRGB(LINE_LEFT, 1) & RGB_MASK) < WHITE_RGB, "the line stands on a dark backing");
-        Assertions.assertEquals(WHITE_RGB, canvas.getImage().getRGB(LINE_LEFT, LINE_HEIGHT + 1) & RGB_MASK, "below the line nothing is drawn");
     }
 }

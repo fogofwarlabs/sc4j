@@ -5,6 +5,9 @@ import org.fogofwarlabs.sc4j.catalog.github.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Describes the release a mod installs from: the repository, the release tag, the mod jar and the jar's checksum file.
  */
@@ -24,6 +27,50 @@ public final class ModRelease {
      */
     public static @NotNull ModRelease find(@NotNull ReleaseClient client, @NotNull ReleaseRepository repository, @Nullable String preferredJarName) throws ReleaseException {
         Release release = client.findLatestRelease(repository);
+        ModRelease found = select(release, preferredJarName);
+
+        if (found == null) {
+            throw new ReleaseException(ReleaseProblem.ASSET_MISSING, Exceptions.format("The release {0} of {1} has no jar with its checksum file",
+                                                                                       release.getTag(), repository));
+        }
+
+        return found;
+    }
+
+    /**
+     * Reads the releases of a repository ({@link ReleaseClient#findReleases}) and finds the mod jar of each the way {@link #find} does; a
+     * release without a jar and its checksum file is left out.
+     *
+     * @param client           reads the releases
+     * @param repository       the repository
+     * @param preferredJarName the jar name to prefer, such as the name of the installed jar, or {@code null}
+     * @return the mod releases, newest first; the first one is the latest release when it carries a jar
+     * @throws ReleaseException if the releases cannot be read, or no release carries a jar with its checksum file
+     */
+    public static @NotNull List<@NotNull ModRelease> findAll(@NotNull ReleaseClient client, @NotNull ReleaseRepository repository,
+                                                             @Nullable String preferredJarName) throws ReleaseException {
+        List<ModRelease> found = new ArrayList<>();
+
+        for (Release release : client.findReleases(repository)) {
+            ModRelease selected = select(release, preferredJarName);
+
+            if (selected != null) {
+                found.add(selected);
+            }
+        }
+
+        if (found.isEmpty()) {
+            throw new ReleaseException(ReleaseProblem.ASSET_MISSING, Exceptions.format("No release of {0} has a jar with its checksum file", repository));
+        }
+
+        return found;
+    }
+
+    /**
+     * Finds the mod jar of a release: a {@code .jar} file with its {@code .sha256} file, the one of the preferred name among several, else the
+     * first.
+     */
+    private static @Nullable ModRelease select(@NotNull Release release, @Nullable String preferredJarName) {
         ModRelease found = null;
 
         for (ReleaseAsset asset : release.getAssets()) {
@@ -34,13 +81,8 @@ public final class ModRelease {
             }
 
             if (found == null || asset.getName().equals(preferredJarName)) {
-                found = new ModRelease(repository, release.getTag(), asset, checksum);
+                found = new ModRelease(release.getRepository(), release.getTag(), asset, checksum);
             }
-        }
-
-        if (found == null) {
-            throw new ReleaseException(ReleaseProblem.ASSET_MISSING, Exceptions.format("The release {0} of {1} has no jar with its checksum file",
-                                                                                       release.getTag(), repository));
         }
 
         return found;

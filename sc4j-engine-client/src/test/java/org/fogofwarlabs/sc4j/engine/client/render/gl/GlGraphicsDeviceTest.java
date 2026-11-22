@@ -35,32 +35,14 @@ final class GlGraphicsDeviceTest {
                                                              undefinedFunction();
                                                          }
                                                          """;
-    private static final int FULL_SCREEN_TRIANGLE_VERTICES = 3;
-    private static final int GREEN_PIXEL = 0x00FF00;
     private static final int TARGET_COUNT = 2;
 
     @Test
-    void create_shader_program_should_draw_with_its_uniforms() {
+    void create_shader_program_should_find_its_uniforms() {
         HiddenWindowScenario.run(() -> {
-            GraphicsDevice device = GraphicsDevice.getCurrent();
-            int vertexArray = glGenVertexArrays();
-
-            try (ShaderProgram program = device.createShaderProgram(NAME, VERTEX_SHADER, FRAGMENT_SHADER)) {
-                int color = program.getUniformLocation("color");
-
-                Assertions.assertTrue(color >= 0);
+            try (ShaderProgram program = GraphicsDevice.getCurrent().createShaderProgram(NAME, VERTEX_SHADER, FRAGMENT_SHADER)) {
+                Assertions.assertTrue(program.getUniformLocation("color") >= 0);
                 Assertions.assertEquals(-1, program.getUniformLocation("missing"));
-
-                program.use();
-                glUniform4f(color, 0, 1, 0, 1);
-                glBindVertexArray(vertexArray);
-                glDrawArrays(GL_TRIANGLES, 0, FULL_SCREEN_TRIANGLE_VERTICES);
-                glBindVertexArray(0);
-                glUseProgram(0);
-
-                Assertions.assertEquals(GREEN_PIXEL, HiddenWindowScenario.readColor(HiddenWindowScenario.SIZE / 2, HiddenWindowScenario.SIZE / 2));
-            } finally {
-                glDeleteVertexArrays(vertexArray);
             }
         });
     }

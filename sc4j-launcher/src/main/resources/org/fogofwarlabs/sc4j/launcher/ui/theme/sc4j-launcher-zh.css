@@ -1,0 +1,33 @@
+/*
+ * Chinese overlay for sc4j-launcher.css. Segoe UI has no Chinese characters, so JavaFX draws them with an automatic
+ * fallback font, which mixes two fonts in one line. Add this stylesheet after sc4j-launcher.css (and after the portable
+ * stylesheet, if used) when the launcher UI language is Chinese and Font.getFamilies() contains "Microsoft YaHei" (a
+ * Windows system font). Selector lists follow sc4j-launcher.css.
+ * Mono rules stay in Cascadia Mono: paths and log lines are mostly Latin.
+ */
+
+/* Rules that use "Segoe UI". */
+.root,
+.text-display,
+.app-title,
+.tooltip,
+.badge {
+    -fx-font-family: "Microsoft YaHei";
+}
+
+/* Rules that use "Segoe UI Semibold": Microsoft YaHei has no semibold face, so bold keeps the hierarchy. */
+.text-title,
+.text-subtitle,
+.text-heading,
+.app-subtitle,
+.toggle-button.nav-button,
+.panel-header > .panel-title,
+.button,
+.toggle-button,
+.list-title,
+.tab-pane > .tab-header-area > .headers-region > .tab .tab-label,
+.field-label,
+.field-required {
+    -fx-font-family: "Microsoft YaHei";
+    -fx-font-weight: bold;
+}

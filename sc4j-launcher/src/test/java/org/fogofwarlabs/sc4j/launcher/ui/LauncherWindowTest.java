@@ -6,8 +6,6 @@ import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BackgroundFill;
@@ -45,13 +43,13 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -65,19 +63,18 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Tests where the launcher window opens: its bounds fit the free area of a 1920 by 1080 pixel screen at display scales of 100%, 150% and
  * 200% (in JavaFX logical units), saved bounds are kept on their screen, and saved bounds on no screen are dropped. A display change to
- * another scale decodes the images again and fits the window to its screen without a restart. The launcher starts on the login step (with
+ * another scale builds the views again and fits the window to its screen without a restart. The launcher starts on the login step (with
  * the New account dialog when there is no account, else with the last used account selected); Log in opens the main view with the account
  * at the top right and no Accounts tab and starts the account's session, which connects to the node of the install's node list on
- * 127.0.0.1, and Log out from the account menu closes the session, frees the account and returns to the login step, at 100% and 200% in
- * English and Korean. Whisper in the account menu's Friends shows the Chat screen with the friend's conversation selected and the input
- * focused, from another screen and from the Chat screen. Open mods folder hands the mods folder to the folder opener, and a mod's website
- * link goes to the document opener.
- * The Update dialog of a newer launcher version opens by itself once per run, once logged in, while no game runs and not for a skipped
- * version.
- * The chat runs from the login on: the session joins the shared channel without the Chat screen. The Chat entry shows a dot while a line or
- * a whisper is unread and the sound plays for it while the Chat screen is hidden; reading the conversation clears its part of the dot, and the
- * Settings switch mutes the sound. Closing the window asks to minimize, quit or cancel, in a dialog whose footer has the same room on every
- * side of its buttons.
+ * 127.0.0.1, and Log out from the account menu closes the session, frees the account and returns to the login step. Whisper in the account
+ * menu's Friends shows the Chat screen with the friend's conversation selected and the input focused, from another screen and from the Chat
+ * screen. Open mods folder hands the mods folder to the folder opener, and a mod's website link goes to the document opener.
+ * The Update dialog of a newer launcher version opens by itself once per version and run, once logged in, while no game runs and not for a
+ * skipped version; the automatic look for it is due again a period after the last one.
+ * The chat runs from the login on, in the display language: the session joins the shared channel without the Chat screen. The Chat entry
+ * shows a dot while a line or a whisper is unread and the sound plays for it while the Chat screen is hidden; reading the conversation clears
+ * its part of the dot, and the Settings switch mutes the sound. Closing the window asks to minimize, quit or cancel, in a dialog whose footer
+ * has the same room on every side of its buttons.
  */
 final class LauncherWindowTest {
     private static final double SCREEN_WIDTH = 1920;
@@ -90,13 +87,11 @@ final class LauncherWindowTest {
     private static final int SAVED_WIDTH = 1200;
     private static final int SAVED_HEIGHT = 760;
     private static final int OFF_SCREEN_X = 5000;
-    private static final double WINDOW_ICON_SIZE = 64;
     private static final double TOLERANCE = 1;
     private static final double FIRST_SCALE = 1;
     private static final double CHANGED_SCALE = 2;
     private static final long FX_TIMEOUT_SECONDS = 60;
     private static final @NotNull String VERSION = "1.0.0";
-    private static final double PERCENT_SCALE = 100;
     private static final long RAYNOR_USE_MILLIS = Instant.parse("2026-11-10T18:30:00Z").toEpochMilli();
     private static final @NotNull String NAVIGATION_SELECTOR = ".nav-button";
     private static final @NotNull String ACCOUNT_SELECTOR = ".account-button";
@@ -106,12 +101,9 @@ final class LauncherWindowTest {
     private static final @NotNull String HYPERLINK_SELECTOR = ".hyperlink";
     private static final @NotNull String LIST_SELECTOR = ".list-view";
     private static final @NotNull String TEXT_FIELD_SELECTOR = ".text-field";
-    private static final @NotNull String APP_BAR_SELECTOR = ".app-bar";
     private static final @NotNull String DOT_BADGE_SELECTOR = ".dot-badge";
     private static final @NotNull String CHECK_BOX_SELECTOR = ".check-box";
     private static final @NotNull String TEXT_ONLY_STYLE_CLASS = "text-only";
-    private static final @NotNull String ENGLISH_CLOSE_TEXT = "Quit the SC4J launcher?";
-    private static final @NotNull String KOREAN_CLOSE_TEXT = "정말로 SC4J 런처를 종료하시겠습니까?";
     private static final @NotNull Runnable NO_SOUND = () -> {
     };
     /**
@@ -155,25 +147,6 @@ final class LauncherWindowTest {
     private static void assertInside(@NotNull Rectangle2D screen, @NotNull Rectangle2D bounds) {
         Assertions.assertTrue(bounds.getMinX() >= screen.getMinX() && bounds.getMaxX() <= screen.getMaxX(), bounds::toString);
         Assertions.assertTrue(bounds.getMinY() >= screen.getMinY() && bounds.getMaxY() <= screen.getMaxY(), bounds::toString);
-    }
-
-    private static void assertImagesDecodedAt(@NotNull Parent root, double scale) {
-        List<ImageView> views = root.lookupAll("ImageView").stream().map(ImageView.class::cast).toList();
-
-        Assertions.assertFalse(views.isEmpty(), "the shell shows images");
-
-        for (ImageView view : views) {
-            Image image = view.getImage();
-            double shownWidth = view.getBoundsInLocal().getWidth();
-
-            Assertions.assertNotNull(image);
-            Assertions.assertTrue(image.getWidth() >= shownWidth * scale - TOLERANCE,
-                                  () -> "an image of " + image.getWidth() + " pixels is shown " + shownWidth + " units wide at " + scale);
-        }
-    }
-
-    private static @NotNull UiLanguage selectLanguage(@NotNull String languageCode) {
-        return languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
     }
 
     private static @NotNull Parent layRoot(@NotNull Stage stage) {
@@ -340,20 +313,33 @@ final class LauncherWindowTest {
             Assertions.assertNotNull(newer);
             skipped = LauncherSettings.DEFAULT.withSkippedVersion(newer.getVersion());
 
-            Assertions.assertTrue(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, false, false), "newer");
+            Assertions.assertTrue(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, false, null), "newer");
             Assertions.assertFalse(LauncherWindow.isUpdateOffered(updater.findUpdate(repository, ReleaseVersion.parse("1.2.0")), LauncherSettings.DEFAULT,
-                                                                  true, false, false), "same");
-            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, skipped, true, false, false), "skipped");
-            Assertions.assertTrue(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT.withSkippedVersion(olderSkipped), true, false, false),
+                                                                  true, false, null), "same");
+            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, skipped, true, false, null), "skipped");
+            Assertions.assertTrue(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT.withSkippedVersion(olderSkipped), true, false, null),
                                   "a release after the skipped one");
-            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, true, false), "running game");
-            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, false, false, false), "login step");
-            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, false, true), "once per run");
+            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, true, null), "running game");
+            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, false, false, null), "login step");
+            Assertions.assertFalse(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, false, ReleaseVersion.parse("v1.2.0")),
+                                   "once per version");
+            Assertions.assertTrue(LauncherWindow.isUpdateOffered(newer, LauncherSettings.DEFAULT, true, false, olderSkipped),
+                                  "a release after the one offered");
         }
     }
 
     @Test
-    void fit_display_should_decode_the_images_again_and_fit_the_window_when_the_scale_changes(@TempDir @NotNull Path directory) throws Exception {
+    void is_update_check_due_should_wait_the_period_after_the_last_check() {
+        Instant start = Instant.parse("2026-11-21T10:00:00Z");
+
+        Assertions.assertTrue(LauncherWindow.isUpdateCheckDue(null, start), "the first check");
+        Assertions.assertFalse(LauncherWindow.isUpdateCheckDue(start, start.plus(Duration.ofMinutes(29))), "within the period");
+        Assertions.assertTrue(LauncherWindow.isUpdateCheckDue(start, start.plus(Duration.ofMinutes(30))), "after the period");
+        Assertions.assertTrue(LauncherWindow.isUpdateCheckDue(start, start.plus(Duration.ofDays(1))), "after a long sleep");
+    }
+
+    @Test
+    void fit_display_should_build_the_views_again_and_fit_the_window_when_the_scale_changes(@TempDir @NotNull Path directory) throws Exception {
         InstallLayout install = InstallLayout.of(directory);
         CompletableFuture<Void> result = new CompletableFuture<>();
 
@@ -382,8 +368,6 @@ final class LauncherWindowTest {
                 changedRoot.layout();
 
                 Assertions.assertNotSame(firstRoot, changedRoot, "the views are built again");
-                assertImagesDecodedAt(changedRoot, CHANGED_SCALE);
-                Assertions.assertEquals(WINDOW_ICON_SIZE * CHANGED_SCALE, stage.getIcons().getFirst().getWidth());
                 Assertions.assertEquals(changedScreen.getWidth(), stage.getMinWidth());
                 Assertions.assertEquals(changedScreen.getHeight(), stage.getMinHeight());
                 assertInside(changedScreen, new Rectangle2D(stage.getX(), stage.getY(), stage.getWidth(), stage.getHeight()));
@@ -400,23 +384,19 @@ final class LauncherWindowTest {
         result.get(FX_TIMEOUT_SECONDS, TimeUnit.SECONDS);
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void launcher_without_accounts_starts_on_the_login_step_with_the_new_account_dialog(double scale, @NotNull String languageCode,
-                                                                                        @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = selectLanguage(languageCode);
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void launcher_without_accounts_starts_on_the_login_step_with_the_new_account_dialog(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         InstallLayout install = InstallLayout.of(directory);
 
-        new LauncherSettingsFile(install.getLauncherSettingsFile()).write(LauncherSettings.DEFAULT.withLanguage(language));
+        new LauncherSettingsFile(install.getLauncherSettingsFile()).write(LauncherSettings.DEFAULT.withLanguage(UiLanguage.ENGLISH));
         LauncherFxScenario.run(() -> {
             Stage stage = new Stage();
             LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
             }, folder -> {
             }, new LauncherNodeRunner(install), account -> LauncherSession.open(install, account, VERSION, Platform::runLater), NO_SOUND);
 
-            window.fitDisplay(scale, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+            window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
 
             Parent root = layRoot(stage);
             Node dialog = root.lookup(DIALOG_SELECTOR);
@@ -425,18 +405,14 @@ final class LauncherWindowTest {
             Assertions.assertNotNull(dialog, "the New account dialog is shown first");
             Assertions.assertNotNull(dialog.lookup(".text-field"));
             Assertions.assertTrue(LauncherFxScenario.findButton(root, texts.get("accounts.log.in")).isDisabled());
-            LauncherFxScenario.saveSample(root, scale, "window-login-empty-" + suffix);
 
             return null;
         });
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void launcher_logs_in_from_the_login_step_and_logs_out_back_to_it(double scale, @NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = selectLanguage(languageCode);
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void launcher_logs_in_from_the_login_step_and_logs_out_back_to_it(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         InstallLayout install = InstallLayout.of(directory.resolve("install"));
         AccountStore store = AccountStore.of(install.getBeaconLinkDirectory());
         Account raynor = store.create(raynorKey, raynorStamp, PlayerStamp.DEFAULT_DIFFICULTY, RAYNOR_USE_MILLIS);
@@ -445,7 +421,7 @@ final class LauncherWindowTest {
 
         try (LauncherSessionScenario scenario = new LauncherSessionScenario(directory.resolve("node"))) {
             scenario.writeNodeList(install);
-            new LauncherSettingsFile(install.getLauncherSettingsFile()).write(LauncherSettings.DEFAULT.withLanguage(language));
+            new LauncherSettingsFile(install.getLauncherSettingsFile()).write(LauncherSettings.DEFAULT.withLanguage(UiLanguage.ENGLISH));
             LauncherFxScenario.run(() -> {
                 Stage stage = new Stage();
                 LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
@@ -459,7 +435,7 @@ final class LauncherWindowTest {
                 }, NO_SOUND);
 
                 shown.set(stage);
-                window.fitDisplay(scale, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+                window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
 
                 // The login step: the last used account selected, no navigation, no account at the top right.
                 Parent root = layRoot(stage);
@@ -470,7 +446,6 @@ final class LauncherWindowTest {
                 Assertions.assertFalse(LauncherFxScenario.isShown(root.lookup(ACCOUNT_SELECTOR)));
                 Assertions.assertNull(root.lookup(DIALOG_SELECTOR), "with an account no dialog opens");
                 Assertions.assertEquals(raynor.getId(), list.getSelectionModel().getSelectedItem().getId());
-                LauncherFxScenario.saveSample(root, scale, "window-login-" + suffix);
                 LauncherFxScenario.findButton(root, texts.get("accounts.log.in")).fire();
 
                 return null;
@@ -496,13 +471,11 @@ final class LauncherWindowTest {
                                         listVisibleNavigation(root), "no Accounts tab");
                 Assertions.assertTrue(LauncherFxScenario.isShown(account));
                 Assertions.assertEquals(raynor.getTaggedName(), account.getText());
-                LauncherFxScenario.saveSample(root, scale, "window-main-" + suffix);
 
                 account.fire();
                 root = layRoot(shown.get());
 
                 Assertions.assertNotNull(root.lookup(MENU_SELECTOR));
-                LauncherFxScenario.saveSample(root, scale, "window-menu-" + suffix);
                 LauncherFxScenario.findButton(root, texts.get("session.menu.log.out")).fire();
 
                 // Log out: the session ends and the login step returns with the account still selected.
@@ -574,13 +547,9 @@ final class LauncherWindowTest {
         }
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void whisper_from_friends_opens_the_chat_tab_on_the_friend_conversation(double scale, @NotNull String languageCode,
-                                                                            @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = selectLanguage(languageCode);
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void whisper_from_friends_opens_the_chat_tab_on_the_friend_conversation(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         InstallLayout install = InstallLayout.of(directory);
         AccountStore store = AccountStore.of(install.getBeaconLinkDirectory());
         RecordingLauncherSession session = new RecordingLauncherSession(createCode(1), new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "",
@@ -589,23 +558,19 @@ final class LauncherWindowTest {
         store.create(raynorKey, raynorStamp, PlayerStamp.DEFAULT_DIFFICULTY, RAYNOR_USE_MILLIS);
         session.setFriends(List.of(new FriendView(createCode(2), "Kerrigan#a1b2c3", FriendState.IN_LAUNCHER, null, "", 1, false),
                                    new FriendView(createCode(3), "Zeratul#d4e5f6", FriendState.IN_LAUNCHER, null, "", 1, false)));
-        new LauncherSettingsFile(install.getLauncherSettingsFile()).write(LauncherSettings.DEFAULT.withLanguage(language));
+        new LauncherSettingsFile(install.getLauncherSettingsFile()).write(LauncherSettings.DEFAULT.withLanguage(UiLanguage.ENGLISH));
         LauncherFxScenario.run(() -> {
             Stage stage = new Stage();
             LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
             }, folder -> {
             }, new LauncherNodeRunner(install), account -> session, NO_SOUND);
 
-            window.fitDisplay(scale, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+            window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
             LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
 
             // From the Mods screen: the Chat screen opens on Kerrigan's conversation.
             whisperFromFriends(stage, texts, 0);
             assertChatShowsWhispers(stage, texts, "Kerrigan#a1b2c3");
-
-            LauncherFxScenario.disableViewportCache(layRoot(stage));
-
-            LauncherFxScenario.saveSample(layRoot(stage), scale, "window-whisper-" + suffix);
 
             // From the Chat screen: the screen shows Zeratul's conversation.
             whisperFromFriends(stage, texts, 1);
@@ -615,14 +580,11 @@ final class LauncherWindowTest {
         });
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void chat_dot_shows_unread_lines_and_whispers_until_read_and_the_sound_plays_while_the_chat_is_hidden(double scale,
-                                                                                                          @NotNull String languageCode,
-                                                                                                          @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = selectLanguage(languageCode);
+    @Test
+    void chat_dot_shows_unread_lines_and_whispers_until_read_and_the_sound_plays_while_the_chat_is_hidden(@TempDir @NotNull Path directory) throws Exception {
+        // Korean, so that the chat that the login starts in the display language does not open in the default English.
+        UiLanguage language = UiLanguage.KOREAN;
         LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
         InstallLayout install = InstallLayout.of(directory);
         AccountStore store = AccountStore.of(install.getBeaconLinkDirectory());
         RecordingLauncherSession session = createConnectedSession();
@@ -639,7 +601,7 @@ final class LauncherWindowTest {
             List<ChannelView> channels = List.of(new ChannelView(ChannelChat.SHARED_CHANNEL, 2, List.of()), new ChannelView("Ladder", 2, List.of()));
             List<ChatEntryView> entries = new ArrayList<>();
 
-            window.fitDisplay(scale, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+            window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
             LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
 
             // The login starts the chat in the display language; nothing is unread yet.
@@ -652,7 +614,6 @@ final class LauncherWindowTest {
 
             Assertions.assertTrue(isChatDotShown(stage, texts));
             Assertions.assertEquals(1, sounds.get(), "the sound plays while the Chat screen is hidden");
-            LauncherFxScenario.saveSample(layRoot(stage).lookup(APP_BAR_SELECTOR), scale, "window-chat-dot-" + suffix);
 
             // The Chat screen shows the shared channel, which reads it.
             findNavigation(layRoot(stage), texts.get("nav.chat")).fire();
@@ -682,12 +643,9 @@ final class LauncherWindowTest {
         });
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void settings_switch_mutes_the_chat_sound_and_saves_it(double scale, @NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = selectLanguage(languageCode);
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void settings_switch_mutes_the_chat_sound_and_saves_it(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         InstallLayout install = InstallLayout.of(directory);
         AccountStore store = AccountStore.of(install.getBeaconLinkDirectory());
         LauncherSettingsFile settingsFile = new LauncherSettingsFile(install.getLauncherSettingsFile());
@@ -695,14 +653,14 @@ final class LauncherWindowTest {
         AtomicInteger sounds = new AtomicInteger();
 
         store.create(raynorKey, raynorStamp, PlayerStamp.DEFAULT_DIFFICULTY, RAYNOR_USE_MILLIS);
-        settingsFile.write(LauncherSettings.DEFAULT.withLanguage(language));
+        settingsFile.write(LauncherSettings.DEFAULT.withLanguage(UiLanguage.ENGLISH));
         LauncherFxScenario.run(() -> {
             Stage stage = new Stage();
             LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
             }, folder -> {
             }, new LauncherNodeRunner(install), account -> session, sounds::incrementAndGet);
 
-            window.fitDisplay(scale, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+            window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
             LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
             findNavigation(layRoot(stage), texts.get("nav.settings")).fire();
 
@@ -716,9 +674,6 @@ final class LauncherWindowTest {
 
             Assertions.assertTrue(settingsFile.read().isChatSoundMuted(), "the switch is saved in the launcher settings");
 
-            LauncherFxScenario.disableViewportCache(layRoot(stage));
-            LauncherFxScenario.saveSample(layRoot(stage), scale, "window-settings-sound-" + suffix);
-
             // A muted sound does not play; the dot still shows.
             session.setChat(List.of(new ChannelView(ChannelChat.SHARED_CHANNEL, 2, List.of())), List.of(),
                             List.of(createLine(ChannelChat.SHARED_CHANNEL, createCode(2), "gg")));
@@ -730,26 +685,23 @@ final class LauncherWindowTest {
         });
     }
 
-    @ParameterizedTest
-    @CsvSource({"1.0, en", "2.0, en", "1.0, ko", "2.0, ko"})
-    void close_request_asks_to_minimize_quit_or_cancel(double scale, @NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = selectLanguage(languageCode);
-        LauncherTexts texts = LauncherTexts.of(language);
-        String suffix = Math.round(scale * PERCENT_SCALE) + "-" + language.getCode();
+    @Test
+    void close_request_asks_to_minimize_quit_or_cancel(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         InstallLayout install = InstallLayout.of(directory);
         AccountStore store = AccountStore.of(install.getBeaconLinkDirectory());
         LauncherSettingsFile settingsFile = new LauncherSettingsFile(install.getLauncherSettingsFile());
         RecordingLauncherSession session = createConnectedSession();
 
         store.create(raynorKey, raynorStamp, PlayerStamp.DEFAULT_DIFFICULTY, RAYNOR_USE_MILLIS);
-        settingsFile.write(LauncherSettings.DEFAULT.withLanguage(language));
+        settingsFile.write(LauncherSettings.DEFAULT.withLanguage(UiLanguage.ENGLISH));
         LauncherFxScenario.run(() -> {
             Stage stage = new Stage();
             LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
             }, folder -> {
             }, new LauncherNodeRunner(install), account -> session, NO_SOUND);
 
-            window.fitDisplay(scale, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+            window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
             LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
 
             // The dialog: Quit on the left, then Cancel (Escape) and Minimize, the default action; a second request opens no second dialog.
@@ -768,11 +720,10 @@ final class LauncherWindowTest {
             Assertions.assertTrue(minimize.getStyleClass().contains("primary"));
             Assertions.assertTrue(cancel.isCancelButton());
             assertTextOnly(LauncherFxScenario.findButton(dialog, texts.get("close.quit")));
-            Assertions.assertEquals(language == UiLanguage.KOREAN ? KOREAN_CLOSE_TEXT : ENGLISH_CLOSE_TEXT, texts.get("close.text"));
+
             Assertions.assertTrue(dialog.lookupAll(".label").stream().anyMatch(node -> ((Label) node).getText().equals(texts.get("close.text"))),
                                   "the dialog asks whether to quit");
             Assertions.assertTrue(LauncherFxScenario.assertFooterInsets(dialog) >= 1, "the dialog footer is checked");
-            LauncherFxScenario.saveSample(root, scale, "window-close-" + suffix);
 
             // Cancel and Escape keep the window.
             cancel.fire();

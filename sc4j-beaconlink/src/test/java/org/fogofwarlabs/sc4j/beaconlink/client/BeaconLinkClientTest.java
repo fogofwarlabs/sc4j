@@ -1,18 +1,24 @@
 package org.fogofwarlabs.sc4j.beaconlink.client;
 
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
+import org.fogofwarlabs.sc4j.beaconlink.channel.ChannelSignal;
+import org.fogofwarlabs.sc4j.beaconlink.client.mapping.MappingProtocol;
 import org.fogofwarlabs.sc4j.beaconlink.peer.PeerSocket;
+import org.fogofwarlabs.sc4j.beaconlink.peer.bootstrap.KnownNodes;
 import org.fogofwarlabs.sc4j.beaconlink.peer.configuration.PeerConfiguration;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.file.ConfiguredNode;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.identity.IdentityKeyPair;
+import org.fogofwarlabs.sc4j.beaconlink.protocol.identity.PlayerStamp;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.message.MessageEncoder;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.message.ResultMessage;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.message.ResultStatus;
 import org.fogofwarlabs.sc4j.beaconlink.test.client.ClientScenario;
+import org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario;
 import org.fogofwarlabs.sc4j.beaconlink.test.nat.LoopbackNat;
 import org.fogofwarlabs.sc4j.beaconlink.test.nat.NatEndpoint;
 import org.fogofwarlabs.sc4j.beaconlink.test.nat.NatType;
 import org.fogofwarlabs.sc4j.engine.mod.identity.ModIdentity;
+import org.fogofwarlabs.sc4j.engine.net.DatagramEndpoint;
 import org.fogofwarlabs.sc4j.engine.net.UdpDatagramEndpoint;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.*;
 import org.jetbrains.annotations.NotNull;
@@ -23,6 +29,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.StandardProtocolFamily;
 import java.nio.ByteBuffer;
@@ -59,6 +66,12 @@ final class BeaconLinkClientTest {
     private static final int FLOOD_BATCH = 25;
     private static final int FLOOD_LIMIT = 65_536;
     private static final byte @NotNull [] FLOOD_PAYLOAD = {1, 2, 3};
+    private static final @NotNull InetAddress MAPPED_ADDRESS = InetAddress.ofLiteral("203.0.113.7");
+    private static final int MAPPING_LEASE_SECONDS = 3_600;
+    /**
+     * More nodes than a channel signal carries candidates: behind a symmetric NAT each node observes another address.
+     */
+    private static final int MANY_NODES = ChannelSignal.MAXIMUM_CANDIDATES + 1;
 
     private static boolean isRegistered(@NotNull BeaconLinkClient client) {
         return client.getObservedAddress() != null;
@@ -95,6 +108,78 @@ final class BeaconLinkClientTest {
         Assertions.assertNull(search.getFailure());
 
         return search.getRooms();
+    }
+
+    /**
+     * Opens a client that maps its port at a gateway and that the scenario polls; the caller closes it.
+     */
+    private @NotNull BeaconLinkClient openMappedClient(@NotNull GatewayScenario gateway, @NotNull List<@NotNull ConfiguredNode> listed,
+                                                       @NotNull DatagramEndpoint endpoint) {
+        int difficulty = this.scenario.getConfiguration().getStampDifficulty();
+        ClientConfiguration configuration = new ClientConfiguration.Builder().setStampDifficulty(difficulty)
+                                                                             .setPortMapping(gateway.createConfiguration().build())
+                                                                             .build();
+        IdentityKeyPair keyPair = IdentityKeyPair.generate(new SecureRandom());
+        PlayerStamp stamp = PlayerStamp.solve(keyPair.getPublicKey(), "mapped player", difficulty);
+        BeaconLinkClient client = new BeaconLinkClient(configuration, this.scenario.getClock(), new SplittableRandom(), keyPair, stamp, 1L, IDENTITY,
+                                                       KnownNodes.open(listed, null), null, endpoint);
+
+        this.scenario.addPollAction(() -> {
+            if (!client.isClosed()) {
+                client.poll();
+            }
+        });
+
+        return client;
+    }
+
+    @Test
+    void candidates_start_with_the_mapped_address_and_the_close_releases_it() throws IOException {
+        PeerSocket node = this.scenario.openNode(ClientScenario.createNodeConfiguration());
+
+        try (GatewayScenario gateway = GatewayScenario.open(MAPPED_ADDRESS)) {
+            UdpDatagramEndpoint endpoint = UdpDatagramEndpoint.open(new InetSocketAddress(ClientScenario.LOOPBACK, 0));
+            BeaconLinkClient client = this.openMappedClient(gateway, List.of(ClientScenario.listed(node)), endpoint);
+            int port = endpoint.getLocalAddress().getPort();
+
+            this.scenario.await(() -> isRegistered(client) && client.getMappedAddress() != null, "the client registers and maps its port");
+
+            Assertions.assertEquals(List.of(new InetSocketAddress(MAPPED_ADDRESS, port), requireObservedAddress(client)), client.getCandidates());
+
+            client.close();
+
+            Assertions.assertNull(client.getMappedAddress());
+            Assertions.assertEquals(List.of(MAPPING_LEASE_SECONDS, 0), gateway.getRequestedLifetimes(MappingProtocol.PCP),
+                                    "the close releases the mapping");
+        }
+    }
+
+    @Test
+    void mapped_address_stays_first_within_the_candidate_limit() throws IOException {
+        List<ConfiguredNode> listed = new ArrayList<>();
+
+        for (int index = 0; index < MANY_NODES; index++) {
+            listed.add(ClientScenario.listed(this.scenario.openNode(ClientScenario.createNodeConfiguration())));
+        }
+
+        try (GatewayScenario gateway = GatewayScenario.open(MAPPED_ADDRESS)) {
+            NatEndpoint endpoint = this.scenario.openNat(NatType.SYMMETRIC).openEndpoint();
+            BeaconLinkClient client = this.openMappedClient(gateway, listed, endpoint);
+            int port = endpoint.getLocalAddress().getPort();
+
+            try {
+                this.scenario.await(() -> client.getMappedAddress() != null &&
+                                          client.getNodes().stream().allMatch(linked -> linked.getState() == LinkNodeState.REGISTERED),
+                                    "the client registers at every node and maps its port");
+
+                List<InetSocketAddress> candidates = client.getCandidates();
+
+                Assertions.assertEquals(ChannelSignal.MAXIMUM_CANDIDATES, candidates.size());
+                Assertions.assertEquals(new InetSocketAddress(MAPPED_ADDRESS, port), candidates.getFirst());
+            } finally {
+                client.close();
+            }
+        }
     }
 
     @Test

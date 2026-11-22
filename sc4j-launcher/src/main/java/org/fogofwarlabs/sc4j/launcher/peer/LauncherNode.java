@@ -3,6 +3,9 @@ package org.fogofwarlabs.sc4j.launcher.peer;
 import org.fogofwarlabs.sc4j.base.exception.IgnoreException;
 import org.fogofwarlabs.sc4j.base.log.LogLevel;
 import org.fogofwarlabs.sc4j.base.log.Logger;
+import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMapper;
+import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMapping;
+import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMappingConfiguration;
 import org.fogofwarlabs.sc4j.beaconlink.peer.MeshPeer;
 import org.fogofwarlabs.sc4j.beaconlink.peer.PeerSocket;
 import org.fogofwarlabs.sc4j.beaconlink.peer.bootstrap.KnownNodes;
@@ -43,7 +46,10 @@ import java.util.List;
  * <p>
  * The role ({@link NodeSettings}) decides how the node takes part. In the {@link NodeRole#AUTOMATIC} role it listens on its port on every
  * IPv4 interface (a free port, logged, when another program holds that port) and becomes a full peer once its reachability self-test proves
- * that strangers reach it; until then, or when the test fails, it is a leaf. In the {@link NodeRole#OFF} role it is leaf-only on a free port.
+ * that strangers reach it; until then, or when the test fails, it is a leaf. With port mapping on ({@link NodeSettings#isPortMapping()}), the
+ * automatic role asks the router to map the node's port ({@link PortMapper}), so that the self-test can pass without a manual forward; a
+ * mapping behind another NAT is skipped against the address the self-test observed. In the {@link NodeRole#OFF} role it is leaf-only on a
+ * free port and maps nothing.
  * Either way it joins through the install's seeds (the user's node list once saved, otherwise the shipped seed list,
  * {@link KnownNodes#readSeeds}) and the learned peers of the install's shared peers file, which it merges into the file every five minutes
  * and when it stops. Host names are resolved on the node's thread. The node's state is published as a {@link LauncherNodeStatus} after every
@@ -74,7 +80,8 @@ public final class LauncherNode implements Closeable {
      * @throws IOException if the lock file or the key cannot be read or written, or the socket cannot be opened
      */
     public static @Nullable LauncherNode start(@NotNull InstallLayout install, @NotNull NodeSettings settings) throws IOException {
-        return start(install, settings, EVERY_IPV4_INTERFACE, new PeerConfiguration.Builder(), ProtocolClock.SYSTEM);
+        return start(install, settings, EVERY_IPV4_INTERFACE, new PeerConfiguration.Builder(), ProtocolClock.SYSTEM,
+                     PortMappingConfiguration.createDefault());
     }
 
     /**
@@ -85,11 +92,13 @@ public final class LauncherNode implements Closeable {
      * @param host          the address the socket listens on: every IPv4 interface for the user, the loopback address in tests
      * @param configuration the node's limits and timings; the role sets its leaf-only flag
      * @param clock         the protocol clock
+     * @param portMapping   how the node's port is mapped in the automatic role with port mapping on, or {@code null} to map nothing
      * @return the started node, or {@code null} if another launcher of the install holds the node
      * @throws IOException if the lock file or the key cannot be read or written, or the socket cannot be opened
      */
     public static @Nullable LauncherNode start(@NotNull InstallLayout install, @NotNull NodeSettings settings, @NotNull InetAddress host,
-                                               @NotNull PeerConfiguration.Builder configuration, @NotNull ProtocolClock clock) throws IOException {
+                                               @NotNull PeerConfiguration.Builder configuration, @NotNull ProtocolClock clock,
+                                               @Nullable PortMappingConfiguration portMapping) throws IOException {
         Path directory = install.getBeaconLinkDirectory();
 
         Files.createDirectories(directory);
@@ -151,6 +160,10 @@ public final class LauncherNode implements Closeable {
             throw exception;
         }
 
+        if (portMapping != null && settings.getRole() == NodeRole.AUTOMATIC && settings.isPortMapping()) {
+            node.portMapper = PortMapper.start(node.localAddress.getPort(), portMapping);
+        }
+
         node.thread.start();
         LOGGER.info("BEACON.LINK: launcher node {0} at {1}, role {2}", node.getKey(), node.localAddress, settings.getRole().getName());
 
@@ -195,6 +208,7 @@ public final class LauncherNode implements Closeable {
     private final @NotNull FileChannel lockChannel;
     private final @NotNull FileLock lock;
 
+    private volatile @Nullable PortMapper portMapper;
     private volatile @NotNull List<@NotNull NodeEndpoint> liveNodes;
     private volatile @NotNull LauncherNodeStatus status;
     private boolean closed;
@@ -211,9 +225,10 @@ public final class LauncherNode implements Closeable {
         this.lockChannel = lockChannel;
         this.lock        = lock;
 
-        this.liveNodes = List.of();
-        this.status    = this.createStatus();
-        this.closed    = false;
+        this.portMapper = null;
+        this.liveNodes  = List.of();
+        this.status     = this.createStatus();
+        this.closed     = false;
 
         this.thread.setDaemon(true);
     }
@@ -241,6 +256,15 @@ public final class LauncherNode implements Closeable {
     }
 
     /**
+     * @return the router's mapping of the node's port, or {@code null} while the node holds none; may be called from any thread
+     */
+    public @Nullable PortMapping getPortMapping() {
+        PortMapper mapper = this.portMapper;
+
+        return mapper == null ? null : mapper.getMapping();
+    }
+
+    /**
      * @return the node's state as of its last poll; may be called from any thread
      */
     public @NotNull LauncherNodeStatus getStatus() {
@@ -253,6 +277,13 @@ public final class LauncherNode implements Closeable {
 
         try {
             this.bootstrap.run(this.socket, this.clock, () -> {
+                PortMapper mapper = this.portMapper;
+                InetSocketAddress observed = peer.getObservedAddress();
+
+                if (mapper != null && observed != null) {
+                    mapper.checkObservedAddress(observed.getAddress());
+                }
+
                 this.liveNodes = List.copyOf(peer.getLiveNodes());
                 this.status    = this.createStatus();
             });
@@ -270,8 +301,8 @@ public final class LauncherNode implements Closeable {
 
 
     /**
-     * Stops the node's thread, waits for it (the learned peers are merged into the peers file as it ends), closes the socket and releases the
-     * lock file, so that another launcher of the install can take the node. Closing a closed node does nothing.
+     * Stops the node's thread, waits for it (the learned peers are merged into the peers file as it ends), releases the port mapping, closes the
+     * socket and releases the lock file, so that another launcher of the install can take the node. Closing a closed node does nothing.
      */
     @Override
     public synchronized void close() {
@@ -286,6 +317,10 @@ public final class LauncherNode implements Closeable {
             this.thread.join();
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
+        }
+
+        if (this.portMapper != null) {
+            this.portMapper.close();
         }
 
         this.socket.close();

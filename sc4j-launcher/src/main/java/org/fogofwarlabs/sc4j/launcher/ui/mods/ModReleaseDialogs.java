@@ -3,6 +3,7 @@ package org.fogofwarlabs.sc4j.launcher.ui.mods;
 import javafx.application.Platform;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import org.fogofwarlabs.sc4j.catalog.github.ReleaseClient;
 import org.fogofwarlabs.sc4j.catalog.github.ReleaseException;
 import org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem;
@@ -16,28 +17,29 @@ import org.fogofwarlabs.sc4j.launcher.catalog.ModIssue;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.install.ModInstallResult;
 import org.fogofwarlabs.sc4j.launcher.install.ModInstaller;
+import org.fogofwarlabs.sc4j.launcher.install.ModSource;
 import org.fogofwarlabs.sc4j.launcher.ui.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * Opens the dialogs of the Mods screen that change {@code mods/}: Install mod, Update and Remove.
+ * Opens the dialogs of the Mods screen that change {@code mods/}: Install mod, Change version, Update and Remove.
  * <p>
  * Install mod asks for a GitHub repository: typed as {@code owner/name} or the repository's address, or chosen from the mod catalog
  * ({@link ModIndex}), which is read when the dialog opens and lists each mod by its name in the display language; without the catalog the
- * list is empty. The latest release of the repository is read next, and a confirmation names the jar, the repository and the release and
- * says that the mod runs code on this computer. Install and Update download the jar with the dialog's progress and hand it to
- * {@link ModInstaller}, which puts it into {@code mods/} only when it passes the launcher's checks; a refused jar is not installed and the
- * reasons are shown.
+ * list is empty. The releases of the repository are read next, and a confirmation offers them newest first, the latest chosen, names the
+ * jar, the repository and the chosen release and says that the mod runs code on this computer. Change version does the same for the
+ * repository an installed mod came from and marks its installed release; the chosen release, the installed one or an older one included,
+ * replaces the installed jar. Install, Change version and Update download the jar with the dialog's progress and hand it to
+ * {@link ModInstaller}, which puts it into {@code mods/} only when it passes the launcher's checks, in place of an installed jar of the same
+ * mod id; a refused jar is not installed and the reasons are shown.
  */
 public final class ModReleaseDialogs {
     private static final @NotNull String CATALOG_THREAD_NAME = "launcher-mod-catalog";
@@ -107,11 +109,12 @@ public final class ModReleaseDialogs {
 
             repository.setDisable(true);
             next.setDisable(true);
-            shown.runWork(this.texts.get("mods.install.finding"), cancelled, progress -> ModRelease.find(client, parsed, null), release -> {
+            shown.runWork(this.texts.get("mods.install.finding"), cancelled, progress -> ModRelease.findAll(client, parsed, null), releases -> {
                 this.shell.closeDialog(shown);
-                this.openConfirmation(this.texts.get("mods.install.title"),
-                                      this.texts.format("mods.install.confirm", release.getJarFile().getName(), release.getRepository(), release.getTag()),
-                                      this.texts.get("mods.install.start"), release, null);
+                this.openConfirmation(this.texts.get("mods.install.title"), release -> this.texts.format("mods.install.confirm",
+                                                                                                         release.getJarFile().getName(),
+                                                                                                         release.getRepository(), release.getTag()),
+                                      this.texts.get("mods.install.start"), releases, null, null);
             }, this::describe, () -> {
                 repository.setDisable(false);
                 next.setDisable(false);
@@ -123,15 +126,49 @@ public final class ModReleaseDialogs {
     }
 
     /**
+     * Opens the Change version dialog of a mod installed from a release: the releases of its repository are read and offered, its installed
+     * release marked.
+     *
+     * @param entry  the mod
+     * @param source the repository and release the mod was installed from
+     */
+    public void openVersions(@NotNull ModEntry entry, @NotNull ModSource source) {
+        ModalDialog shown = new ModalDialog(this.texts.get("mods.version.title"));
+        Button cancel = ComponentUtils.createButton(this.texts.get("mods.cancel"), ButtonRole.SECONDARY);
+        AtomicBoolean cancelled = new AtomicBoolean(false);
+        ReleaseClient client = this.installer.getClient();
+        String name = ModArt.getName(entry, this.texts);
+
+        shown.setButtons(cancel, null);
+        cancel.setOnAction(event -> {
+            cancelled.set(true);
+            this.shell.closeDialog(shown);
+        });
+
+        this.shell.showDialog(shown);
+        cancel.requestFocus();
+        shown.runWork(this.texts.get("mods.install.finding"), cancelled, progress -> ModRelease.findAll(client, source.getRepository(), entry.getJarName()),
+                      releases -> {
+                          this.shell.closeDialog(shown);
+                          this.openConfirmation(this.texts.get("mods.version.title"),
+                                                release -> this.texts.format("mods.version.confirm", name, release.getRepository(), release.getTag()),
+                                                this.texts.get("mods.install.start"), releases, source.getRelease(), entry);
+                      }, this::describe, () -> {
+                });
+    }
+
+    /**
      * Opens the Update dialog of an installed mod.
      *
      * @param entry   the mod
      * @param release the newer release of the mod
      */
     public void openUpdate(@NotNull ModEntry entry, @NotNull ModRelease release) {
+        String name = ModArt.getName(entry, this.texts);
+
         this.openConfirmation(this.texts.get("mods.update.title"),
-                              this.texts.format("mods.update.confirm", ModArt.getName(entry, this.texts), release.getRepository(), release.getTag()),
-                              this.texts.get("mods.update.start"), release, entry);
+                              shownRelease -> this.texts.format("mods.update.confirm", name, shownRelease.getRepository(), shownRelease.getTag()),
+                              this.texts.get("mods.update.start"), List.of(release), null, entry);
     }
 
     /**
@@ -165,24 +202,57 @@ public final class ModReleaseDialogs {
     }
 
     /**
-     * Opens the confirmation of an install or an update, whose action downloads the jar and installs it.
+     * Opens the confirmation of an install, a version change or an update, whose action downloads the jar of the chosen release and installs
+     * it. With more than one release a choice offers them in the given order, the first chosen; the text follows the choice.
+     *
+     * @param releases     the releases, newest first
+     * @param installedTag the tag of the installed release, marked in the choice, or {@code null}
+     * @param replaced     the installed mod the jar replaces, or {@code null} for the installed jar of the same id, if there is one
      */
-    private void openConfirmation(@NotNull String title, @NotNull String text, @NotNull String actionText, @NotNull ModRelease release,
+    private void openConfirmation(@NotNull String title, @NotNull Function<@NotNull ModRelease, @NotNull String> describeRelease,
+                                  @NotNull String actionText, @NotNull List<@NotNull ModRelease> releases, @Nullable String installedTag,
                                   @Nullable ModEntry replaced) {
         ModalDialog shown = new ModalDialog(title);
         Button cancel = ComponentUtils.createButton(this.texts.get("mods.cancel"), ButtonRole.SECONDARY);
         Button action = ComponentUtils.createButton(actionText, ButtonRole.PRIMARY);
         AtomicBoolean cancelled = new AtomicBoolean(false);
+        ComboBox<String> version = ComponentUtils.createComboBox(ControlWidth.M);
+        Map<String, ModRelease> releasesByTag = new LinkedHashMap<>();
+        ModRelease latest = releases.getFirst();
+        Label text = ComponentUtils.createParagraph(describeRelease.apply(latest), "text-body");
 
-        shown.addContent(ComponentUtils.createParagraph(text, "text-body"),
-                         ComponentUtils.createNotice(Tone.WARNING, this.texts.get("mods.install.code")));
+        for (ModRelease release : releases) {
+            releasesByTag.putIfAbsent(release.getTag(), release);
+        }
+
+        version.getItems().setAll(releasesByTag.keySet());
+        version.setValue(latest.getTag());
+        version.setCellFactory(view -> new ListItemCell<>(tag -> this.createVersionItem(tag, latest.getTag(), installedTag)));
+        version.valueProperty().addListener((property, previous, chosen) -> {
+            ModRelease release = chosen == null ? null : releasesByTag.get(chosen);
+
+            if (release != null) {
+                text.setText(describeRelease.apply(release));
+            }
+        });
+
+        shown.addContent(text);
+
+        if (releasesByTag.size() > 1) {
+            shown.addContent(ComponentUtils.createField(this.texts.get("mods.version.release"), version));
+        }
+
+        shown.addContent(ComponentUtils.createNotice(Tone.WARNING, this.texts.get("mods.install.code")));
         shown.setButtons(cancel, action);
         cancel.setOnAction(event -> {
             cancelled.set(true);
             this.shell.closeDialog(shown);
         });
         action.setOnAction(event -> {
+            ModRelease release = releasesByTag.getOrDefault(version.getValue(), latest);
+
             action.setDisable(true);
+            version.setDisable(true);
             shown.runWork(this.texts.get("mods.install.downloading"), cancelled, progress -> this.installer.download(release, progress), jar -> {
                 ModInstallResult result = this.installer.install(release, jar, this.catalog.get(), replaced);
                 String jarName = result.getJarName();
@@ -195,11 +265,31 @@ public final class ModReleaseDialogs {
 
                 this.shell.closeDialog(shown);
                 this.changed.accept(jarName);
-            }, this::describe, () -> action.setDisable(false));
+            }, this::describe, () -> {
+                action.setDisable(false);
+                version.setDisable(false);
+            });
         });
 
         this.shell.showDialog(shown);
         action.requestFocus();
+    }
+
+    /**
+     * Creates the list item of a release of the version choice: its tag, marked as the latest and as the installed release.
+     */
+    private @NotNull ListItem createVersionItem(@NotNull String tag, @NotNull String latestTag, @Nullable String installedTag) {
+        ListItem item = new ListItem(tag);
+
+        if (tag.equals(latestTag)) {
+            item.addCaption(this.texts.get("mods.version.latest"));
+        }
+
+        if (tag.equals(installedTag)) {
+            item.addCaption(this.texts.get("mods.version.installed"));
+        }
+
+        return item;
     }
 
     /**

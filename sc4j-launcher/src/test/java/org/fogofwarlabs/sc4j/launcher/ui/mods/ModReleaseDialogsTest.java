@@ -9,16 +9,20 @@ import javafx.scene.control.ListView;
 import javafx.scene.layout.StackPane;
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
 import org.fogofwarlabs.sc4j.catalog.github.ReleaseClient;
+import org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository;
 import org.fogofwarlabs.sc4j.catalog.mods.ModIndex;
+import org.fogofwarlabs.sc4j.catalog.mods.ModRelease;
 import org.fogofwarlabs.sc4j.catalog.test.ReleaseServerScenario;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModCatalog;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModEntry;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
 import org.fogofwarlabs.sc4j.launcher.install.ModInstaller;
+import org.fogofwarlabs.sc4j.launcher.install.ModSource;
 import org.fogofwarlabs.sc4j.launcher.ui.LauncherFxScenario;
 import org.fogofwarlabs.sc4j.launcher.ui.LauncherShell;
 import org.fogofwarlabs.sc4j.launcher.ui.ThemeUtils;
+import org.fogofwarlabs.sc4j.manifest.ModManifestReader;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.fogofwarlabs.sc4j.manifest.settings.InstallationRecords;
 import org.fogofwarlabs.sc4j.manifest.test.TestJarUtils;
@@ -28,8 +32,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -40,8 +42,9 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Tests the dialogs that change {@code mods/} offscreen, against a local stand-in for GitHub: Install mod with the catalog choice and the
- * confirmation, a refused jar, and Remove.
+ * Tests the dialogs that change {@code mods/} offscreen, against a local stand-in for GitHub: Install mod with the catalog choice under the
+ * mod's name in the display language and the confirmation, a refused jar, Change version with the releases newest first and an older one
+ * chosen, and Remove.
  */
 final class ModReleaseDialogsTest {
     private static final @NotNull String MANIFEST = """
@@ -49,7 +52,7 @@ final class ModReleaseDialogsTest {
                                                       "format": 1,
                                                       "id": "my-mod",
                                                       "name": {"en": "My Mod"},
-                                                      "version": "1.0.0",
+                                                      "version": "%s",
                                                       "engine": "%s",
                                                       "entry": "org.example.MyMod"
                                                     }
@@ -63,6 +66,7 @@ final class ModReleaseDialogsTest {
     private static final @NotNull String REPOSITORY = "owner/my-mod";
     private static final @NotNull String JAR = "my-mod.jar";
     private static final @NotNull String TAG = "v1.0.0";
+    private static final @NotNull String NEWER_TAG = "v1.1.0";
     private static final @NotNull String UNSUPPORTED_ENGINE = "99.0";
     private static final @NotNull String MESSAGE_SELECTOR = ".field-message";
     private static final double SCENE_WIDTH = 1280;
@@ -95,10 +99,10 @@ final class ModReleaseDialogsTest {
         LauncherFxScenario.startToolkit();
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"en", "ko"})
-    void install_should_list_the_catalog_confirm_the_release_and_add_the_jar(@NotNull String languageCode, @TempDir @NotNull Path directory) throws Exception {
-        UiLanguage language = languageCode.equals(UiLanguage.KOREAN.getCode()) ? UiLanguage.KOREAN : UiLanguage.ENGLISH;
+    @Test
+    void install_should_list_the_catalog_confirm_the_release_and_add_the_jar(@TempDir @NotNull Path directory) throws Exception {
+        // Korean, so that the catalog lists the mod under its name in the display language.
+        UiLanguage language = UiLanguage.KOREAN;
         LauncherTexts texts = LauncherTexts.of(language);
         InstallLayout install = InstallLayout.of(directory.resolve("install"));
         List<String> changed = new CopyOnWriteArrayList<>();
@@ -113,14 +117,12 @@ final class ModReleaseDialogsTest {
 
                 return null;
             });
-            LauncherFxScenario.await(() -> findRepositoryChoice(shown.shell).getItems().equals(List.of(REPOSITORY)), "the catalog is listed");
+            LauncherFxScenario.await(() -> findChoice(shown.shell).getItems().equals(List.of(REPOSITORY)), "the catalog is listed");
             LauncherFxScenario.run(() -> {
-                StackPane list = createCatalogList(findRepositoryChoice(shown.shell), language);
+                StackPane list = createChoiceList(findChoice(shown.shell), language);
 
-                LauncherFxScenario.saveSample(list, 1, "mod-install-list-" + language.getCode());
-                Assertions.assertTrue(hasLabel(list, language == UiLanguage.KOREAN ? "내 모드" : "My Mod"));
-                findRepositoryChoice(shown.shell).getEditor().setText(REPOSITORY);
-                LauncherFxScenario.saveSample(shown.shell.getRoot(), 1, "mod-install-" + language.getCode());
+                Assertions.assertTrue(hasLabel(list, "내 모드"));
+                findChoice(shown.shell).getEditor().setText(REPOSITORY);
                 LauncherFxScenario.findButton(shown.shell.getRoot(), texts.get("mods.install.next")).fire();
 
                 return null;
@@ -129,7 +131,6 @@ final class ModReleaseDialogsTest {
             LauncherFxScenario.run(() -> {
                 shown.shell.getRoot().applyCss();
                 shown.shell.getRoot().layout();
-                LauncherFxScenario.saveSample(shown.shell.getRoot(), 1, "mod-install-confirm-" + language.getCode());
                 LauncherFxScenario.findButton(shown.shell.getRoot(), texts.get("mods.install.start")).fire();
 
                 return null;
@@ -155,7 +156,7 @@ final class ModReleaseDialogsTest {
 
             LauncherFxScenario.run(() -> {
                 shown.dialogs.openInstall();
-                findRepositoryChoice(shown.shell).getEditor().setText("https://github.com/" + REPOSITORY);
+                findChoice(shown.shell).getEditor().setText("https://github.com/" + REPOSITORY);
                 LauncherFxScenario.findButton(shown.shell.getRoot(), texts.get("mods.install.next")).fire();
 
                 return null;
@@ -167,16 +168,68 @@ final class ModReleaseDialogsTest {
                 return null;
             });
             LauncherFxScenario.await(() -> findMessage(shown.shell.getRoot()).startsWith(refused.strip()), "the refusal is shown");
-            LauncherFxScenario.run(() -> {
-                shown.shell.getRoot().applyCss();
-                shown.shell.getRoot().layout();
-                LauncherFxScenario.saveSample(shown.shell.getRoot(), 1, "mod-install-refused-en");
-
-                return null;
-            });
 
             Assertions.assertEquals(List.of(), changed);
             Assertions.assertFalse(Files.exists(install.getModsDirectory().resolve(JAR)));
+        }
+    }
+
+    @Test
+    void change_version_should_offer_the_releases_newest_first_and_install_the_chosen_one(@TempDir @NotNull Path directory) throws Exception {
+        UiLanguage language = UiLanguage.ENGLISH;
+        LauncherTexts texts = LauncherTexts.of(language);
+        InstallLayout install = InstallLayout.of(directory.resolve("install"));
+        List<String> changed = new CopyOnWriteArrayList<>();
+        String engine = EngineVersion.CURRENT.toString();
+
+        try (ReleaseServerScenario server = ReleaseServerScenario.start()) {
+            ModInstaller installer = new ModInstaller(install, new ReleaseClient(server.getApi()));
+
+            server.addCheckedRelease(REPOSITORY, TAG, Map.of(JAR, createJar(directory, "1.0.0", engine)));
+            server.addCheckedRelease(REPOSITORY, NEWER_TAG, Map.of(JAR, createJar(directory, "1.1.0", engine)));
+
+            ModRelease latest = ModRelease.find(installer.getClient(), ReleaseRepository.of("owner", "my-mod"), JAR);
+
+            installer.install(latest, installer.download(latest, share -> {
+            }), scanCatalog(install), null);
+
+            ModEntry entry = scanCatalog(install).findByJarName(JAR);
+            ModSource source = installer.findSource(JAR);
+            Dialogs shown = open(server, texts, language, install, changed);
+
+            Assertions.assertNotNull(entry);
+            Assertions.assertNotNull(source);
+
+            LauncherFxScenario.run(() -> {
+                shown.dialogs.openVersions(entry, source);
+
+                return null;
+            });
+            LauncherFxScenario.await(() -> hasButton(shown.shell.getRoot(), texts.get("mods.install.start")), "the releases are listed");
+            LauncherFxScenario.run(() -> {
+                ComboBox<String> version = findChoice(shown.shell);
+                StackPane list = createChoiceList(version, language);
+
+                Assertions.assertEquals(List.of(NEWER_TAG, TAG), version.getItems());
+                Assertions.assertEquals(NEWER_TAG, version.getValue());
+                Assertions.assertTrue(hasLabel(list, texts.get("mods.version.latest")));
+                Assertions.assertTrue(hasLabel(list, texts.get("mods.version.installed")));
+                version.setValue(TAG);
+                Assertions.assertTrue(hasLabel(shown.shell.getRoot(), texts.format("mods.version.confirm", "My Mod", REPOSITORY, TAG)));
+                shown.shell.getRoot().applyCss();
+                shown.shell.getRoot().layout();
+                LauncherFxScenario.findButton(shown.shell.getRoot(), texts.get("mods.install.start")).fire();
+
+                return null;
+            });
+            LauncherFxScenario.await(() -> !changed.isEmpty(), "the older release is installed");
+
+            ModSource installed = installer.findSource(JAR);
+
+            Assertions.assertEquals(List.of(JAR), changed);
+            Assertions.assertNotNull(installed);
+            Assertions.assertEquals(TAG, installed.getRelease());
+            Assertions.assertEquals("1.0.0", ModManifestReader.read(install.getModsDirectory().resolve(JAR)).getManifest().getVersion().toString());
         }
     }
 
@@ -199,7 +252,6 @@ final class ModReleaseDialogsTest {
                 shown.dialogs.openRemove(entry);
                 shown.shell.getRoot().applyCss();
                 shown.shell.getRoot().layout();
-                LauncherFxScenario.saveSample(shown.shell.getRoot(), 1, "mod-remove-en");
                 LauncherFxScenario.findButton(shown.shell.getRoot(), texts.get("mods.remove")).fire();
 
                 return null;
@@ -239,11 +291,11 @@ final class ModReleaseDialogsTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static @NotNull ComboBox<String> findRepositoryChoice(@NotNull LauncherShell shell) {
+    private static @NotNull ComboBox<String> findChoice(@NotNull LauncherShell shell) {
         return Assertions.assertInstanceOf(ComboBox.class, shell.getRoot().lookup(".combo-box"));
     }
 
-    private static @NotNull StackPane createCatalogList(@NotNull ComboBox<String> choice, @NotNull UiLanguage language) {
+    private static @NotNull StackPane createChoiceList(@NotNull ComboBox<String> choice, @NotNull UiLanguage language) {
         ListView<String> list = new ListView<>(choice.getItems());
         StackPane popup = new StackPane(list);
         Scene scene = new Scene(popup, LIST_WIDTH, LIST_HEIGHT);
@@ -288,9 +340,13 @@ final class ModReleaseDialogsTest {
     }
 
     private static byte @NotNull [] createJar(@NotNull Path directory, @NotNull String engine) throws IOException {
+        return createJar(directory, "1.0.0", engine);
+    }
+
+    private static byte @NotNull [] createJar(@NotNull Path directory, @NotNull String version, @NotNull String engine) throws IOException {
         Path jar = Files.createTempFile(directory, "my-mod", ".jar");
 
-        TestJarUtils.write(jar, Map.of(TestJarUtils.MANIFEST_ENTRY, MANIFEST.formatted(engine).getBytes(StandardCharsets.UTF_8)));
+        TestJarUtils.write(jar, Map.of(TestJarUtils.MANIFEST_ENTRY, MANIFEST.formatted(version, engine).getBytes(StandardCharsets.UTF_8)));
 
         return Files.readAllBytes(jar);
     }

@@ -14,24 +14,28 @@ It carries no game traffic of games it is not part of, relays no channel datagra
 
 Every open launcher runs the computer's node, logged in or not. The first launcher of an install holds it (`node.lock`); another launcher of the install takes it within 5 minutes after the first closes. The node keeps one key (`peer.key`) and one port.
 
-**Role** (`node.json`): automatic (default, "Help other players connect" on) listens on its UDP port (default 7455; a free logged port when 7455 is taken) on every IPv4 interface and becomes a full peer once its self-test passes, otherwise stays a leaf. Off: leaf-only on a free port; it still joins and keeps `peers.json` current. No UPnP: behind a NAT, a full peer needs a manual forward.
+**Role** (`node.json`): automatic (default, "Help other players connect" on) listens on its UDP port (default 7455; a free logged port when 7455 is taken) on every IPv4 interface and becomes a full peer once its self-test passes, otherwise stays a leaf. Off: leaf-only on a free port; it still joins and keeps `peers.json` current.
+
+**Port mapping** (`node.json` `portMapping`, "Open ports on the router (UPnP)", default on): the launcher asks the router to open its node's port (automatic role only) and the port of each game session, with PCP, NAT-PMP and UPnP-IGD at once, a lease of one hour renewed at half and released at close; the mappings are named `SC4J Beacon.Link` in the router's list. A mapped address that is private, in 100.64.0.0/10 or different from the address the peers observe is behind another NAT and is not used. With the setting off, or a router without these protocols, a full peer needs a manual forward. The headless node never maps.
 
 **Serving other players**:
 
 1. Launcher, Settings, Beacon.Link: "Help other players connect" on, UDP port (default 7455), Apply.
-2. Router: forward UDP (not TCP) 7455 to this PC; give the PC a fixed LAN address (DHCP reservation).
+2. Router: with port mapping on, nothing to do when the router opens the port (log line `port mapping by ...`); otherwise forward UDP (not TCP) 7455 to this PC and give the PC a fixed LAN address (DHCP reservation).
 3. Windows Defender Firewall: allow inbound UDP 7455 for the launcher's Java runtime (Windows asks at the first listen).
 4. Keep the launcher running; no game needs to be open.
 
 **The panel** shows the network state ("Connected", "No peer answers", "No peers"), "External access OK", "External access not checked" or "No external access (UDP 7455)", the local and external IP addresses and the peer counts. "External access OK" needs a passed self-test or a stranger's hello; the very first seed shows "not checked" until another peer connects. "Node runs in another launcher" means another launcher of the install holds the node.
 
-**No external access**: check the forward and the firewall rule. An external IP in 100.64.0.0/10, or one that differs from the router's WAN address, is behind carrier-grade NAT: this PC cannot be a full peer. With a dynamic IP, use a dynamic DNS name as the seed address.
+**Port mapping log lines** (launcher and game logs): `port mapping by <protocol> at <router>: <external address> -> :<port>/UDP, lease <time>`; `port mapping not available (PCP: ..., NAT-PMP: ..., UPnP: ...)`; `port mapping skipped: ...` (another NAT outside the router); `port mapping renewed`, `released` or `lost`.
+
+**No external access**: check the port mapping log lines, the forward and the firewall rule. An external IP in 100.64.0.0/10, or one that differs from the router's WAN address, is behind carrier-grade NAT: this PC cannot be a full peer. With a dynamic IP, use a dynamic DNS name as the seed address.
 
 **Files** in `<install>/userdata/beaconlink/` ([formats](protocol.md#files)):
 
 | File | Content |
 |---|---|
-| `node.json` | role `automatic` or `off`, port |
+| `node.json` | role `automatic` or `off`, port, port mapping |
 | `peer.key` | the node's key |
 | `node.lock` | held by the launcher that runs the node |
 | `peers.json` | learned peers |

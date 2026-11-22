@@ -33,6 +33,38 @@ public interface org.fogofwarlabs.sc4j.beaconlink.test.client.ClientScenario$Pol
   public abstract void poll() throws java.io.IOException;
 }
 
+public final class org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario implements java.io.Closeable {
+  public int getDatagramCount();
+  public java.net.InetSocketAddress getAddress();
+  public java.util.List<java.lang.Integer> getRequestedLifetimes(org.fogofwarlabs.sc4j.beaconlink.client.mapping.MappingProtocol);
+  public org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMappingConfiguration$Builder createConfiguration();
+  public static org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario open(java.net.InetAddress) throws java.io.IOException;
+  public void close();
+  public void setExternalAddress(java.net.InetAddress);
+  public void setMaximumLifetimeSeconds(int);
+  public void setNatPmpAnswer(org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$NatPmpAnswer);
+  public void setPcpAnswer(org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$PcpAnswer);
+  public void setPortOffset(int);
+  public void setResultCode(int);
+}
+
+public final class org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$NatPmpAnswer extends java.lang.Enum<org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$NatPmpAnswer> {
+  public static final org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$NatPmpAnswer MAPPING;
+  public static final org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$NatPmpAnswer PCP_ONLY;
+  public static final org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$NatPmpAnswer SILENT;
+  public static org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$NatPmpAnswer valueOf(java.lang.String);
+  public static org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$NatPmpAnswer[] values();
+}
+
+public final class org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$PcpAnswer extends java.lang.Enum<org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$PcpAnswer> {
+  public static final org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$PcpAnswer MAPPING;
+  public static final org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$PcpAnswer NAT_PMP_ONLY;
+  public static final org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$PcpAnswer OLD_VERSION;
+  public static final org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$PcpAnswer SILENT;
+  public static org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$PcpAnswer valueOf(java.lang.String);
+  public static org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario$PcpAnswer[] values();
+}
+
 public final class org.fogofwarlabs.sc4j.beaconlink.test.nat.LoopbackHosts {
   public java.lang.String find(java.net.InetSocketAddress);
   public java.lang.String findNetwork(java.net.InetSocketAddress);

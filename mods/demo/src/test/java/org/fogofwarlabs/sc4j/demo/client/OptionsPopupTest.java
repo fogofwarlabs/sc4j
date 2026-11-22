@@ -90,7 +90,6 @@ final class OptionsPopupTest {
             choose(options, OptionsPopup.SCROLL_SPEED_ID, FASTEST_SCROLL);
             choose(options, OptionsPopup.INTERFACE_SIZE_ID, ONE_AND_A_HALF);
             scenario.runFrame();
-            scenario.saveFrame("options");
             scenario.press(Key.ENTER);
 
             SettingsGroup stored = SettingsStore.read(scenario.getClient().getStorage().getSettingsFile()).getGroup(DemoOptions.GROUP);

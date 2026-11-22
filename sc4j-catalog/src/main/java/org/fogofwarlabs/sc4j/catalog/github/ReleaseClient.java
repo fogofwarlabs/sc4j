@@ -30,11 +30,13 @@ import java.util.regex.Pattern;
 /**
  * Reads releases of GitHub repositories with the JDK's HTTP client: the latest release of a repository through the GitHub REST API
  * ({@code GET <api>/repos/<owner>/<name>/releases/latest}, which leaves out drafts and pre-releases) with its tag, publication time, notes
- * and files, small files such as checksum files and catalogs, and release files. A downloaded file is kept only when its SHA-256 checksum
+ * and files, the list of a repository's releases ({@code GET <api>/repos/<owner>/<name>/releases}), small files such as checksum files and
+ * catalogs, and release files. A downloaded file is kept only when its SHA-256 checksum
  * equals the one in the release's checksum file ({@code <file>.sha256}, the {@code sha256sum} output or the bare checksum).
  * <p>
  * Redirects are followed, as GitHub serves release files from another host. Every answer is limited in size, and a download stops when
- * its thread is interrupted.
+ * its thread is interrupted. The client keeps its last API answers with their entity tags and asks for them again on condition that they
+ * changed, so a repeated look costs nothing of GitHub's request limit while nothing changed.
  */
 public final class ReleaseClient {
     /**
@@ -43,6 +45,11 @@ public final class ReleaseClient {
     public static final @NotNull URI GITHUB_API = URI.create("https://api.github.com/");
 
     private static final @NotNull String LATEST_RELEASE_PATH = "repos/{0}/{1}/releases/latest";
+    private static final @NotNull String RELEASES_PATH = "repos/{0}/{1}/releases?per_page={2}";
+    /**
+     * The number of releases {@link #findReleases} reads: one page of the GitHub REST API at its largest size.
+     */
+    private static final int RELEASE_PAGE_SIZE = 100;
     private static final @NotNull Duration CONNECT_TIMEOUT = Duration.ofSeconds(15);
     private static final @NotNull Duration RESPONSE_TIMEOUT = Duration.ofSeconds(30);
     private static final @NotNull String USER_AGENT_HEADER = "User-Agent";
@@ -50,9 +57,17 @@ public final class ReleaseClient {
     private static final @NotNull String ACCEPT_HEADER = "Accept";
     private static final @NotNull String CONTENT_LENGTH_HEADER = "Content-Length";
     private static final @NotNull String GITHUB_JSON = "application/vnd.github+json";
+    private static final @NotNull String ENTITY_TAG_HEADER = "ETag";
+    private static final @NotNull String IF_NONE_MATCH_HEADER = "If-None-Match";
     private static final int OK_STATUS = 200;
+    private static final int NOT_MODIFIED_STATUS = 304;
     private static final int NOT_FOUND_STATUS = 404;
+    /**
+     * The number of API answers kept for conditional requests, the least recently used one being dropped first.
+     */
+    private static final int MAXIMUM_KEPT_ANSWERS = 32;
     private static final int MAXIMUM_RELEASE_SIZE = 4 * 1024 * 1024;
+    private static final int MAXIMUM_RELEASE_LIST_SIZE = 16 * 1024 * 1024;
     private static final int MAXIMUM_CHECKSUM_SIZE = 4 * 1024;
     private static final int BUFFER_SIZE = 64 * 1024;
     private static final @NotNull String DIGEST_ALGORITHM = "SHA-256";
@@ -65,16 +80,18 @@ public final class ReleaseClient {
     private static final @NotNull String NAME_FIELD = "name";
     private static final @NotNull String ADDRESS_FIELD = "browser_download_url";
     private static final @NotNull String SIZE_FIELD = "size";
+    private static final @NotNull String DRAFT_FIELD = "draft";
+    private static final @NotNull String PRE_RELEASE_FIELD = "prerelease";
 
-    private static @NotNull Release parseRelease(@NotNull ReleaseRepository repository, byte @NotNull [] contents) throws ReleaseException {
-        Object parsed;
-
+    private static @NotNull Object parseJson(@NotNull ReleaseRepository repository, byte @NotNull [] contents) throws ReleaseException {
         try {
-            parsed = JsonReader.parse(contents);
+            return JsonReader.parse(contents);
         } catch (IOException exception) {
             throw new ReleaseException(ReleaseProblem.INVALID_RESPONSE, Exceptions.format("The release of {0} is not JSON", repository), exception);
         }
+    }
 
+    private static @NotNull Release parseRelease(@NotNull ReleaseRepository repository, @Nullable Object parsed) throws ReleaseException {
         if (!(parsed instanceof Map<?, ?> release) || !(release.get(TAG_FIELD) instanceof String tag) ||
             !(release.get(ASSETS_FIELD) instanceof List<?> files)) {
             throw new ReleaseException(ReleaseProblem.INVALID_RESPONSE, Exceptions.format("The answer for {0} is not a release", repository));
@@ -127,8 +144,23 @@ public final class ReleaseClient {
     }
 
 
+    /**
+     * An API answer with its entity tag, sent again when the server answers a conditional request with "not modified".
+     */
+    private static final class KeptAnswer {
+        private final @NotNull String entityTag;
+        private final byte @NotNull [] contents;
+
+        private KeptAnswer(@NotNull String entityTag, byte @NotNull [] contents) {
+            this.entityTag = entityTag;
+            this.contents  = contents;
+        }
+    }
+
+
     private final @NotNull URI api;
     private final @NotNull HttpClient http;
+    private final @NotNull Map<@NotNull URI, @NotNull KeptAnswer> keptAnswers;
 
     /**
      * Creates a {@link ReleaseClient} instance.
@@ -136,8 +168,14 @@ public final class ReleaseClient {
      * @param api the address of the GitHub REST API, normally {@link #GITHUB_API}, ending with {@code /}
      */
     public ReleaseClient(@NotNull URI api) {
-        this.api  = api;
-        this.http = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).connectTimeout(CONNECT_TIMEOUT).build();
+        this.api         = api;
+        this.http        = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).connectTimeout(CONNECT_TIMEOUT).build();
+        this.keptAnswers = new LinkedHashMap<>(MAXIMUM_KEPT_ANSWERS, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(@NotNull Map.Entry<@NotNull URI, @NotNull KeptAnswer> eldest) {
+                return this.size() > MAXIMUM_KEPT_ANSWERS;
+            }
+        };
     }
 
     /**
@@ -150,7 +188,35 @@ public final class ReleaseClient {
     public @NotNull Release findLatestRelease(@NotNull ReleaseRepository repository) throws ReleaseException {
         URI address = this.api.resolve(Exceptions.format(LATEST_RELEASE_PATH, repository.getOwner(), repository.getName()));
 
-        return parseRelease(repository, this.read(address, GITHUB_JSON, MAXIMUM_RELEASE_SIZE));
+        return parseRelease(repository, parseJson(repository, this.read(address, GITHUB_JSON, MAXIMUM_RELEASE_SIZE)));
+    }
+
+    /**
+     * Reads the releases of a repository, newest first as GitHub lists them, without drafts and pre-releases; the first one is the latest
+     * release ({@link #findLatestRelease}). Only the first page of the list is read, at most 100 releases.
+     *
+     * @param repository the repository
+     * @return the releases, newest first; empty when the repository has none
+     * @throws ReleaseException if the repository does not exist, GitHub cannot be reached or its answer is not a list of releases
+     */
+    public @NotNull List<@NotNull Release> findReleases(@NotNull ReleaseRepository repository) throws ReleaseException {
+        URI address = this.api.resolve(Exceptions.format(RELEASES_PATH, repository.getOwner(), repository.getName(), RELEASE_PAGE_SIZE));
+
+        if (!(parseJson(repository, this.read(address, GITHUB_JSON, MAXIMUM_RELEASE_LIST_SIZE)) instanceof List<?> listed)) {
+            throw new ReleaseException(ReleaseProblem.INVALID_RESPONSE, Exceptions.format("The answer for {0} is not a list of releases", repository));
+        }
+
+        List<Release> releases = new ArrayList<>(listed.size());
+
+        for (Object release : listed) {
+            if (release instanceof Map<?, ?> fields && (Boolean.TRUE.equals(fields.get(DRAFT_FIELD)) || Boolean.TRUE.equals(fields.get(PRE_RELEASE_FIELD)))) {
+                continue;
+            }
+
+            releases.add(parseRelease(repository, release));
+        }
+
+        return releases;
     }
 
     /**
@@ -184,7 +250,7 @@ public final class ReleaseClient {
 
         Files.createDirectories(partial.toAbsolutePath().getParent());
 
-        HttpResponse<InputStream> response = this.send(file.getAddress(), null, HttpResponse.BodyHandlers.ofInputStream());
+        HttpResponse<InputStream> response = this.send(file.getAddress(), null, null, HttpResponse.BodyHandlers.ofInputStream());
         long total = file.getSize() > 0 ? file.getSize() : response.headers().firstValueAsLong(CONTENT_LENGTH_HEADER).orElse(0);
         MessageDigest digest = createDigest();
         byte[] buffer = new byte[BUFFER_SIZE];
@@ -236,14 +302,36 @@ public final class ReleaseClient {
         Files.move(partial, target, StandardCopyOption.REPLACE_EXISTING);
     }
 
+    /**
+     * Reads an answer; an API answer ({@code accept} given) is requested on condition that it changed since the kept one, which GitHub does
+     * not count against its request limit, and the kept contents are returned when it did not.
+     */
     private byte @NotNull [] read(@NotNull URI address, @Nullable String accept, int maximumSize) throws ReleaseException {
-        HttpResponse<InputStream> response = this.send(address, accept, HttpResponse.BodyHandlers.ofInputStream());
+        KeptAnswer kept;
+
+        synchronized (this.keptAnswers) {
+            kept = accept == null ? null : this.keptAnswers.get(address);
+        }
+
+        HttpResponse<InputStream> response = this.send(address, accept, kept == null ? null : kept.entityTag, HttpResponse.BodyHandlers.ofInputStream());
 
         try (InputStream input = response.body()) {
+            if (kept != null && response.statusCode() == NOT_MODIFIED_STATUS) {
+                return kept.contents;
+            }
+
             byte[] contents = input.readNBytes(maximumSize + 1);
 
             if (contents.length > maximumSize) {
                 throw new ReleaseException(ReleaseProblem.TOO_LARGE, Exceptions.format("{0} is larger than {1} bytes", address, maximumSize));
+            }
+
+            Optional<String> entityTag = response.headers().firstValue(ENTITY_TAG_HEADER);
+
+            if (accept != null && entityTag.isPresent()) {
+                synchronized (this.keptAnswers) {
+                    this.keptAnswers.put(address, new KeptAnswer(entityTag.get(), contents));
+                }
             }
 
             return contents;
@@ -254,7 +342,10 @@ public final class ReleaseClient {
         }
     }
 
-    private <T> @NotNull HttpResponse<T> send(@NotNull URI address, @Nullable String accept,
+    /**
+     * Sends a request and returns its answer when it is {@code 200}, or {@code 304} for a conditional request ({@code entityTag} given).
+     */
+    private <T> @NotNull HttpResponse<T> send(@NotNull URI address, @Nullable String accept, @Nullable String entityTag,
                                               @NotNull HttpResponse.BodyHandler<T> body) throws ReleaseException {
         HttpResponse<T> response;
 
@@ -263,6 +354,10 @@ public final class ReleaseClient {
 
             if (accept != null) {
                 request.header(ACCEPT_HEADER, accept);
+            }
+
+            if (entityTag != null) {
+                request.header(IF_NONE_MATCH_HEADER, entityTag);
             }
 
             response = this.http.send(request.build(), body);
@@ -276,7 +371,7 @@ public final class ReleaseClient {
             throw new ReleaseException(ReleaseProblem.UNAVAILABLE, Exceptions.format("Interrupted while reaching {0}", address), exception);
         }
 
-        if (response.statusCode() == OK_STATUS) {
+        if (response.statusCode() == OK_STATUS || entityTag != null && response.statusCode() == NOT_MODIFIED_STATUS) {
             return response;
         }
 

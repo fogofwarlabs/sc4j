@@ -15,8 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Loads the launcher theme: the stylesheet {@code theme/sc4j-launcher.css} next to this class, the font fallback and
- * Korean font stylesheets, and the branding images. The theme uses no game assets.
+ * Loads the launcher theme: the stylesheet {@code theme/sc4j-launcher.css} next to this class, the font fallback, Korean
+ * and Chinese font stylesheets, and the branding images. The theme uses no game assets.
  * <p>
  * Sizes are JavaFX logical units; on a scaled display one unit covers several screen pixels. Raster images are therefore decoded at their
  * logical size times an image scale ({@link #getImageScale}) and shown at their logical size, so they stay sharp.
@@ -40,12 +40,14 @@ public final class ThemeUtils {
     private static final @NotNull String STYLESHEET = "theme/sc4j-launcher.css";
     private static final @NotNull String PORTABLE_STYLESHEET = "theme/sc4j-launcher-portable.css";
     private static final @NotNull String KOREAN_STYLESHEET = "theme/sc4j-launcher-ko.css";
+    private static final @NotNull String CHINESE_STYLESHEET = "theme/sc4j-launcher-zh.css";
 
     /**
      * The font families the stylesheet names; when one is missing the portable stylesheet replaces all of them.
      */
     private static final @NotNull List<@NotNull String> THEME_FONT_FAMILIES = List.of("Segoe UI", "Segoe UI Semibold", "Cascadia Mono");
     private static final @NotNull String KOREAN_FONT_FAMILY = "Malgun Gothic";
+    private static final @NotNull String CHINESE_FONT_FAMILY = "Microsoft YaHei";
 
     /**
      * Returns the image scale for the current screens: the largest output scale of any screen, so that an image is sharp on every monitor
@@ -65,7 +67,7 @@ public final class ThemeUtils {
 
     /**
      * Applies the theme to a scene: the stylesheet, the portable font stylesheet when a theme font is missing, and the
-     * Korean font stylesheet for a Korean UI when its font is installed.
+     * Korean or Chinese font stylesheet for a Korean or Chinese UI when its font is installed.
      *
      * @param scene    the scene
      * @param language the UI language
@@ -87,6 +89,10 @@ public final class ThemeUtils {
 
         if (language == UiLanguage.KOREAN && families.contains(KOREAN_FONT_FAMILY)) {
             stylesheets.add(getResource(KOREAN_STYLESHEET).toExternalForm());
+        }
+
+        if (language == UiLanguage.CHINESE && families.contains(CHINESE_FONT_FAMILY)) {
+            stylesheets.add(getResource(CHINESE_STYLESHEET).toExternalForm());
         }
 
         return stylesheets;
