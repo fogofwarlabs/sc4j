@@ -44,8 +44,7 @@ public final class RecordingApplication implements ModApplication {
     }
 
     /**
-     * @return {@code true} if the application can run without a window, audio and input ({@code --headless}),
-     * {@code false} otherwise
+     * @return {@code true} if the application can run without a window, audio and input ({@code --headless}), {@code false} otherwise
      */
     @Override
     public boolean isHeadlessCapable() {

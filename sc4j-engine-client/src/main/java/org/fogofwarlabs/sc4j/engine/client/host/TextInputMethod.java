@@ -35,10 +35,10 @@ public interface TextInputMethod {
     void setListener(@Nullable TextCompositionListener listener);
 
     /**
-     * Returns the language the input method composes text in.
+     * Returns the language the input method composes text in: the locale of the window's keyboard layout while text input is enabled and the
+     * input method converts to the language's own characters.
      *
-     * @return the locale of the window's keyboard layout while text input is enabled and the input method converts to the language's own
-     * characters, or {@code null} otherwise (disabled, alphanumeric mode, or no input method)
+     * @return the locale, or {@code null} while text input is disabled, in alphanumeric mode or without input method
      */
     @Nullable Locale getCompositionLocale();
 

@@ -93,11 +93,11 @@ public final class StateSnapshot {
      * Restores the snapshot into a game created from the definition and the setup of the captured game, replacing its state. Afterwards the
      * game's state hash is the captured one.
      * <p>
-     * A failed restore leaves the game in a partly restored state; the caller discards it.
+     * The values do not fit the game when a part has another size, a reference is unknown or values are left over. A failed restore leaves the
+     * game in a partly restored state; the caller discards it.
      *
      * @param game the game
-     * @throws IOException           if the values do not fit the game (another size, an unknown reference, values left over) or the restored
-     *                               game does not reach the captured state hash
+     * @throws IOException           if the values do not fit the game or the restored game does not reach the captured state hash
      * @throws IllegalStateException if a system of the game contributes to the state hash but reads no snapshot
      */
     public void restore(@NotNull Game game) throws IOException {

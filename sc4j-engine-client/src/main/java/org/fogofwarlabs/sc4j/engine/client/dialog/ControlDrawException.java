@@ -8,9 +8,8 @@ import java.io.Serial;
 
 /**
  * Reports that a {@link Control} could not draw because a resource its look reads (an image, a sheet frame, a font) failed to
- * load. The draw methods of {@link Control} and {@link Dialog} throw it unchecked, so a mod's control can read resources lazily
- * while the engine's draw contract stays free of checked exceptions; the frame that draws the dialog decides whether it skips
- * the dialog or ends.
+ * load. The draw methods of {@link Control} and {@link Dialog} throw it unchecked, so a mod's control can read resources lazily;
+ * the frame that draws the dialog decides whether it skips the dialog or ends.
  */
 public final class ControlDrawException extends RuntimeException {
     @Serial

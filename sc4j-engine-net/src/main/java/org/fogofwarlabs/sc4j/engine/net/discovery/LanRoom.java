@@ -33,8 +33,7 @@ public final class LanRoom {
      * @param capacity    the members the room takes at most
      * @param open        {@code true} if the room takes joiners, {@code false} once its game started
      * @param identity    the mod identity the room runs
-     * @throws IllegalArgumentException if the port is not a port number or the counts are negative, above {@link #MAXIMUM_MEMBERS} or more
-     *                                  members than the capacity
+     * @throws IllegalArgumentException if the port is not a port number or the counts are negative, above {@link #MAXIMUM_MEMBERS} or more members than the capacity
      */
     public LanRoom(@NotNull String name, @NotNull String hostName, int lobbyPort, int memberCount, int capacity, boolean open,
                    @NotNull ModIdentity identity) {

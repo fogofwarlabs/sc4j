@@ -192,17 +192,19 @@ public final class StandardPack implements ResourceProvider, Closeable {
     }
 
     /**
-     * @return the sound types of the pack in sound index order, named by their sound ids and not yet registered: the
-     * sounds the animations play; a mod registers them as its content sound types, in this order
+     * The sound types are the sounds the animations play; a mod registers them as its content sound types, in this order.
+     *
+     * @return the sound types of the pack in sound index order, named by their sound ids and not yet registered
      */
     public @NotNull List<@NotNull SoundType> getSoundTypes() {
         return this.soundTypes;
     }
 
     /**
-     * @return the image types of the pack in sprite sheet index order, one per sprite sheet, named by its id and not yet
-     * registered: the overlays the animations create; a mod registers them as its content image types, in this
-     * order, so that image type {@code n} has animation set {@code n}
+     * The image types are the overlays the animations create; a mod registers them as its content image types, in this order, so that image
+     * type {@code n} has animation set {@code n}.
+     *
+     * @return the image types of the pack in sprite sheet index order, one per sprite sheet, named by its id and not yet registered
      */
     public @NotNull List<@NotNull ImageType> getImageTypes() {
         return this.imageTypes;
@@ -223,8 +225,7 @@ public final class StandardPack implements ResourceProvider, Closeable {
      *
      * @param orderTypes the order types of the mod that a unit definition may name as its idle order, by their debug names
      * @return the content
-     * @throws IOException if the pack has no content definitions file, or the file cannot be read, is not a content file of the format or
-     *                     names a missing type
+     * @throws IOException if the pack has no content definitions file, or the file cannot be read, is not a content file of the format or names a missing type
      */
     public @NotNull PackContent readContent(@NotNull List<@NotNull OrderType> orderTypes) throws IOException {
         String path = this.manifest.getContent();

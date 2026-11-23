@@ -413,8 +413,7 @@ public final class StandardCollisionSystem implements CollisionSystem, FramePhas
      * Checks whether the phase pushes a unit when it overlaps another.
      *
      * @param unit the unit
-     * @return {@code true} if the unit is placed, can move, is not immovable and is no building, resource container or flyer, {@code false}
-     * otherwise
+     * @return {@code true} if the unit is placed, can move, is not immovable and is no building, resource container or flyer, {@code false} otherwise
      * @throws IllegalStateException if the system is not attached
      */
     public boolean isPushable(@NotNull Unit unit) {
@@ -540,10 +539,10 @@ public final class StandardCollisionSystem implements CollisionSystem, FramePhas
     /**
      * Steers a moving unit that runs head-on into another unit along the push axis around it, as the class description says: the same way as in
      * the previous frame if it slid across this axis then, otherwise the way its velocity goes across the axis, or for a velocity straight along
-     * the axis away from the other unit's position (for equal positions towards the lower coordinate for the lower slot).
+     * the axis away from the other unit's position (for equal positions towards the lower coordinate for the lower slot). A slide is its sign
+     * times {@link #SLIDE_VERTICAL} or {@link #SLIDE_HORIZONTAL}.
      *
-     * @return the slide of this frame: the sign of the slide times {@link #SLIDE_VERTICAL} or {@link #SLIDE_HORIZONTAL}, {@link #NO_SLIDE} if the
-     * unit does not run head-on into the other unit
+     * @return the slide of this frame, {@link #NO_SLIDE} if the unit does not run head-on into the other unit
      */
     private int slideAround(@NotNull Unit unit, @NotNull Unit other, boolean pushHorizontal, int previousSlide) {
         if (!this.isHeadOn(unit, other, pushHorizontal)) {

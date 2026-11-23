@@ -22,6 +22,7 @@ import org.fogofwarlabs.sc4j.catalog.ReleaseVersion;
 import org.fogofwarlabs.sc4j.catalog.github.ReleaseClient;
 import org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository;
 import org.fogofwarlabs.sc4j.catalog.test.ReleaseServerScenario;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChannelChat;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
@@ -38,6 +39,7 @@ import org.fogofwarlabs.sc4j.launcher.update.LauncherUpdater;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.fogofwarlabs.sc4j.manifest.test.TestJarUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -73,8 +75,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * skipped version; the automatic look for it is due again a period after the last one.
  * The chat runs from the login on, in the display language: the session joins the shared channel without the Chat screen. The Chat entry
  * shows a dot while a line or a whisper is unread and the sound plays for it while the Chat screen is hidden; reading the conversation clears
- * its part of the dot, and the Settings switch mutes the sound. Closing the window asks to minimize, quit or cancel, in a dialog whose footer
- * has the same room on every side of its buttons.
+ * its part of the dot, and the Settings switch mutes the sound. A restricted network shows a warning above every screen, once per run, until
+ * it is closed. Closing the window asks to minimize, quit or cancel, in a dialog whose footer has the same room on every side of its buttons.
  */
 final class LauncherWindowTest {
     private static final double SCREEN_WIDTH = 1920;
@@ -103,6 +105,7 @@ final class LauncherWindowTest {
     private static final @NotNull String TEXT_FIELD_SELECTOR = ".text-field";
     private static final @NotNull String DOT_BADGE_SELECTOR = ".dot-badge";
     private static final @NotNull String CHECK_BOX_SELECTOR = ".check-box";
+    private static final @NotNull String NOTICE_SELECTOR = ".notice";
     private static final @NotNull String TEXT_ONLY_STYLE_CLASS = "text-only";
     private static final @NotNull Runnable NO_SOUND = () -> {
     };
@@ -222,8 +225,25 @@ final class LauncherWindowTest {
         return dot.isVisible();
     }
 
+    /**
+     * Finds the shown notice whose text is the given one.
+     */
+    private static @Nullable Node findNotice(@NotNull Stage stage, @NotNull String text) {
+        for (Node notice : layRoot(stage).lookupAll(NOTICE_SELECTOR)) {
+            if (LauncherFxScenario.isShown(notice) && notice.lookupAll(".label").stream().anyMatch(node -> ((Label) node).getText().equals(text))) {
+                return notice;
+            }
+        }
+
+        return null;
+    }
+
+    private static @NotNull SelfView createConnectedSelf(@NotNull LinkConnectivity connectivity) {
+        return new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null, connectivity);
+    }
+
     private static @NotNull RecordingLauncherSession createConnectedSession() {
-        return new RecordingLauncherSession(createCode(1), new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null));
+        return new RecordingLauncherSession(createCode(1), createConnectedSelf(LinkConnectivity.UNKNOWN));
     }
 
     private static @NotNull ChatEntryView createLine(@NotNull String channel, @NotNull FriendCode author, @NotNull String text) {
@@ -552,8 +572,7 @@ final class LauncherWindowTest {
         LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         InstallLayout install = InstallLayout.of(directory);
         AccountStore store = AccountStore.of(install.getBeaconLinkDirectory());
-        RecordingLauncherSession session = new RecordingLauncherSession(createCode(1), new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "",
-                                                                                                    1, null));
+        RecordingLauncherSession session = createConnectedSession();
 
         store.create(raynorKey, raynorStamp, PlayerStamp.DEFAULT_DIFFICULTY, RAYNOR_USE_MILLIS);
         session.setFriends(List.of(new FriendView(createCode(2), "Kerrigan#a1b2c3", FriendState.IN_LAUNCHER, null, "", 1, false),
@@ -638,6 +657,53 @@ final class LauncherWindowTest {
             ((ListView<?>) List.copyOf(layRoot(stage).lookupAll(LIST_SELECTOR)).get(CONVERSATION_LIST)).getSelectionModel().select(0);
 
             Assertions.assertFalse(isChatDotShown(stage, texts));
+
+            return null;
+        });
+    }
+
+    @Test
+    void network_warning_shows_once_per_run_above_every_screen_until_closed(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
+        String warning = texts.get("notice.network");
+        InstallLayout install = InstallLayout.of(directory);
+        AccountStore store = AccountStore.of(install.getBeaconLinkDirectory());
+        RecordingLauncherSession session = createConnectedSession();
+
+        store.create(raynorKey, raynorStamp, PlayerStamp.DEFAULT_DIFFICULTY, RAYNOR_USE_MILLIS);
+        new LauncherSettingsFile(install.getLauncherSettingsFile()).write(LauncherSettings.DEFAULT.withLanguage(UiLanguage.ENGLISH));
+        LauncherFxScenario.run(() -> {
+            Stage stage = new Stage();
+            LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
+            }, folder -> {
+            }, new LauncherNodeRunner(install), account -> session, NO_SOUND);
+
+            window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+            LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
+
+            Assertions.assertNull(findNotice(stage, warning), "nothing is known of the network yet");
+
+            session.setSelf(createConnectedSelf(LinkConnectivity.DIRECT));
+
+            Assertions.assertNull(findNotice(stage, warning), "a direct network shows no warning");
+
+            session.setSelf(createConnectedSelf(LinkConnectivity.RESTRICTED));
+
+            Assertions.assertNotNull(findNotice(stage, warning), "a restricted network shows the warning");
+
+            findNavigation(layRoot(stage), texts.get("nav.settings")).fire();
+            Node notice = findNotice(stage, warning);
+
+            Assertions.assertNotNull(notice, "the warning shows above another screen");
+
+            LauncherFxScenario.findButton(notice, texts.get("notice.network.close")).fire();
+
+            Assertions.assertNull(findNotice(stage, warning), "Close hides the warning");
+
+            session.setSelf(createConnectedSelf(LinkConnectivity.DIRECT));
+            session.setSelf(createConnectedSelf(LinkConnectivity.RESTRICTED));
+
+            Assertions.assertNull(findNotice(stage, warning), "the warning does not come again in this run");
 
             return null;
         });

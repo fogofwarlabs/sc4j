@@ -37,8 +37,7 @@ public final class RallyAction implements CommandAction {
     }
 
     /**
-     * @return {@code true} if the action needs a target the player points at, {@code false} if it runs at once: the rally point is the
-     * position the player points at
+     * @return {@code true} if the action needs a target the player points at, {@code false} if it runs at once: the rally point is the position the player points at
      */
     @Override
     public boolean isTargeted() {

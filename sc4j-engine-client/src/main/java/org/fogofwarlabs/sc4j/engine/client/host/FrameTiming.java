@@ -298,8 +298,6 @@ public final class FrameTiming implements AutoCloseable {
 
         this.issueGpuTimestamp(phase);
 
-        // The last timestamp follows the buffer swap's flush: submitted now, it is not held back until the next frame's first flush, which would
-        // add the next frame's simulation time to the last phase.
         if (phase == this.names.length - 1) {
             this.device.flush();
         }

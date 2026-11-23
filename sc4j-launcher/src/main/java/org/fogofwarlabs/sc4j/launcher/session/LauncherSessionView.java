@@ -27,8 +27,7 @@ public interface LauncherSessionView {
     @NotNull FriendCode getFriendCode();
 
     /**
-     * @return the account's friends in the order they are shown: the friends online first, then by name; empty while the session runs no
-     * connection
+     * @return the account's friends in the order they are shown: the friends online first, then by name; empty while the session runs no connection
      */
     @NotNull List<@NotNull FriendView> getFriends();
 
@@ -38,20 +37,20 @@ public interface LauncherSessionView {
     @NotNull List<@NotNull WhisperView> getWhispers();
 
     /**
-     * @return the channels the account's chat is in, in the order it joined them, with their members; empty until the chat opened and while
-     * the session runs no connection
+     * @return the channels the account's chat is in, in the order it joined them, with their members; empty until the chat opened and while the session runs no connection
      */
     @NotNull List<@NotNull ChannelView> getChannels();
 
     /**
-     * @return the channels the session knows of among the launcher users and the channels the chat is in, the most members first, without
-     * members; empty until the chat opened
+     * @return the channels the session knows of among the launcher users and the channels the chat is in, the most members first, without members; empty until the chat opened
      */
     @NotNull List<@NotNull ChannelView> getKnownChannels();
 
     /**
-     * @return the entries of the account's chat, the oldest first: the lines, notices and command answers of every channel it is in, without
-     * whispers ({@link #getWhispers()}); the oldest give way after {@value LauncherSession#MAXIMUM_CHAT_ENTRIES}
+     * Returns the entries of the account's chat: the lines, notices and command answers of every channel it is in, without whispers
+     * ({@link #getWhispers()}). The oldest give way after {@value LauncherSession#MAXIMUM_CHAT_ENTRIES}.
+     *
+     * @return the entries of the account's chat, the oldest first
      */
     @NotNull List<@NotNull ChatEntryView> getChatEntries();
 

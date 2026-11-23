@@ -62,14 +62,14 @@ public final class CommandFrame {
     }
 
     /**
-     * Decodes a received turn of the engine format.
+     * Decodes a received turn of the engine format. A turn is invalid if it names a command id without type, holds a payload its type does
+     * not read exactly, or carries commands of an observer.
      *
      * @param turn     the received turn
      * @param player   the player the sending peer plays, or {@code null} for an observer
      * @param commands the command types of the session by id
      * @return the decoded turn
-     * @throws IOException if the bytes are not a turn of the engine format, name a command id without type, hold a payload its type does not
-     *                     read exactly, or carry commands of an observer
+     * @throws IOException if the bytes are not a turn of the engine format or the turn is invalid
      */
     public static @NotNull CommandFrame read(@NotNull PeerTurn turn, @Nullable Player player,
                                              @NotNull CommandRegistry<? extends CommandType<?>> commands) throws IOException {

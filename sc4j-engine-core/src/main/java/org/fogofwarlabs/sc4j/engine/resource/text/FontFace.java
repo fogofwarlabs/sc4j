@@ -33,9 +33,7 @@ public final class FontFace {
      * @param imageWidth the width of the glyph image in pixels, at least {@code 1}
      * @param pixels     the glyph image, alpha or indexed, a whole number of rows
      * @param glyphs     the glyphs in ascending code point order without duplicates, copied
-     * @throws IllegalArgumentException if the line height or the image width is below {@code 1}, the layer stores packed
-     *                                  colours or holds no whole number of rows, the glyphs are not in strictly ascending
-     *                                  code point order or a glyph leaves the image
+     * @throws IllegalArgumentException if an argument does not meet its description or a glyph leaves the image
      */
     public FontFace(int lineHeight, int imageWidth, @NotNull PixelLayer pixels, @NotNull List<@NotNull FontGlyph> glyphs) {
         if (lineHeight < 1 || imageWidth < 1) {

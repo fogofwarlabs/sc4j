@@ -145,12 +145,10 @@ public class Dialog implements DialogLayer<Control> {
     }
 
     /**
-     * Finds a control by the id its definition gives: the secondary form for content that names controls by id, looked up in an
-     * index built once with the controls. Code that holds a control uses the object.
+     * Finds a control by the id its definition gives, for content that names controls by id.
      *
      * @param id the id of the control's definition
-     * @return the first top-level control with the id in drawing order, else the first child with it, or {@code null} if no
-     * control has it
+     * @return the first top-level control with the id in drawing order, else the first child with it, or {@code null} if no control has it
      */
     public @Nullable Control findControl(int id) {
         return this.controlsById.get(id);
@@ -247,8 +245,7 @@ public class Dialog implements DialogLayer<Control> {
     /**
      * Moves the focus.
      *
-     * @param control the control that takes the focus, or {@code null} to clear it; a control that does not take the focus
-     *                clears it too
+     * @param control the control that takes the focus, or {@code null} to clear it; a control that does not take the focus clears it too
      */
     public final void setFocused(@Nullable Control control) {
         Control next = control != null && control.isFocusable() ? control : null;
@@ -280,8 +277,7 @@ public class Dialog implements DialogLayer<Control> {
      * @param control     a control of this dialog
      * @param replacement the new control: of the same definition, not in a dialog and without children
      * @return the replacement, now a control of this dialog
-     * @throws IllegalArgumentException if the control is not one of this dialog's, or the replacement has another definition, is in
-     *                                  a dialog or has children
+     * @throws IllegalArgumentException if the control is not one of this dialog's, or the replacement has another definition, is in a dialog or has children
      */
     public final <T extends Control> @NotNull T replaceControl(@NotNull Control control, @NotNull T replacement) {
         DialogControl definition = control.getDefinition();

@@ -19,8 +19,7 @@ public final class ValidationProblem {
      * Creates a {@link ValidationProblem} instance.
      *
      * @param code    the kind of the problem
-     * @param subject where the problem was found: a manifest field path such as {@code settings[0].key}, a setting key or
-     *                a jar entry
+     * @param subject where the problem was found: a manifest field path such as {@code settings[0].key}, a setting key or a jar entry
      * @param text    the generic human message, in English
      * @param message the setting's localized message for a failed check, or {@code null} when there is none
      */

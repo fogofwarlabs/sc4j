@@ -57,12 +57,12 @@ public final class RegistrationStore {
 
     /**
      * Adds a registration, or replaces the registration of its connection and the registration of another connection of its key at its
-     * address.
+     * address. A key that has the most live connections gives {@link ObservedAddressStatus#TOO_MANY_CONNECTIONS}, a store full of live
+     * registrations {@link ObservedAddressStatus#FULL}.
      *
      * @param registration the registration
      * @param nowMillis    the current time
-     * @return {@link ObservedAddressStatus#REGISTERED} if the registration is stored, {@link ObservedAddressStatus#TOO_MANY_CONNECTIONS} if the
-     * key has the most live connections, {@link ObservedAddressStatus#FULL} if the store is full of live registrations
+     * @return {@link ObservedAddressStatus#REGISTERED} if the registration is stored, otherwise why it is not
      */
     public @NotNull ObservedAddressStatus register(@NotNull Registration registration, long nowMillis) {
         List<Registration> connections = this.registrations.computeIfAbsent(registration.getKey(), key -> new ArrayList<>(1));

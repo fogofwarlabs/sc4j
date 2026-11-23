@@ -38,8 +38,7 @@ public final class GameContent implements StateHashContributor, SnapshotContribu
      * @param definition  the content definition
      * @param playerCount the number of players of the progress table
      * @return the created {@link GameContent} instance
-     * @throws IllegalArgumentException if the player count is negative or a definition refers to a type that is not
-     *                                  registered in the content
+     * @throws IllegalArgumentException if the player count is negative or a definition refers to a type that is not registered in the content
      */
     public static @NotNull GameContent create(@NotNull ContentDefinition definition, int playerCount) {
         if (playerCount < 0) {

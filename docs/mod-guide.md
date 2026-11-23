@@ -155,7 +155,7 @@ ends with exit code 0; the last log lines are:
 ... INFO  [main] RuntimeSession - RUNTIME END: exit code 0 (SUCCESS)
 ```
 
-The start scripts use the JDK of `JAVA_HOME` (or `java` on the `PATH`), JDK 25. Mod arguments follow `--` (`ModContext.getArguments()`).
+The start scripts use the install's Java runtime `<install>/java` when it exists, otherwise the JDK of `JAVA_HOME` (or `java` on the `PATH`), JDK 25. Mod arguments follow `--` (`ModContext.getArguments()`).
 
 ### 2.5 Run from the launcher
 
@@ -403,10 +403,10 @@ Demo: [`DemoLobby`](../mods/demo/src/main/java/org/fogofwarlabs/sc4j/demo/net/De
 
 ### 14.1 Beacon.Link rooms
 
-`ModLaunch.getBeaconLink()` is `null` unless the command line names a seed source (`--seeds <file>`, `--seed <host:port>`, `--peers <file>`); `--account <dir>` names the account, else the run is the guest `Guest` (`BeaconLink.GUEST_NAME`). The launcher passes all of them. `BeaconLink.open()` returns a `BeaconLinkSession`, one connection of the account (`getParticipant()`: `LinkParticipant`, player and connection number). Calls only start work; the session's thread calls `poll()` in its loop and `close()` at the end. `getFailure()` (`LinkFailure`) says why no node is reachable; `getNodes()` gives each node's state.
+`ModLaunch.getBeaconLink()` is `null` unless the command line names a seed source (`--seeds <file>`, `--seed <host:port>`, `--peers <file>`); `--account <dir>` names the account, else the run is the guest `Guest` (`BeaconLink.GUEST_NAME`). The launcher passes all of them. `BeaconLink.open()` returns a `BeaconLinkSession`, one connection of the account (`getParticipant()`: `LinkParticipant`, player and connection number). Calls only start work; the session's thread calls `poll()` in its loop and `close()` at the end. `getFailure()` (`LinkFailure`) says why no node is reachable; `getNodes()` gives each node's state. `getConnectivity()` (`LinkConnectivity`) says whether direct connections to other players are likely to work: `RESTRICTED` when the nodes observed the session at different ports ([protocol](beaconlink/protocol.md#registration-and-observed-address)).
 
 - **Host**: `publishRoom(settings, password)` (empty password: public) returns a `HostedRoom`: `getState()` (`PUBLISHING`, `PUBLISHED`, `WITHDRAWN`, `FAILED`), `update(settings)`, `acceptChannel()` per checked joiner, `withdraw()`. `RoomSettings`: room and map name (at most 48 UTF-8 bytes each), players, capacity, started flag, up to 64 bytes of mod data (demo: turn rate).
-- **Search**: `searchRooms()` returns a `RoomSearch`: `getRooms()` (own identity), `getOtherRooms()` (other versions, with `FoundRoom.getJoinRefusal()`), `isComplete()`. A `FoundRoom` gives host, settings, `isJoinable()`, `isPrivate()`, mod id and version, `getLatencyEstimate()` (`LatencyClass`: `GOOD` up to 100 ms, `FAIR` up to 200 ms, `POOR`, `UNKNOWN`).
+- **Search**: `searchRooms()` returns a `RoomSearch`: `getRooms()` (own identity), `getOtherRooms()` (other versions, with `FoundRoom.getJoinRefusal()`), `isComplete()`. A `FoundRoom` gives host, settings, `isJoinable()`, `isPrivate()`, mod id and version, `getLatencyEstimate()` (`LatencyEstimate.getLatencyClass()`: `GOOD` up to 100 ms, `FAIR` up to 200 ms, `POOR`, `UNKNOWN`).
 - **Join**: `joinRoom(room, password)` opens a `ParticipantChannel`: `CONNECTING`, then `OPEN`, or `CLOSED` with a `ChannelFailure`; `JOIN_REFUSED` carries the `JoinRefusal`.
 - **Play**: `getOverlay()` gives the `LinkOverlay` (datagrams by participant, at most 1023 bytes, unreliable). Port 1 (`LOBBY_PORT`) is `NetworkLobby`, port 2 (`GAME_PORT`) `LinkLockstepTransport`, ports 16 to 255 (`FIRST_MOD_PORT`) are the mod's. `NetworkLobby.host(room, overlay, ...)` and `NetworkLobby.join(channel, overlay, ...)` give the LAN lobby and game.
 
@@ -427,7 +427,7 @@ Demo: `DemoLobby`, [`BeaconLinkScene`](../mods/demo/src/main/java/org/fogofwarla
 ## 15. Building, installing and running
 
 - **Install**: put the jar into `<install>/mods/`. The launcher shows `READY`, `WARNING` (settings to fix) or `ERROR` (broken jar or manifest, unsupported engine version, missing image, duplicate id).
-- **Runtime**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]` (`--help`). Exit codes: 0 normal, 1 run failure, 2 command line or settings error, 3 mod load or validation failure. Log: `<install>/userdata/logs/<id>/sc4j.log`.
+- **Runtime**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--no-port-mapping] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]` (`--help`). Exit codes: 0 normal, 1 run failure, 2 command line or settings error, 3 mod load or validation failure. Log: `<install>/userdata/logs/<id>/sc4j.log`.
 - **Launcher**: starts the runtime with the mod's settings, storage and log folders.
 - **Mod tools**: `SC4J.bat tool <mod id> <tool id> [arguments]` (Linux `SC4J`, Windows console `SC4J-cli.exe`) runs the tool's `main` with the install's Java runtime and the class path the runtime gives the mod (the runtime's libraries and the mod jar), in the caller's current folder, with the JVM options of the runtime and the install folder in the system property `sc4j.install` (`InstallLayout.INSTALL_PROPERTY`); the arguments are passed on and the tool's exit status is returned. `tool` lists the tools of the installed mods, `tool <mod id>` those of one mod.
 
@@ -453,7 +453,7 @@ Details: [engine API policy](api-policy.md).
 
 ## 19. Two ways a mod runs
 
-A mod registers one of these in `register`; both throw an `IllegalStateException`.
+A mod registers one of these in `register`; registering both throws an `IllegalStateException`.
 
 | | Engine scenes | Own application |
 |---|---|---|

@@ -170,8 +170,7 @@ public final class CameraScroll {
     }
 
     /**
-     * @return the direction of the edge the pointer scrolls toward ({@code 0} up, then clockwise to {@code 7} up-left), or
-     * {@link #NO_DIRECTION}
+     * @return the direction of the edge the pointer scrolls toward ({@code 0} up, then clockwise to {@code 7} up-left), or {@link #NO_DIRECTION}
      */
     public int getEdgeDirection() {
         return DIRECTIONS[this.edgeY + 1][this.edgeX + 1];

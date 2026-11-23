@@ -61,8 +61,7 @@ public final class DialBackMessage extends Message {
      *
      * @param card    the sender's card
      * @param nonce   the requester's nonce, repeated by the probe
-     * @param address the address to probe (a forwarded request), the requester's observed address (an accepting reply), or {@code null} (the
-     *                requester's request, a refusing reply)
+     * @param address the address to probe (a forwarded request), the requester's observed address (an accepting reply), or {@code null}
      * @throws IllegalArgumentException if the address is not resolved
      */
     public DialBackMessage(@NotNull PeerCard card, long nonce, @Nullable InetSocketAddress address) {

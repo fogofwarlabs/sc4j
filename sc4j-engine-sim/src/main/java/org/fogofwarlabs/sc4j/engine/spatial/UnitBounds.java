@@ -62,9 +62,10 @@ public interface UnitBounds<U extends Unit> {
     int getCenterY(@NotNull U unit);
 
     /**
+     * Checks whether a unit is placed in the world. A search around a placed unit starts at its own edges, around a hidden one at its center point.
+     *
      * @param unit the unit
-     * @return {@code true} if the unit is placed in the world, so a search around it starts at its own edges, {@code false} if it is hidden and a
-     * search around it starts at its center point
+     * @return {@code true} if the unit is placed in the world, {@code false} if it is hidden
      */
     boolean isPlaced(@NotNull U unit);
 

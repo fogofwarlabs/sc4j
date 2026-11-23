@@ -243,8 +243,7 @@ public final class StandardUnitView implements UnitView {
     /**
      * Returns the direction the unit faces, for its picture.
      *
-     * @return the heading in {@value org.fogofwarlabs.sc4j.engine.client.projection.WorldProjection#DIRECTION_COUNT} world directions,
-     * {@code 0} up and clockwise
+     * @return the heading in {@value org.fogofwarlabs.sc4j.engine.client.projection.WorldProjection#DIRECTION_COUNT} world directions, {@code 0} up and clockwise
      */
     @Override
     public int getHeading() {
@@ -382,10 +381,10 @@ public final class StandardUnitView implements UnitView {
     }
 
     /**
-     * Returns how far the front entry of the unit's production queue is.
+     * Returns how far the front entry of the unit's production queue is, from the remaining time of the {@link StandardProductionSystem} and
+     * the type's build time.
      *
-     * @return the progress from {@code 0} (not started) to {@link #COMPLETE}, from the remaining time of the {@link StandardProductionSystem}
-     * and the type's build time; {@code 0} under another production system
+     * @return the progress from {@code 0} (not started) to {@link #COMPLETE}, {@code 0} under another production system
      */
     @Override
     public int getQueueProgress() {
@@ -406,10 +405,10 @@ public final class StandardUnitView implements UnitView {
     }
 
     /**
-     * Returns whether the front entry of the unit's production queue waits for its owner's supply, for the queue panel and the HUD's notice.
+     * Returns whether the front entry of the unit's production queue waits for its owner's supply, for the queue panel and the HUD's notice:
+     * whether the {@link StandardProductionSystem} holds it back for supply ({@link StandardProductionSystem#isWaitingForSupply}).
      *
-     * @return {@code true} if the {@link StandardProductionSystem} holds the front entry back for supply
-     * ({@link StandardProductionSystem#isWaitingForSupply}), {@code false} otherwise and under another production system
+     * @return {@code true} if the front entry waits for supply, {@code false} otherwise and under another production system
      */
     @Override
     public boolean isWaitingForSupply() {
@@ -420,8 +419,7 @@ public final class StandardUnitView implements UnitView {
     /**
      * Returns whether the unit sends the units it makes to a rally point, for the rally marker.
      *
-     * @return {@code true} if the {@link StandardProductionSystem} holds a rally point of the unit, {@code false} otherwise and under another
-     * production system
+     * @return {@code true} if the {@link StandardProductionSystem} holds a rally point of the unit, {@code false} otherwise and under another production system
      */
     @Override
     public boolean hasRallyPoint() {
@@ -451,8 +449,7 @@ public final class StandardUnitView implements UnitView {
     /**
      * Returns how many units the unit killed, for the selection panel.
      *
-     * @return the kill count of the {@link StandardCombatSystem} ({@link StandardCombatSystem#getKillCount}), {@code 0} under another combat
-     * system
+     * @return the kill count of the {@link StandardCombatSystem} ({@link StandardCombatSystem#getKillCount}), {@code 0} under another combat system
      */
     @Override
     public int getKillCount() {
@@ -462,10 +459,10 @@ public final class StandardUnitView implements UnitView {
     }
 
     /**
-     * Returns whether the unit keeps a building from being placed over it, for the placement footprint.
+     * Returns whether the unit keeps a building from being placed over it, for the placement footprint: whether the
+     * {@link StandardProductionSystem} counts it as a placement blocker ({@link StandardProductionSystem#isPlacementBlocker}).
      *
-     * @return {@code true} if the {@link StandardProductionSystem} counts the unit as a placement blocker
-     * ({@link StandardProductionSystem#isPlacementBlocker}), {@code false} otherwise and under another production system
+     * @return {@code true} if the unit blocks a building's placement, {@code false} otherwise and under another production system
      */
     @Override
     public boolean isPlacementBlocker() {

@@ -110,8 +110,7 @@ public final class PlayerPresence {
     }
 
     /**
-     * @return {@code true} if the player runs this run's mod identity (engine version, mod version and content), so that the two can play
-     * together, {@code false} otherwise
+     * @return {@code true} if the player runs this run's mod identity (engine version, mod version and content), so that the two can play together, {@code false} otherwise
      */
     public boolean canPlayTogether() {
         return this.playableTogether;
@@ -139,8 +138,9 @@ public final class PlayerPresence {
     }
 
     /**
-     * @return the estimated round trip time to the player, from the network coordinates of both sides; {@link LatencyEstimate#UNKNOWN} while
-     * either has not settled, and for this session's own presence
+     * Estimates the round trip time to the player from the network coordinates of both sides.
+     *
+     * @return the estimated round trip time, or {@link LatencyEstimate#UNKNOWN} while either side has not settled and for this session's presence
      */
     public @NotNull LatencyEstimate getLatencyEstimate() {
         return this.latency;

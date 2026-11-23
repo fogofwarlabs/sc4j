@@ -238,8 +238,7 @@ public final class ContentRegistry {
      * Sets the number of players the per-player tables hold, for a mod whose rules use a fixed number of player slots;
      * every slot index of a game setup must be below it.
      *
-     * @param playerCount the player count, at least {@code 1}, or {@link #PLAYER_COUNT_FROM_SETUP} to use the highest
-     *                    slot index of each game setup plus one
+     * @param playerCount the player count, at least {@code 1}, or {@link #PLAYER_COUNT_FROM_SETUP} to use the highest slot index of each game setup plus one
      * @throws IllegalArgumentException if the count is negative
      * @throws IllegalStateException    if the registration is closed
      */
@@ -280,8 +279,7 @@ public final class ContentRegistry {
      * @param <C>         the column type
      * @param table       the type table whose types index the column
      * @param key         the column key
-     * @param initializer sets the initial values of each new progress table; the column length is the player count times
-     *                    the type count
+     * @param initializer sets the initial values of each new progress table; the column length is the player count times the type count
      * @throws IllegalArgumentException if the key is already added for the table
      * @throws IllegalStateException    if the registration is closed
      */

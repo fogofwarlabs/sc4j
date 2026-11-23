@@ -25,8 +25,7 @@ public final class AnimationLibrary {
      * @param kinds    the kinds in index order, copied
      * @param programs the programs in index order, copied
      * @param sets     the animation sets in index order, copied
-     * @throws IllegalArgumentException if an element has another index than its position, a kind name is used twice, or a
-     *                                  set refers to a kind or program of another library
+     * @throws IllegalArgumentException if an element has another index than its position, a kind name is used twice, or a set refers to a kind or program of another library
      */
     public AnimationLibrary(@NotNull List<@NotNull AnimationKind> kinds, @NotNull List<@NotNull AnimationProgram> programs,
                             @NotNull List<@NotNull AnimationSet> sets) {
@@ -102,9 +101,8 @@ public final class AnimationLibrary {
     }
 
     /**
-     * Returns the animation set of a set index: the decoding point of a set index a table or a mod record stores (the
-     * image type table's animation set column, a mod's own image record). The set index is the set's own index, not an
-     * identity of another kind.
+     * Returns the animation set of a set index, such as the one the image type table's animation set column or a mod's own image
+     * record stores.
      *
      * @param setIndex the set index
      * @return the set

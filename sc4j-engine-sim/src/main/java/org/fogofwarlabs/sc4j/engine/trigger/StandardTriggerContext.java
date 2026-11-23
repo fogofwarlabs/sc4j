@@ -117,8 +117,7 @@ public final class StandardTriggerContext implements TriggerContext {
      * Checks whether every opponent of a player lost: every player of another team ({@link StandardTriggerSystem#isOpponent}).
      *
      * @param player the player
-     * @return {@code true} if the player has opponents and every one of them has the outcome {@link PlayerOutcome#DEFEAT}, {@code false}
-     * otherwise
+     * @return {@code true} if the player has opponents and every one of them has the outcome {@link PlayerOutcome#DEFEAT}, {@code false} otherwise
      */
     public boolean isEveryOpponentDefeated(@NotNull Player player) {
         boolean found = false;

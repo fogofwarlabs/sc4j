@@ -25,14 +25,14 @@ public enum ModReleaseState {
     UNRELEASED;
 
     /**
-     * Decides the state of an installed mod jar.
+     * Decides the state of an installed mod jar: {@link #LATEST} for a shipped jar; {@link #UNRELEASED} without a record, or when the recorded
+     * tag is a version other than the jar's; else {@link #OLDER} when a newer release is known and {@link #LATEST} otherwise.
      *
      * @param version         the version of the jar's manifest
-     * @param recordedRelease the tag of the release the jar was installed from ({@link ModSource#getRelease()}), or {@code null} when the jar
-     *                        has no record
+     * @param recordedRelease the tag of the release the jar was installed from ({@link ModSource#getRelease()}), or {@code null} when the jar has no record
      * @param newerKnown      whether a newer release of the repository is known ({@link ModInstaller#findUpdates})
      * @param shipped         whether the install ships the jar, so that a launcher update updates it
-     * @return {@link #LATEST} for a shipped jar; {@link #UNRELEASED} without a record, or when the recorded tag is a version other than the jar's; else {@link #OLDER} when a newer release is known and {@link #LATEST} otherwise
+     * @return the state of the jar
      */
     public static @NotNull ModReleaseState decide(@NotNull ModVersion version, @Nullable String recordedRelease, boolean newerKnown, boolean shipped) {
         if (shipped) {

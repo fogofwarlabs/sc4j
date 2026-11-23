@@ -305,8 +305,10 @@ final class ClientCommunity implements CommunitySession, RequestOwner {
     }
 
     /**
-     * @return this session's own presence as the others see it from this connection, with the number of the account's live connections
-     * (this one and the others the session sees in the account's own topic)
+     * Returns this session's own presence as the others see it from this connection. Its connection count is this connection and the others
+     * the session sees in the account's own topic.
+     *
+     * @return this session's own presence as the others see it
      */
     @Override
     public @NotNull PlayerPresence getSelf() {

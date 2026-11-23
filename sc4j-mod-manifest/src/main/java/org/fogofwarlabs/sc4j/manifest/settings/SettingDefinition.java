@@ -103,8 +103,7 @@ public abstract sealed class SettingDefinition permits DirectorySetting, FileSet
      * Returns the value a saved JSON value stands for, the default when nothing is saved.
      *
      * @param saved the parsed JSON value from the settings value file, or {@code null} when none is saved
-     * @return the value of the type's Java type, or {@code null} when nothing is saved and there is no default or the saved
-     * value has the wrong type
+     * @return the value of the type's Java type, or {@code null} when nothing is saved and there is no default or the saved value has the wrong type
      */
     public @Nullable Object resolve(@Nullable Object saved) {
         return saved == null ? this.getDefaultValue() : this.getType().convert(saved);

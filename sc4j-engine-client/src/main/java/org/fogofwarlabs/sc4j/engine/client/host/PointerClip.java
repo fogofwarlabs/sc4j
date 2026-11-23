@@ -123,8 +123,7 @@ public final class PointerClip {
      * @param windowHeight      the content area's height in window coordinates
      * @param framebufferWidth  the framebuffer's width in pixels
      * @param framebufferHeight the framebuffer's height in pixels
-     * @return {@code {left, top, right, bottom}} (the {@code *_INDEX} indexes, exclusive right and bottom), or {@code null} if the clip holds no
-     * whole window coordinate
+     * @return {@code {left, top, right, bottom}} (the {@code *_INDEX} indexes, exclusive right and bottom), or {@code null} if the clip holds no whole window coordinate
      */
     int @Nullable [] toWindowBounds(int windowWidth, int windowHeight, int framebufferWidth, int framebufferHeight) {
         int[] bounds = {toWindow(this.left, windowWidth, framebufferWidth), toWindow(this.top, windowHeight, framebufferHeight),

@@ -16,9 +16,8 @@ import java.util.List;
 /**
  * Replaces the programs of an install with those of an unpacked user package: the items {@link #ITEMS}, that is {@code java/},
  * {@code launcher/}, {@code runtime/}, the start program {@code SC4J.exe} and the console program {@code SC4J-cli.exe} with their folder
- * {@code app/}, the start files, {@code LICENSE},
- * {@code NOTICE} and {@code licenses/}. Only the Windows package has the items {@link #WINDOWS_ITEMS}; an install updated from a package without
- * them loses its own.
+ * {@code app/}, the start files, {@code LICENSE}, {@code NOTICE} and {@code licenses/}. Only the Windows package has the items
+ * {@link #WINDOWS_ITEMS}; an install updated from a package without them loses its own.
  * <p>
  * The mod jars the package ships, listed in its file {@link #PACKAGE_MODS_FILE}, are updated too, compared with the same list of the install:
  * a listed jar the install has is replaced when the install's list names it too, a listed jar the install's list does not name is added when
@@ -156,8 +155,7 @@ public final class PackageSwap {
      *
      * @param installRoot      the install folder
      * @param packageRoot      the unpacked user package
-     * @param backupRoot       the folder that keeps the replaced items, deleted by the caller; it holds none of the items and is on the
-     *                         install's file system
+     * @param backupRoot       the folder that keeps the replaced items, deleted by the caller; it holds none of the items and is on the install's file system
      * @param moveAttempts     how often a move is tried, at least {@code 1}
      * @param retryDelayMillis the wait before a move is tried again, in milliseconds
      */
@@ -171,10 +169,9 @@ public final class PackageSwap {
 
     /**
      * Replaces the items of the install and the mod jars the package ships with those of the package. On a failure the old items are restored
-     * before the failure is thrown.
+     * before the failure is thrown; its message says when they could not all be restored.
      *
-     * @throws IOException if the package lacks an item, a list of mod jars cannot be read or an item cannot be replaced; the install then has
-     *                     its old items again unless the message says that they could not all be restored
+     * @throws IOException if the package lacks an item, a list of mod jars cannot be read or an item cannot be replaced
      */
     public void apply() throws IOException {
         List<String> items = new ArrayList<>(ITEMS);

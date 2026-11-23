@@ -120,11 +120,9 @@ plugins.withType(JavaLibraryPlugin).configureEach {
         testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     }
 
-    // Warnings are printed in full so that they can be counted. javac reports every
-    // lint category; javadoc and javac lift their default limit of 100 printed warnings per task.
-    // Javadoc leaves out the doclint group "missing" by default: it reports the getters documented
-    // with @return only as "no main description". Missing comments and tags are checked by the style checker
-    // instead; -Psc4j.javadoc.doclint=all restores the full javadoc default for a raw count.
+    // javac reports every lint category; javac and javadoc print every warning, without their default limit of 100 per task.
+    // Javadoc leaves out the doclint group "missing", which reports getters documented with @return only as "no main description";
+    // the style checker checks missing comments and tags. -Psc4j.javadoc.doclint=all restores the full javadoc default.
     tasks.withType(JavaCompile).configureEach {
         options.compilerArgs += ['-Xlint:all', '-Xmaxwarns', '100000']
     }

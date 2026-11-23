@@ -41,7 +41,7 @@ public final class Picture {
     }
 
     /**
-     * Creates a {@link Picture} instance.
+     * Creates a {@link Picture} instance. A border is invalid when it is negative or the borders of its axis are wider than the picture.
      *
      * @param width        the width in pixels, at least {@code 1}
      * @param height       the height in pixels, at least {@code 1}
@@ -53,8 +53,7 @@ public final class Picture {
      * @param borderTop    the height of the top edge a sliced drawing keeps
      * @param borderRight  the width of the right edge a sliced drawing keeps
      * @param borderBottom the height of the bottom edge a sliced drawing keeps
-     * @throws IllegalArgumentException if the picture is empty, a layer has the wrong format or length, or a border is negative or the
-     *                                  borders of an axis are wider than the picture
+     * @throws IllegalArgumentException if the picture is empty, a layer has the wrong format or length, or a border is invalid
      */
     public Picture(int width, int height,
                    @NotNull PixelLayer color, @Nullable PixelLayer teamMask,

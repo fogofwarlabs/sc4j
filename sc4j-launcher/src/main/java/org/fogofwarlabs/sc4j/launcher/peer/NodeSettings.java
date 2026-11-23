@@ -67,8 +67,7 @@ public final class NodeSettings {
     }
 
     /**
-     * @return {@code true} if the router is asked to map the ports of the node (in the automatic role) and of the games' sessions,
-     * {@code false} otherwise
+     * @return {@code true} if the router is asked to map the ports of the node (in the automatic role) and of the games' sessions, {@code false} otherwise
      */
     public boolean isPortMapping() {
         return this.portMapping;

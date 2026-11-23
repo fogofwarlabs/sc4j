@@ -59,8 +59,7 @@ public final class WaitCountdown {
     }
 
     /**
-     * @return the seconds the dialog shows, {@code 0} once a person may drop the overdue participants, or {@link #CLOSED} while no dialog
-     * shows
+     * @return the seconds the dialog shows, {@code 0} once a person may drop the overdue participants, or {@link #CLOSED} while no dialog shows
      */
     public int getCount() {
         return this.count;
@@ -74,8 +73,7 @@ public final class WaitCountdown {
     }
 
     /**
-     * @return {@code true} if the dialog shows its count {@code 0}, at which a person may drop the overdue participants, {@code false}
-     * otherwise
+     * @return {@code true} if the dialog shows its count {@code 0}, at which a person may drop the overdue participants, {@code false} otherwise
      */
     public boolean isExpired() {
         return this.count == 0;

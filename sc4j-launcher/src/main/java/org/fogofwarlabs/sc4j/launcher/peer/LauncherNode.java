@@ -248,8 +248,7 @@ public final class LauncherNode implements Closeable {
     }
 
     /**
-     * @return the peers proved at their address (the full peers of the routing table, then the leaves) as of its last poll; may be called
-     * from any thread
+     * @return the peers proved at their address (the full peers of the routing table, then the leaves) as of its last poll; may be called from any thread
      */
     public @NotNull List<@NotNull NodeEndpoint> getLiveNodes() {
         return this.liveNodes;

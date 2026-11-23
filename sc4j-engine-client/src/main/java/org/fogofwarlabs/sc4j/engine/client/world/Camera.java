@@ -14,8 +14,8 @@ import org.jetbrains.annotations.NotNull;
  * the world plane, and the box is the map.
  * <p>
  * The camera is the engine's {@link CameraControl}: a {@link CameraScroll} scrolls it by keys and at the screen edges, a
- * {@link CameraTargetScroll} and {@link ViewJumps} move it. Changes of the zoom and its limits are the client's slash commands
- * ({@link CameraCommandUtils}), not key bindings.
+ * {@link CameraTargetScroll} and {@link ViewJumps} move it. The client's slash commands ({@link CameraCommandUtils}) change the zoom and
+ * its limits.
  */
 public final class Camera implements CameraControl {
     /**

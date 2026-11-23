@@ -79,8 +79,7 @@ public final class PixelLayer {
      * Returns the value of one pixel.
      *
      * @param offset the pixel offset in the layer
-     * @return the unsigned byte value ({@code 0} up to {@code 255}) of an 8-bit layer, or the packed {@code 0xAARRGGBB}
-     * colour of an RGBA layer
+     * @return the unsigned byte value ({@code 0} up to {@code 255}) of an 8-bit layer, or the packed {@code 0xAARRGGBB} colour of an RGBA layer
      * @throws IndexOutOfBoundsException if the offset is outside the layer
      */
     public int getValue(int offset) {

@@ -30,8 +30,7 @@ public final class TechResearchedCondition implements RequirementCondition {
      * @param content   the content of the game
      * @param player    the player
      * @param actorType the unit type of the acting unit, or {@code null} without one
-     * @return {@link StandardRequirementResult#MET} if the player has researched the tech, otherwise
-     * {@link StandardRequirementResult#MISSING_TECH}
+     * @return {@link StandardRequirementResult#MET} if the player has researched the tech, otherwise {@link StandardRequirementResult#MISSING_TECH}
      */
     @Override
     public @NotNull RequirementResult test(@NotNull GameContent content, @NotNull Player player, @Nullable UnitType actorType) {

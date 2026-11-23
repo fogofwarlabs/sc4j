@@ -384,6 +384,9 @@ public abstract class DatagramLockstepTransport<A> implements LockstepTransport 
 
     /**
      * Creates a {@link DatagramLockstepTransport} instance before the first turn.
+     * <p>
+     * The participants must not be empty, must name each participant once with a peer number up to {@code 0xFFFF} and must include the local
+     * participant.
      *
      * @param link                  this machine's datagram link of the network, which the caller closes after the session
      * @param maximumDatagramLength the longest datagram the link carries; a turn is cut into fragments that fit it
@@ -392,8 +395,7 @@ public abstract class DatagramLockstepTransport<A> implements LockstepTransport 
      * @param sessionId             the id of the session, the same on every machine (the lobby's), which tells its datagrams from others
      * @param participants          every participant in execution order with its address on the link, the local one included; copied
      * @param localPeer             the local participant, one of the participants
-     * @throws IllegalArgumentException if the participants are empty, name a participant twice, have a peer number above {@code 0xFFFF} or do
-     *                                  not include the local participant, or a datagram of the link cannot hold every message
+     * @throws IllegalArgumentException if the participants break these rules or a datagram of the link cannot hold every message
      */
     protected DatagramLockstepTransport(@NotNull DatagramLink<A> link, int maximumDatagramLength, @NotNull NetworkClock clock,
                                         @NotNull TransportTimeouts timeouts, int sessionId,
@@ -483,8 +485,7 @@ public abstract class DatagramLockstepTransport<A> implements LockstepTransport 
     }
 
     /**
-     * @return {@code true} if the local participant left and every other participant acknowledged its turns and its departure notice,
-     * {@code false} otherwise
+     * @return {@code true} if the local participant left and every other participant acknowledged its turns and its departure notice, {@code false} otherwise
      */
     public boolean isDepartureComplete() {
         if (!this.left) {

@@ -317,8 +317,7 @@ public final class DemoClient implements AutoCloseable {
     }
 
     /**
-     * @return the player's name in games, lobbies and Beacon.Link: the account's name, fixed when the account was made, or
-     * {@value BeaconLink#GUEST_NAME} for a guest
+     * @return the player's name in games, lobbies and Beacon.Link: the account's name, fixed when the account was made, or {@value BeaconLink#GUEST_NAME} for a guest
      */
     public @NotNull String getPlayerName() {
         LinkAccount account = this.getAccount();

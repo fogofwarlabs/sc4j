@@ -119,14 +119,14 @@ public final class AccountBackup {
     }
 
     /**
-     * Reads a backup file.
+     * Reads a backup file. Bytes that are no backup of this version, or whose stamp does not bind its name to its key, give
+     * {@link AccountProblem#NOT_AN_ACCOUNT_FILE}; a protected backup without a password gives {@link AccountProblem#PASSWORD_REQUIRED}, and a
+     * password that does not open it {@link AccountProblem#WRONG_PASSWORD}.
      *
      * @param contents the file bytes
      * @param password the password of a protected backup, or {@code null}
      * @return the read backup
-     * @throws AccountException if the bytes are no backup of this version or its stamp does not bind its name to its key
-     *                          ({@link AccountProblem#NOT_AN_ACCOUNT_FILE}), the backup is protected and no password was given
-     *                          ({@link AccountProblem#PASSWORD_REQUIRED}) or the password does not open it ({@link AccountProblem#WRONG_PASSWORD})
+     * @throws AccountException if the bytes are no valid backup, or the password is missing or wrong
      */
     public static @NotNull AccountBackup read(byte @NotNull [] contents, char @Nullable [] password) throws AccountException {
         if (contents.length > MAXIMUM_LENGTH || contents.length < HEADER_LENGTH ||

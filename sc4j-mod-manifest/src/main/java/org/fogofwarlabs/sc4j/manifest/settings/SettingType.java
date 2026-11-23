@@ -94,11 +94,11 @@ public enum SettingType {
     }
 
     /**
-     * Converts a parsed JSON value to the Java value of this type.
+     * Converts a parsed JSON value to the Java value of this type. A value of the wrong JSON type, an invalid path and a number outside the 32-bit
+     * integer range are not valid.
      *
      * @param value the parsed JSON value
-     * @return the {@link Path}, {@link String}, {@link Boolean} or {@link Integer} value, or {@code null} when the JSON
-     * value has the wrong type or is not a valid path or 32-bit integer
+     * @return the {@link Path}, {@link String}, {@link Boolean} or {@link Integer} value, or {@code null} if the value is not valid
      */
     public @Nullable Object convert(@NotNull Object value) {
         return switch (this) {

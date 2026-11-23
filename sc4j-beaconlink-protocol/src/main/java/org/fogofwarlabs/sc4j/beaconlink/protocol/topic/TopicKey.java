@@ -67,8 +67,7 @@ public final class TopicKey {
      *
      * @param name the channel name
      * @return the created {@link TopicKey} instance
-     * @throws IllegalArgumentException if the cleaned name is empty, longer than {@value #MAXIMUM_CHANNEL_NAME_LENGTH} UTF-8 bytes or has a
-     *                                  control character
+     * @throws IllegalArgumentException if the cleaned name is empty, longer than {@value #MAXIMUM_CHANNEL_NAME_LENGTH} UTF-8 bytes or has a control character
      */
     public static @NotNull TopicKey ofChannel(@NotNull String name) {
         return of(TopicKind.CHANNEL, cleanChannelName(name).toLowerCase(Locale.ROOT));
@@ -89,8 +88,7 @@ public final class TopicKey {
      *
      * @param name the channel name as a person typed it
      * @return the cleaned name
-     * @throws IllegalArgumentException if the cleaned name is empty, longer than {@value #MAXIMUM_CHANNEL_NAME_LENGTH} UTF-8 bytes or has a
-     *                                  control character
+     * @throws IllegalArgumentException if the cleaned name is empty, longer than {@value #MAXIMUM_CHANNEL_NAME_LENGTH} UTF-8 bytes or has a control character
      */
     public static @NotNull String cleanChannelName(@NotNull String name) {
         String cleaned = WHITE_SPACE.matcher(name.strip()).replaceAll(" ");

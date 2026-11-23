@@ -19,14 +19,18 @@ public interface RoomSearch {
     boolean isComplete();
 
     /**
-     * @return the rooms of the run's own mod identity found so far, which this run can join, ordered by host and room number; complete when
-     * {@link #isComplete()} is {@code true}
+     * Returns the rooms of the run's own mod identity found so far, which this run can join. The list is complete when {@link #isComplete()} is
+     * {@code true}.
+     *
+     * @return the rooms, ordered by host and room number
      */
     @NotNull List<@NotNull FoundRoom> getRooms();
 
     /**
-     * @return the rooms of another version or content of the run's mod found so far, each with the refusal its host gives this run
-     * ({@link FoundRoom#getJoinRefusal()}), ordered by host and room number; complete when {@link #isComplete()} is {@code true}
+     * Returns the rooms of another version or content of the run's mod found so far, each with the refusal its host gives this run
+     * ({@link FoundRoom#getJoinRefusal()}). The list is complete when {@link #isComplete()} is {@code true}.
+     *
+     * @return the rooms, ordered by host and room number
      */
     @NotNull List<@NotNull FoundRoom> getOtherRooms();
 

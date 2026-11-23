@@ -130,8 +130,7 @@ public final class TextColorTable implements TextColorHook {
      * @param codePoint     the colour code, one {@link #isColorCode} accepts
      * @param lineColor     the packed {@code 0xRRGGBBAA} colour the line started in, for codes that restore it
      * @param currentColor  the packed colour of the pen before the code
-     * @param previousColor the packed colour of the pen before the code that set the current colour (the line's colour before
-     *                      the first code), for codes that switch back
+     * @param previousColor the packed colour of the pen before the code that set the current colour (the line's colour before the first code), for codes that switch back
      * @return the packed colour of the following characters
      */
     @Override

@@ -18,8 +18,7 @@ public interface OrderContext {
     @NotNull Game getGame();
 
     /**
-     * @return the instruction limit of each animation program run the behavior starts, which it also passes to the order system when it
-     * changes an order
+     * @return the instruction limit of each animation program run the behavior starts, which it also passes to the order system when it changes an order
      */
     int getInstructionLimit();
 }

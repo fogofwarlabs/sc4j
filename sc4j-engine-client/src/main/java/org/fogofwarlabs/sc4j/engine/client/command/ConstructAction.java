@@ -103,8 +103,7 @@ public final class ConstructAction implements CommandAction {
      * @param translator the translator: the local player, the selection and the command sink
      * @param target     the target the player pointed at, or {@code null} for an action without a target
      * @param queued     whether the commands queue after the units' current orders (Shift held)
-     * @return {@code true} if the action took the target (or ran without one), {@code false} if it refused the target: here without a target
-     * or if no selected worker may build the type
+     * @return {@code true} if the action took the target, {@code false} if it refused the target: without a target or if no selected worker may build the type
      */
     @Override
     public boolean issue(@NotNull CommandTranslator translator, @Nullable CommandTarget target, boolean queued) {

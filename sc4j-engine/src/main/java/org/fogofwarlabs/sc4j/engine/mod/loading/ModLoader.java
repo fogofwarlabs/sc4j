@@ -30,12 +30,12 @@ public final class ModLoader {
     }
 
     /**
-     * Loads the mod of a jar whose manifest has been validated.
+     * Loads the mod of a jar whose manifest has been validated. The entry class must be a concrete class in the mod jar that implements
+     * {@link Mod} and has a public constructor without arguments.
      *
      * @param archive the mod jar with its validated manifest
      * @return the created mod with its class loader
-     * @throws ModException if the entry class is missing, outside the mod jar, not a concrete class implementing {@link Mod},
-     *                      has no public constructor without arguments, or its constructor fails
+     * @throws ModException if the entry class is missing or breaks these rules, or its constructor fails
      */
     public @NotNull LoadedMod load(@NotNull ModArchive archive) throws ModException {
         ModManifest manifest = archive.getManifest();

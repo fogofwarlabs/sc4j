@@ -112,8 +112,10 @@ public final class GameSession {
     }
 
     /**
-     * @return the game's command source over the session's controllers, the one path of the commands into the game; a replay recorder of the
-     * game is set on it ({@link ControllerCommandSource#setRecorder}) before the first frame
+     * Returns the game's command source over the session's controllers, the one path of the commands into the game. A replay recorder of the
+     * game is set on it ({@link ControllerCommandSource#setRecorder}) before the first frame.
+     *
+     * @return the command source
      */
     public @NotNull ControllerCommandSource getCommandSource() {
         return this.commandSource;

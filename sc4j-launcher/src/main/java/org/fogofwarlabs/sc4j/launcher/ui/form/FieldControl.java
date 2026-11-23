@@ -18,8 +18,7 @@ public interface FieldControl {
     @NotNull Node getInput();
 
     /**
-     * @return {@code true} if the control shows the setting's label itself (a check box) instead of the form showing it above
-     * the control, {@code false} otherwise
+     * @return {@code true} if the control shows the setting's label itself (a check box) instead of the form showing it above the control, {@code false} otherwise
      */
     boolean isLabelled();
 

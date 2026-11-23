@@ -143,8 +143,7 @@ public final class ChannelCipher {
      * @param data   the bytes
      * @param offset the first byte of the datagram, whose header {@link ChannelDatagramUtils#isChannelDatagram} checked
      * @param length the datagram length
-     * @return the frame, or {@code null} if the datagram is too short, repeated, too old, does not authenticate under the receive key or holds
-     * no valid frame
+     * @return the frame, or {@code null} if the datagram is too short, repeated, too old, does not authenticate under the receive key or holds no valid frame
      */
     public @Nullable ChannelFrame open(byte @NotNull [] data, int offset, int length) {
         if (length < OVERHEAD + 1 || length > ChannelDatagramUtils.MAXIMUM_DATAGRAM_LENGTH || offset + length > data.length) {

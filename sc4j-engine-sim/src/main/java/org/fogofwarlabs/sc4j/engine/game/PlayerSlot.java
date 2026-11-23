@@ -28,8 +28,7 @@ public final class PlayerSlot {
      * @param controllerKind who controls the slot
      * @param team           the team, at least {@code 0}; slots of one team are allies
      * @param colorIndex     the index of the player color, at least {@code 0}
-     * @param faction        the faction the player plays, registered in the game content, or {@code null} for none (a slot that
-     *                       picks its faction later, or a neutral one)
+     * @param faction        the faction the player plays, registered in the game content, or {@code null} for none (a slot that picks its faction later, or a neutral one)
      * @throws IllegalArgumentException if an index or the team is negative
      */
     public PlayerSlot(int slotIndex, @NotNull ControllerKind controllerKind, int team, int colorIndex, @Nullable Faction faction) {

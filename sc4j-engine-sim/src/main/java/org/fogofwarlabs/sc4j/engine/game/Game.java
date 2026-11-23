@@ -69,14 +69,14 @@ import java.util.List;
 public final class Game implements SnapshotContributor {
     /**
      * Creates a {@link Game} instance from a definition and a setup, in the order of the class description, and attaches
-     * its systems.
+     * its systems. The setup or definition is rejected if the setup's saved random state does not fit the generator, a phase
+     * system is not registered, a player slot index is not below the content's player count or a definition refers to a type
+     * that is not registered in the content.
      *
      * @param definition the definition the mod registered
      * @param setup      the inputs of this game
      * @return the created {@link Game} instance
-     * @throws IllegalArgumentException if the setup's saved random state does not fit the generator, a phase system is
-     *                                  not registered, a player slot index is not below the content's player count or a
-     *                                  definition refers to a type that is not registered in the content
+     * @throws IllegalArgumentException if the setup or the definition is rejected
      * @throws IllegalStateException    if a system factory creates a system of another type
      */
     public static @NotNull Game create(@NotNull GameDefinition definition, @NotNull GameSetup setup) {

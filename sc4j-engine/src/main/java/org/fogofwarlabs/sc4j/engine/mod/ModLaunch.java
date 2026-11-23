@@ -89,8 +89,9 @@ public final class ModLaunch {
     }
 
     /**
-     * @return the format of the replay to play, the first of the mod's replay formats the file starts like ({@link ReplayFormat#find}), or
-     * {@code null} when no replay was requested
+     * Returns the format of the replay to play: the first of the mod's replay formats the file starts like ({@link ReplayFormat#find}).
+     *
+     * @return the replay format, or {@code null} when no replay was requested
      */
     public @Nullable ReplayFormat getReplayFormat() {
         return this.replayFormat;
@@ -139,8 +140,9 @@ public final class ModLaunch {
     }
 
     /**
-     * @return the run's Beacon.Link, which opens sessions of the run's mod identity at the nodes of the run's command line, or {@code null} if the
-     * run offers none (no seed source, or a test launch)
+     * Returns the run's Beacon.Link, which opens sessions of the run's mod identity at the nodes of the run's command line.
+     *
+     * @return the run's Beacon.Link, or {@code null} if the run offers none (no seed source, or a test launch)
      */
     public @Nullable BeaconLink getBeaconLink() {
         return this.beaconLink;

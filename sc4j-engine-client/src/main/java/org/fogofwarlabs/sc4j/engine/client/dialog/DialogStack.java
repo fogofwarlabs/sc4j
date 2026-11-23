@@ -128,8 +128,7 @@ public final class DialogStack<C, L extends DialogLayer<C>> {
      *
      * @param x the x in stack coordinates
      * @param y the y in stack coordinates
-     * @return the dialog and the pressed control ({@code null} on a modal dialog's empty area), or {@code null} when the press
-     * belongs to what lies under the dialogs
+     * @return the dialog and the pressed control ({@code null} on a modal dialog's empty area), or {@code null} when the press belongs to what lies under the dialogs
      */
     public @Nullable Target<C, L> press(float x, float y) {
         Target<C, L> target = this.findPointerTarget(x, y);
@@ -148,8 +147,7 @@ public final class DialogStack<C, L extends DialogLayer<C>> {
      *
      * @param x the x in stack coordinates
      * @param y the y in stack coordinates
-     * @return the dialog and the activated control ({@code null} when the pointer left the pressed control), or {@code null}
-     * when no dialog held a press
+     * @return the dialog and the activated control ({@code null} when the pointer left the pressed control), or {@code null} when no dialog held a press
      */
     public @Nullable Target<C, L> release(float x, float y) {
         for (L layer : this.layers) {

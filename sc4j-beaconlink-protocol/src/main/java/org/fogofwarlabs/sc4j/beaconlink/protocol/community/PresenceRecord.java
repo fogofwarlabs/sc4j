@@ -49,8 +49,7 @@ public final class PresenceRecord extends TopicRecord {
      * @param expiryMillis the epoch millisecond at which the presence expires
      * @param content      what the presence tells
      * @return the created {@link PresenceRecord} instance
-     * @throws IllegalArgumentException if the sequence is out of range, or the stamp is of another key or another name than the content's
-     *                                  display name
+     * @throws IllegalArgumentException if the sequence is out of range, or the stamp is of another key or another name than the content's display name
      */
     public static @NotNull PresenceRecord sign(@NotNull IdentityKeyPair author, @NotNull PlayerStamp stamp, @NotNull TopicKey topic, long connection,
                                                long sequence, long expiryMillis, @NotNull PresenceContent content) {

@@ -16,8 +16,7 @@ public final class NoTextInputMethod implements TextInputMethod {
     }
 
     /**
-     * @return {@code true} if text input is enabled (the input method is attached to the window), {@code false} otherwise; always
-     * {@code false} without input method
+     * @return {@code true} if text input is enabled (the input method is attached to the window), {@code false} otherwise; always {@code false} without input method
      */
     @Override
     public boolean isEnabled() {

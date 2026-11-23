@@ -30,13 +30,13 @@ public final class DetailSet<T> {
     private final int @NotNull [] multiples;
 
     /**
-     * Creates a {@link DetailSet} instance.
+     * Creates a {@link DetailSet} instance. Each multiple lies in {@value DetailUtils#MINIMUM_MULTIPLE} up to
+     * {@value DetailUtils#MAXIMUM_MULTIPLE} and is larger than the one before.
      *
      * @param resource  the resource
      * @param details   the detail versions, smallest multiple first, copied
      * @param multiples the multiple of each detail version, copied
-     * @throws IllegalArgumentException if the counts differ, or a multiple is outside {@value DetailUtils#MINIMUM_MULTIPLE} up to
-     *                                  {@value DetailUtils#MAXIMUM_MULTIPLE} or not larger than the one before
+     * @throws IllegalArgumentException if the counts differ or a multiple is out of range or not larger than the one before
      */
     public DetailSet(@NotNull T resource, @NotNull List<@NotNull T> details, int @NotNull [] multiples) {
         if (details.size() != multiples.length) {

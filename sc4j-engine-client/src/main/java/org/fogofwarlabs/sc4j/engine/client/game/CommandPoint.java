@@ -15,7 +15,7 @@ public enum CommandPoint {
     FRAME_RUNNER,
     /**
      * The mod's own game loop applies the session's command source ({@link GameSession#getCommandSource()}) at its own command point, for
-     * example before its native turn step: the game's frame runner gets no command source, so the commands are not asked a second time, and
+     * example before its own turn step:the game's frame runner gets no command source, so the commands are not asked a second time, and
      * the mod's loop runs the frames ({@link GameSession#runFrame()} is refused). A loop that applies the source more than once in one game
      * loop starts the loop of a set recorder more than once, so such a mod records through its own format.
      */

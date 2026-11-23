@@ -132,8 +132,7 @@ public final class GameSetupCodec {
      * @param setup  the setup
      * @param output the output
      * @throws IOException              if the output cannot be written
-     * @throws IllegalArgumentException if the setup has a saved random state or its own random generator, or names a faction, an option or an
-     *                                  option value the codec cannot write
+     * @throws IllegalArgumentException if the setup has no wire form or names a faction, an option or an option value the codec cannot write
      */
     public void write(@NotNull GameSetup setup, @NotNull DataOutput output) throws IOException {
         if (setup.getInitialRandomState() != null || setup.getRandom() != null) {

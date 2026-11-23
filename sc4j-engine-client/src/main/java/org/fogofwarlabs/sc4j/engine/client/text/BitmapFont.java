@@ -122,8 +122,7 @@ public final class BitmapFont implements Font, AutoCloseable {
      *
      * @param canvas       the canvas that draws the text, current
      * @param face         the font of the resource model
-     * @param kerning      the font units added to the advance of every glyph with pixels when a style's kerning is on, or
-     *                     {@link #NO_KERNING}
+     * @param kerning      the font units added to the advance of every glyph with pixels when a style's kerning is on, or {@link #NO_KERNING}
      * @param defaultStyle the style of the forms without one
      */
     public BitmapFont(@NotNull Canvas canvas, @NotNull FontFace face, int kerning, @NotNull TextStyle defaultStyle) {
@@ -136,8 +135,7 @@ public final class BitmapFont implements Font, AutoCloseable {
      * @param canvas       the canvas that draws the text, current
      * @param face         the font of the resource model
      * @param details      the detail faces, each a whole multiple of the font (its line height that multiple of the font's)
-     * @param kerning      the font units added to the advance of every glyph with pixels when a style's kerning is on, or
-     *                     {@link #NO_KERNING}
+     * @param kerning      the font units added to the advance of every glyph with pixels when a style's kerning is on, or {@link #NO_KERNING}
      * @param defaultStyle the style of the forms without one
      * @throws IllegalArgumentException if a detail face is not a whole multiple of the font of at least {@code 2}
      */
@@ -261,8 +259,7 @@ public final class BitmapFont implements Font, AutoCloseable {
     /**
      * Draws a line in a style. The pen starts at {@code x} and moves by each advance times the style's scale, in canvas units.
      *
-     * @param canvas the canvas that draws, between its {@link Canvas#begin} and {@link Canvas#end}; the one this font uploaded
-     *               its glyph image to
+     * @param canvas the canvas that draws, between its {@link Canvas#begin} and {@link Canvas#end}; the one this font uploaded its glyph image to
      * @param text   the line, without line breaks
      * @param x      the left edge of the pen in canvas units
      * @param y      the line top in canvas units

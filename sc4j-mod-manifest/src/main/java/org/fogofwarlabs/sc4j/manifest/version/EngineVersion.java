@@ -138,8 +138,7 @@ public final class EngineVersion {
      * Checks whether a runtime of this version can run a mod built for a version.
      *
      * @param required the engine version the mod is built for
-     * @return {@code true} if the major versions are equal and the required minor version is not higher than this one,
-     * {@code false} otherwise
+     * @return {@code true} if the major versions are equal and the required minor version is not higher than this one, {@code false} otherwise
      */
     public boolean supports(@NotNull EngineVersion required) {
         return this.major == required.major && required.minor <= this.minor;

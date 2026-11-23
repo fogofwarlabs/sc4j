@@ -463,8 +463,7 @@ public final class DemoSoundSynthesis {
      *
      * @param file    the file
      * @param samples the samples, from {@code -1} to {@code 1}
-     * @param faded   whether the first and last milliseconds fade in and out, so a sound starts and ends without a click; a piece that
-     *                repeats is not faded
+     * @param faded   whether the first and last milliseconds fade in and out, so a sound starts and ends without a click; a piece that repeats is not faded
      * @throws IOException if the file cannot be written
      */
     static void writeWave(@NotNull Path file, double @NotNull [] samples, boolean faded) throws IOException {

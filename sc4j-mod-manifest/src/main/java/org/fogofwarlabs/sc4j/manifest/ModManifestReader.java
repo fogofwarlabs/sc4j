@@ -81,8 +81,7 @@ public final class ModManifestReader {
      *
      * @param jar the mod jar
      * @return the archive with the validated manifest and the image contents
-     * @throws ManifestException if the jar cannot be read as a zip file, has no manifest, the manifest is invalid or a named
-     *                           image is missing or not a PNG file
+     * @throws ManifestException if the jar cannot be read as a zip file, has no manifest, the manifest is invalid or a named image is missing or not a PNG file
      */
     public static @NotNull ModArchive read(@NotNull Path jar) throws ManifestException {
         try (ZipFile zip = new ZipFile(jar.toFile())) {

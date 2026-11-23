@@ -55,16 +55,14 @@ public final class PackInstructionReader {
     }
 
     /**
-     * @return the number of frame numbers the sprite sheet of the program has: a frame number is {@code 0} up to this
-     * number minus one
+     * @return the number of frame numbers the sprite sheet of the program has: a frame number is {@code 0} up to this number minus one
      */
     public int getFrameLimit() {
         return this.frameLimit;
     }
 
     /**
-     * @return the value of the keyword field as it was parsed: a {@link Long}, {@link Double}, {@link String},
-     * {@link Boolean}, {@link List} or {@link Map}
+     * @return the value of the keyword field as it was parsed: a {@link Long}, {@link Double}, {@link String}, {@link Boolean}, {@link List} or {@link Map}
      */
     public @Nullable Object getValue() {
         return this.instruction.get(this.keyword);

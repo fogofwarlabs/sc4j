@@ -135,8 +135,7 @@ public final class OptionsScreen {
      * Creates a {@link OptionsScreen} instance.
      *
      * @param texts            the launcher texts of the display language
-     * @param language         the language chosen in the launcher settings, or {@code null} when the launcher follows the
-     *                         operating system
+     * @param language         the language chosen in the launcher settings, or {@code null} when the launcher follows the operating system
      * @param chatSoundMuted   whether the launcher settings mute the chat notification sound
      * @param updateView       the update parts of the launcher panel
      * @param nodes            the saved node list, or the shipped seed list while the user has saved none

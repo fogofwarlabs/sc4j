@@ -250,8 +250,7 @@ public final class SimulatedNetwork {
      * Creates a {@link SimulatedNetwork} instance without hosts whose latencies come from regions ({@link RegionLatencyModel}).
      *
      * @param seed        the seed of everything random in the run
-     * @param regionCount the number of latency regions; every pair of regions has a one-way latency between 5 and 150 milliseconds, the same
-     *                    in both directions (inside a region the minimum, 5 milliseconds)
+     * @param regionCount the number of latency regions
      * @param lossRate    the probability that a datagram is lost
      */
     public SimulatedNetwork(long seed, int regionCount, double lossRate) {

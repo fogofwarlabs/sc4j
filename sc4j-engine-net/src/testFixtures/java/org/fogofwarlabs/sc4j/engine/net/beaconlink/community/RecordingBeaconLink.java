@@ -148,8 +148,15 @@ public final class RecordingBeaconLink implements BeaconLink {
         }
 
         /**
-         * @return why the session cannot reach Beacon.Link, or {@code null} while a node is registered or still being contacted for the first
-         * time
+         * @return what the session knows of its network's direct connections: {@link LinkConnectivity#UNKNOWN}, since one node observes it
+         */
+        @Override
+        public @NotNull LinkConnectivity getConnectivity() {
+            return LinkConnectivity.UNKNOWN;
+        }
+
+        /**
+         * @return why the session cannot reach Beacon.Link, or {@code null} while a node is registered or still being contacted for the first time
          */
         @Override
         public @Nullable LinkFailure getFailure() {
@@ -299,16 +306,14 @@ public final class RecordingBeaconLink implements BeaconLink {
     }
 
     /**
-     * @return the display names of the opened sessions, in opening order: the account's name, or {@value BeaconLink#GUEST_NAME} without an
-     * account
+     * @return the display names of the opened sessions, in opening order: the account's name, or {@value BeaconLink#GUEST_NAME} without an account
      */
     public @NotNull List<@NotNull String> getDisplayNames() {
         return List.copyOf(this.displayNames);
     }
 
     /**
-     * @return the run's account, whose name the mod shows as the player's name and the sessions show, or {@code null} for a run without an
-     * account
+     * @return the run's account, whose name the mod shows as the player's name and the sessions show, or {@code null} for a run without an account
      */
     @Override
     public @Nullable LinkAccount getAccount() {

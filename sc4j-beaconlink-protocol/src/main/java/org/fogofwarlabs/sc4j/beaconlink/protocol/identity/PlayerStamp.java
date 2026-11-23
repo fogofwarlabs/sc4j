@@ -113,11 +113,11 @@ public final class PlayerStamp {
     }
 
     /**
-     * Checks the stamp.
+     * Checks the stamp: the name must be a valid player name, and the stamp hash of the key and the name must start with at least
+     * {@code difficulty} zero bits.
      *
      * @param difficulty the number of leading zero bits the stamp hash needs
-     * @return {@code true} if the name is a valid player name and the stamp hash of the key and the name starts with at least
-     * {@code difficulty} zero bits, {@code false} otherwise
+     * @return {@code true} if the stamp is valid, {@code false} otherwise
      */
     public boolean isValid(int difficulty) {
         return PlayerNameUtils.isValid(this.name) &&

@@ -21,8 +21,7 @@ interface MappingClient {
     @NotNull String getProblem();
 
     /**
-     * @return the router's external address as the protocol reported it while finding the router, or {@code null} if it reports it only with
-     * a mapping
+     * @return the router's external address as the protocol reported it while finding the router, or {@code null} if it reports it only with a mapping
      */
     @Nullable InetAddress getExternalAddress();
 

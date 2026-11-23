@@ -141,8 +141,7 @@ public final class ReachabilityCheck {
     }
 
     /**
-     * @return {@code true} if the first self-test settled (a result, a refusal or no answer in time), {@code false} otherwise (before it
-     * was sent and while its answer or probe is awaited)
+     * @return {@code true} if the first self-test settled (a result, a refusal or no answer in time), {@code false} otherwise (unsent or awaited)
      */
     public boolean isSettled() {
         return this.reachability != Reachability.NOT_VERIFIED || this.tested && this.pending.isEmpty();
@@ -241,15 +240,15 @@ public final class ReachabilityCheck {
 
     /**
      * Handles a dial-back message whose signature and replay check passed: a requester's padded request (forwarded to a third known peer), a
-     * forwarded request of a known helper (answered with a probe) or a helper's answer to this peer's request.
+     * forwarded request of a known helper (answered with a probe) or a helper's answer to this peer's request. Dropped are a requester's
+     * request that is not padded or whose card has no valid proof, a forwarded request that does not come from a known peer at its address,
+     * and a reply that answers no waiting dial-back.
      *
      * @param envelope  the message
      * @param source    the observed source address
      * @param routing   the peer layer, which knows the peers proved at their address
      * @param nowMillis the current time
-     * @return {@code null} if the message was handled, otherwise why it was dropped: a requester's request that is not padded or whose card
-     * has no valid proof, a forwarded request that does not come from a known peer at its address, or a reply that answers no waiting
-     * dial-back
+     * @return {@code null} if the message was handled, otherwise why it was dropped
      */
     public @Nullable DropReason handleDialBack(@NotNull Envelope envelope, @NotNull InetSocketAddress source, @NotNull PeerRouting routing,
                                                long nowMillis) {

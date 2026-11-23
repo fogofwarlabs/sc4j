@@ -102,8 +102,7 @@ public interface AnimationContext {
     void setCallEntry(int level, int position);
 
     /**
-     * @return the budget of a bounded update, shared with the nested runs the instruction starts, or {@code null} for an
-     * update without a budget
+     * @return the budget of a bounded update, shared with the nested runs the instruction starts, or {@code null} for an update without a budget
      */
     @Nullable InstructionBudget getInstructionBudget();
 

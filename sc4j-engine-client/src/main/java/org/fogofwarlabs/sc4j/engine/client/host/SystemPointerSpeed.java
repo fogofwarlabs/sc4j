@@ -24,10 +24,10 @@ public interface SystemPointerSpeed {
     int DEFAULT_SPEED = 10;
 
     /**
-     * Creates a {@link SystemPointerSpeed} instance of the platform the client runs on.
+     * Creates a {@link SystemPointerSpeed} instance of the platform the client runs on: the Windows pointer speed on Windows when its system
+     * function can be bound, a {@link FixedSystemPointerSpeed} otherwise.
      *
-     * @return the created {@link SystemPointerSpeed} instance: the Windows pointer speed on Windows when its system function can be
-     * bound, a {@link FixedSystemPointerSpeed} otherwise
+     * @return the created {@link SystemPointerSpeed} instance
      */
     static @NotNull SystemPointerSpeed getDefault() {
         SystemPointerSpeed windows = WindowsSystemPointerSpeed.create();

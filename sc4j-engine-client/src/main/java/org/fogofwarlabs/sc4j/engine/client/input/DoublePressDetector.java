@@ -68,14 +68,14 @@ public final class DoublePressDetector {
 
 
     /**
-     * Registers a button press and tells whether it is a double press.
+     * Registers a button press and tells whether it is a double press: a press of the left, right or middle button at the pixel of the last
+     * press, sooner than the interval after this button's last press.
      *
      * @param button the button
      * @param time   the press time in milliseconds
      * @param x      the pixel column the presses compare
      * @param y      the pixel row the presses compare
-     * @return {@code true} if the button is the left, right or middle button, the pixel matches the last press and the time since this button's
-     * last press is below the interval, {@code false} otherwise
+     * @return {@code true} if the press is a double press, {@code false} otherwise
      */
     public boolean press(@NotNull PointerButton button, long time, int x, int y) {
         int index = button.ordinal();

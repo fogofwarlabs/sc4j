@@ -59,8 +59,7 @@ public final class ChatLineRecord extends TopicRecord {
      * @param emote           whether the line is an emote ({@code /me}) instead of a said line
      * @param text            the text, not empty
      * @return the created {@link ChatLineRecord} instance
-     * @throws IllegalArgumentException if the topic is not a channel, the sequence is out of range, the stamp is of another key, or the stamp's
-     *                                  name or the text is too long or the text empty
+     * @throws IllegalArgumentException if the topic is not a channel, the sequence is out of range, the stamp is of another key, or a text is too long or empty
      */
     public static @NotNull ChatLineRecord sign(@NotNull IdentityKeyPair author, @NotNull PlayerStamp stamp, @NotNull TopicKey topic, long sequence,
                                                long timestampMillis, boolean emote, @NotNull String text) {

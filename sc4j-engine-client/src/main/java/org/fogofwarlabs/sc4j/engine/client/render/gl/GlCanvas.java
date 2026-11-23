@@ -336,8 +336,7 @@ public final class GlCanvas implements GpuCanvas {
      *
      * @param width  the image width in pixels
      * @param height the image height in pixels
-     * @param colors the row-major pixels, top row first, packed {@code 0xAARRGGBB} with straight alpha as the resource model
-     *               stores them
+     * @param colors the row-major pixels, top row first, packed {@code 0xAARRGGBB} with straight alpha as the resource model stores them
      * @return the created {@link Texture} instance, closed by the caller
      * @throws IllegalArgumentException if a dimension is not positive or the pixels do not match the dimensions
      */
@@ -685,7 +684,7 @@ public final class GlCanvas implements GpuCanvas {
      * @param bottom       the bottom texture coordinate
      * @param color        the packed glyph color
      * @param shadowOffset the drop shadow offset in texels right and down, or {@code 0}
-     * @param shadowPower  the drop shadow weight ({@code shadowData.z}), or {@code 0} for none
+     * @param shadowPower  the drop shadow weight, or {@code 0} for none
      */
     @Override
     public void drawSdfTexture(int texture,
@@ -889,8 +888,6 @@ public final class GlCanvas implements GpuCanvas {
 
     /**
      * Disposes resources: releases the GPU programs, buffers and textures and the staging memory. Closing again does nothing.
-     * <p>
-     * A failing constructor releases what it created too; the objects of the steps after the failed one are not created then.
      */
     @Override
     public void close() {

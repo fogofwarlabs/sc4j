@@ -66,8 +66,7 @@ public interface SpatialIndex extends GameSystem {
      * @param y               the y coordinate of the point
      * @param maximumDistance the largest distance searched
      * @param filter          selects the candidate units
-     * @return the nearest accepted unit, the first in index order among equally near ones, or {@code null} if none is
-     * within the distance
+     * @return the nearest accepted unit, the first in index order among equally near ones, or {@code null} if none is within the distance
      */
     @Nullable Unit findNearest(int x, int y, int maximumDistance, @NotNull UnitFilter filter);
 }

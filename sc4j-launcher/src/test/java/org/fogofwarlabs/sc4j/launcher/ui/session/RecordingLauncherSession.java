@@ -64,6 +64,16 @@ public final class RecordingLauncherSession implements LauncherSessionView {
         return this.self;
     }
 
+    /**
+     * Sets the account's own state and calls the change listener.
+     *
+     * @param self the account's own state
+     */
+    public void setSelf(@NotNull SelfView self) {
+        this.self = self;
+        this.publish();
+    }
+
     @Override
     public @NotNull FriendCode getFriendCode() {
         return this.friendCode;
@@ -137,7 +147,8 @@ public final class RecordingLauncherSession implements LauncherSessionView {
     @Override
     public void setStatus(@NotNull SelfStatus status, @NotNull String awayText) {
         this.commands.add("status " + status + ":" + awayText);
-        this.self = new SelfView(this.self.getState(), status, awayText, this.self.getDeviceCount(), this.self.getFailure());
+        this.self = new SelfView(this.self.getState(), status, awayText, this.self.getDeviceCount(), this.self.getFailure(),
+                                 this.self.getConnectivity());
         this.publish();
     }
 

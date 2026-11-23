@@ -10,10 +10,7 @@ import org.fogofwarlabs.sc4j.beaconlink.peer.bootstrap.KnownNodes;
 import org.fogofwarlabs.sc4j.beaconlink.peer.bootstrap.PeerStore;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.file.ConfiguredNode;
 import org.fogofwarlabs.sc4j.engine.mod.identity.ModIdentity;
-import org.fogofwarlabs.sc4j.engine.net.beaconlink.BeaconLink;
-import org.fogofwarlabs.sc4j.engine.net.beaconlink.BeaconLinkSession;
-import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkFailure;
-import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.*;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.*;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChannelChat;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntry;
@@ -48,8 +45,7 @@ import java.util.function.Consumer;
  * peer. It runs on a thread of its own, single-threaded as the client requires: the thread uses the account (a shared use of
  * {@link AccountLock}, so that the account cannot be deleted meanwhile), opens the session, then polls it, carries out the commands the
  * launcher queues and, after a poll that changed what the launcher shows, hands new immutable views to the publisher (the JavaFX thread in
- * the launcher), which installs them and calls the change listener. Closing the session ends the thread: the connection publishes a presence
- * that expires within seconds and unregisters, the learned nodes are merged into the shared peers file and the account is released.
+ * the launcher), which installs them and calls the change listener. Closing the session ends the thread ({@link #close()}).
  */
 public final class LauncherSession implements LauncherSessionView {
     /**
@@ -286,7 +282,7 @@ public final class LauncherSession implements LauncherSessionView {
         this.connectNanos      = 0L;
         this.status            = SelfStatus.ONLINE;
         this.awayText          = "";
-        this.lastSelf          = new SelfView(SessionState.CONNECTING, SelfStatus.ONLINE, "", 0, null);
+        this.lastSelf          = new SelfView(SessionState.CONNECTING, SelfStatus.ONLINE, "", 0, null, LinkConnectivity.UNKNOWN);
         this.lastFriends       = List.of();
         this.lastWhispers      = List.of();
         this.lastChannels      = List.of();
@@ -322,8 +318,7 @@ public final class LauncherSession implements LauncherSessionView {
     }
 
     /**
-     * @return the account's friends in the order they are shown: the friends online first, then by name; empty while the session runs no
-     * connection
+     * @return the account's friends in the order they are shown: the friends online first, then by name; empty while the session runs no connection
      */
     @Override
     public @NotNull List<@NotNull FriendView> getFriends() {
@@ -339,8 +334,7 @@ public final class LauncherSession implements LauncherSessionView {
     }
 
     /**
-     * @return the channels the account's chat is in, in the order it joined them, with their members; empty until the chat opened and while
-     * the session runs no connection
+     * @return the channels the account's chat is in, in the order it joined them, with their members; empty until the chat opened and while the session runs no connection
      */
     @Override
     public @NotNull List<@NotNull ChannelView> getChannels() {
@@ -348,8 +342,7 @@ public final class LauncherSession implements LauncherSessionView {
     }
 
     /**
-     * @return the channels the session knows of among the launcher users and the channels the chat is in, the most members first, without
-     * members; empty until the chat opened
+     * @return the channels the session knows of among the launcher users and the channels the chat is in, the most members first, without members; empty until the chat opened
      */
     @Override
     public @NotNull List<@NotNull ChannelView> getKnownChannels() {
@@ -357,8 +350,10 @@ public final class LauncherSession implements LauncherSessionView {
     }
 
     /**
-     * @return the entries of the account's chat, the oldest first: the lines, notices and command answers of every channel it is in, without
-     * whispers ({@link #getWhispers()}); the oldest give way after {@value #MAXIMUM_CHAT_ENTRIES}
+     * Returns the entries of the account's chat: the lines, notices and command answers of every channel it is in, without whispers
+     * ({@link #getWhispers()}). The oldest give way after {@value #MAXIMUM_CHAT_ENTRIES}.
+     *
+     * @return the entries of the account's chat, the oldest first
      */
     @Override
     public @NotNull List<@NotNull ChatEntryView> getChatEntries() {
@@ -784,20 +779,21 @@ public final class LauncherSession implements LauncherSessionView {
         CommunitySession openedCommunity = this.community;
 
         if (opened == null || openedCommunity == null) {
-            return new SelfView(SessionState.OFFLINE, this.status, this.awayText, 0, SessionFailure.NOT_STARTED);
+            return new SelfView(SessionState.OFFLINE, this.status, this.awayText, 0, SessionFailure.NOT_STARTED, LinkConnectivity.UNKNOWN);
         }
 
         LinkFailure failure = opened.getFailure();
 
         if (failure != null) {
-            return new SelfView(SessionState.OFFLINE, this.status, this.awayText, 0, toSessionFailure(failure));
+            return new SelfView(SessionState.OFFLINE, this.status, this.awayText, 0, toSessionFailure(failure), LinkConnectivity.UNKNOWN);
         }
 
         if (opened.getObservedAddress() == null) {
-            return new SelfView(SessionState.CONNECTING, this.status, this.awayText, 0, null);
+            return new SelfView(SessionState.CONNECTING, this.status, this.awayText, 0, null, opened.getConnectivity());
         }
 
-        return new SelfView(SessionState.CONNECTED, this.status, this.awayText, openedCommunity.getSelf().getDeviceCount(), null);
+        return new SelfView(SessionState.CONNECTED, this.status, this.awayText, openedCommunity.getSelf().getDeviceCount(), null,
+                            opened.getConnectivity());
     }
 
     private @NotNull List<@NotNull FriendView> createFriends() {

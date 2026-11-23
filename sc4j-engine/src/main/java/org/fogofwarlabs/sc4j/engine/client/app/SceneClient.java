@@ -162,16 +162,14 @@ public final class SceneClient implements AutoCloseable {
     }
 
     /**
-     * @return the surface that shows the window's pointer, for a scene's
-     * {@link org.fogofwarlabs.sc4j.engine.client.cursor.CursorController}
+     * @return the surface that shows the window's pointer, for a scene's {@link org.fogofwarlabs.sc4j.engine.client.cursor.CursorController}
      */
     public @NotNull CursorSurface getCursor() {
         return this.cursor;
     }
 
     /**
-     * @return the scene stack: a scene requests the next scene with {@link SceneStack#replace} and opens popups with
-     * {@link SceneStack#pushModal}
+     * @return the scene stack: a scene requests the next scene with {@link SceneStack#replace} and opens popups with {@link SceneStack#pushModal}
      */
     public @NotNull SceneStack<SceneClient, Canvas, ClientScene> getScenes() {
         return this.scenes;

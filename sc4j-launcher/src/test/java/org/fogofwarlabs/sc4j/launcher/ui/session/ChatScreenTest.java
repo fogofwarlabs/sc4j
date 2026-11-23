@@ -10,6 +10,7 @@ import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
@@ -42,6 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
 final class ChatScreenTest {
     private static final double SCENE_WIDTH = 1280;
     private static final double SCENE_HEIGHT = 800;
+    private static final @NotNull SelfView CONNECTED = new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null, LinkConnectivity.UNKNOWN);
     private static final @NotNull String SHARED = "SC4J";
     private static final @NotNull String LADDER = "Ladder";
     private static final @NotNull String KOREA = "Korea";
@@ -300,8 +302,7 @@ final class ChatScreenTest {
     @Test
     void chat_screen_shows_channels_whispers_members_and_unread_counts_and_sends_from_the_input(@TempDir @NotNull Path directory) throws Exception {
         LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
-        RecordingLauncherSession session = new RecordingLauncherSession(RAYNOR.getCode(),
-                                                                        new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null));
+        RecordingLauncherSession session = new RecordingLauncherSession(RAYNOR.getCode(), CONNECTED);
 
         session.setFriends(List.of(KERRIGAN));
         session.setWhispers(WHISPERS);
@@ -419,8 +420,7 @@ final class ChatScreenTest {
     @Test
     void whisper_opened_from_elsewhere_stays_shown_with_the_input_focused(@TempDir @NotNull Path directory) throws Exception {
         LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
-        RecordingLauncherSession session = new RecordingLauncherSession(RAYNOR.getCode(),
-                                                                        new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null));
+        RecordingLauncherSession session = new RecordingLauncherSession(RAYNOR.getCode(), CONNECTED);
 
         session.setFriends(List.of(KERRIGAN));
 
@@ -459,8 +459,7 @@ final class ChatScreenTest {
     @Test
     void player_menu_on_a_member_or_a_name_in_the_log_runs_the_account_menu_commands(@TempDir @NotNull Path directory) throws Exception {
         LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
-        RecordingLauncherSession session = new RecordingLauncherSession(RAYNOR.getCode(),
-                                                                        new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null));
+        RecordingLauncherSession session = new RecordingLauncherSession(RAYNOR.getCode(), CONNECTED);
         List<String> copied = new ArrayList<>();
 
         session.setFriends(List.of(KERRIGAN));
@@ -537,7 +536,8 @@ final class ChatScreenTest {
     void chat_screen_says_why_the_session_is_offline(@TempDir @NotNull Path directory) throws Exception {
         LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         RecordingLauncherSession session = new RecordingLauncherSession(RAYNOR.getCode(), new SelfView(SessionState.OFFLINE, SelfStatus.ONLINE, "", 0,
-                                                                                                       SessionFailure.SIGNED_OUT));
+                                                                                                       SessionFailure.SIGNED_OUT,
+                                                                                                       LinkConnectivity.UNKNOWN));
 
         LauncherFxScenario.run(() -> {
             LauncherShell shell = createShell(texts, directory, session, new ArrayList<>());

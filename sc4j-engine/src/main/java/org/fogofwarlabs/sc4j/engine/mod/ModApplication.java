@@ -6,13 +6,12 @@ import org.jetbrains.annotations.NotNull;
  * Runs a mod's own application loop: window, devices, input and game sessions.
  * <p>
  * For a mod with its own application loop instead of the engine scenes: the runtime opens no window, it runs the registered application
- * instead of its own main loop (steps 9 and 10 of the runtime sequence) and returns when the application returns. An
- * engine-only mod registers its first scene and a {@link HeadlessRunner} instead ({@link ModRegistration#registerFirstScene}).
+ * instead of its own main loop and returns when the application returns. An engine-only mod registers its first scene and a
+ * {@link HeadlessRunner} instead ({@link ModRegistration#registerFirstScene}).
  */
 public interface ModApplication {
     /**
-     * @return {@code true} if the application can run without a window, audio and input ({@code --headless}),
-     * {@code false} otherwise
+     * @return {@code true} if the application can run without a window, audio and input ({@code --headless}), {@code false} otherwise
      */
     boolean isHeadlessCapable();
 

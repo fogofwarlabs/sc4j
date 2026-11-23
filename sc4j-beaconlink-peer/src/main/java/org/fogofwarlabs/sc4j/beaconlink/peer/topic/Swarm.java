@@ -442,8 +442,7 @@ final class Swarm {
      * @param contact   the grafting member at its observed address
      * @param reachable whether the member's self-test proved it reachable
      * @param nowMillis the current time
-     * @return {@link ResultStatus#ACCEPTED} if the member is a mesh neighbour now, {@link ResultStatus#LIMIT_REACHED} if the mesh holds the most
-     * neighbours that grafted the peer
+     * @return {@link ResultStatus#ACCEPTED} if the member is a mesh neighbour now, {@link ResultStatus#LIMIT_REACHED} if the mesh holds the most grafted-in neighbours
      */
     @NotNull ResultStatus handleGraft(@NotNull PeerContact contact, boolean reachable, long nowMillis) {
         IdentityKey key = contact.getKey();
@@ -496,8 +495,7 @@ final class Swarm {
      * @param address    the connection's registered address
      * @param backlog    whether the client asked for the backlog
      * @param nowMillis  the current time
-     * @return {@link ResultStatus#ACCEPTED} if the client is subscribed, {@link ResultStatus#LIMIT_REACHED} if the topic has the most
-     * subscribers
+     * @return {@link ResultStatus#ACCEPTED} if the client is subscribed, {@link ResultStatus#LIMIT_REACHED} if the topic has the most subscribers
      */
     @NotNull ResultStatus subscribe(@NotNull IdentityKey key, long connection, @NotNull InetSocketAddress address, boolean backlog, long nowMillis) {
         this.subscribers.values().removeIf(subscriber -> subscriber.expiryMillis <= nowMillis ||

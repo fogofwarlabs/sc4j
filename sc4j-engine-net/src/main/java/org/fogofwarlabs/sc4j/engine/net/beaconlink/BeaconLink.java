@@ -22,8 +22,7 @@ public interface BeaconLink {
     @NotNull String LAUNCHER_MOD_ID = "sc4j-launcher";
 
     /**
-     * @return the run's account, whose name the mod shows as the player's name and the sessions show, or {@code null} for a run without an
-     * account
+     * @return the run's account, whose name the mod shows as the player's name and the sessions show, or {@code null} for a run without an account
      */
     @Nullable LinkAccount getAccount();
 

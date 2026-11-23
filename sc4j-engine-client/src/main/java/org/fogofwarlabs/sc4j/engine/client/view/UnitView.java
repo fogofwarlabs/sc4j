@@ -141,8 +141,7 @@ public interface UnitView {
     /**
      * Returns the direction the unit faces, for its picture. The default faces up.
      *
-     * @return the heading in {@value org.fogofwarlabs.sc4j.engine.client.projection.WorldProjection#DIRECTION_COUNT} world directions,
-     * {@code 0} up and clockwise
+     * @return the heading in {@value org.fogofwarlabs.sc4j.engine.client.projection.WorldProjection#DIRECTION_COUNT} world directions, {@code 0} up and clockwise
      */
     default int getHeading() {
         return 0;

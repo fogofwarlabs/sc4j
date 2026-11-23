@@ -81,8 +81,7 @@ public final class TrainAction implements CommandAction {
      * @param translator the translator: the local player, the selection and the command sink
      * @param target     the target the player pointed at, or {@code null} for an action without a target
      * @param queued     whether the commands queue after the units' current orders (Shift held)
-     * @return {@code true} if the action took the target (or ran without one), {@code false} if it refused the target: here if no selected
-     * unit may train the type
+     * @return {@code true} if the action took the target (or ran without one), {@code false} if it refused the target: here if no selected unit may train the type
      */
     @Override
     public boolean issue(@NotNull CommandTranslator translator, @Nullable CommandTarget target, boolean queued) {

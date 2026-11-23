@@ -46,8 +46,7 @@ public interface VideoStream extends AutoCloseable {
     long getFrameMilliseconds();
 
     /**
-     * @return the presentation time of the frame last returned by {@link #readNextFrame} or {@link #readNextLoopedFrame} in milliseconds, or
-     * {@code -1} if the frame has none
+     * @return the presentation time of the frame last returned by {@link #readNextFrame} or {@link #readNextLoopedFrame} in milliseconds, or {@code -1} if the frame has none
      */
     long getLastFrameMilliseconds();
 

@@ -67,13 +67,13 @@ public final class TerminatedStringUtils {
     private static final int FOUR_BYTE_LEAD = 0xF0;
 
     /**
-     * Reads the length of a zero-terminated byte string whose terminator must come within a limit.
+     * Reads the length of a zero-terminated byte string whose terminator must come within a limit and the array. A control byte
+     * ({@code 0x01}-{@code 0x1f}) before the terminator makes the string invalid.
      *
      * @param text   the bytes
      * @param offset the offset of the string
      * @param limit  the most bytes searched for the terminator, terminator included
-     * @return the length with the terminator, or {@code 0} if a control byte ({@code 0x01}-{@code 0x1f}) comes before the
-     * terminator or no terminator comes within the limit and the array
+     * @return the length with the terminator, or {@code 0} for an invalid string or no terminator within the limit and the array
      */
     public static int getTerminatedLength(byte @NotNull [] text, int offset, int limit) {
         int available = Math.min(text.length - offset, limit);

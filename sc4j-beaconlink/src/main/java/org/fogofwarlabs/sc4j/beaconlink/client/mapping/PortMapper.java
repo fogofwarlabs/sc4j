@@ -164,8 +164,9 @@ public final class PortMapper implements Closeable {
     }
 
     /**
-     * @return the mapping the router holds, or {@code null} while the mapper asks, when no protocol mapped, when the mapping was skipped or
-     * lost, and after the close; may be called from any thread
+     * Returns the mapping the router holds. May be called from any thread.
+     *
+     * @return the mapping, or {@code null} while the mapper asks, when no protocol mapped, when the mapping was skipped or lost, and after the close
      */
     public @Nullable PortMapping getMapping() {
         return this.mapping;

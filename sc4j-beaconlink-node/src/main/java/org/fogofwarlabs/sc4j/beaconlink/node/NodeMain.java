@@ -37,8 +37,7 @@ public final class NodeMain {
     private static final long STATISTICS_INTERVAL_MILLIS = 3_600_000L;
 
     /**
-     * Logs the peer's counts of handled and dropped datagrams every hour, so that the operator of a node that runs for weeks sees them
-     * without a stop (the stop logs them too). Runs on the peer's thread.
+     * Logs the peer's counts of handled and dropped datagrams every hour. Runs on the peer's thread.
      */
     private static final class StatisticsLog implements Runnable {
         private final @NotNull MeshPeer peer;

@@ -136,16 +136,17 @@ public final class CoordinateEstimator {
     }
 
     /**
-     * @return {@code true} if the coordinate took samples of at least {@value #SETTLED_REMOTES} remembered remote hosts and its error is at
-     * most {@value #SETTLED_ERROR}, {@code false} otherwise
+     * Checks whether the coordinate is settled: it took samples of at least {@value #SETTLED_REMOTES} remembered remote hosts and its error
+     * is at most {@value #SETTLED_ERROR}.
+     *
+     * @return {@code true} if the coordinate is settled, {@code false} otherwise
      */
     public boolean isSettled() {
         return this.sampleTimes.size() >= SETTLED_REMOTES && this.error <= SETTLED_ERROR;
     }
 
     /**
-     * @return the current coordinate if it is settled ({@link #isSettled()}), the one that rooms and presences carry, or {@code null} while
-     * it is not
+     * @return the current coordinate if it is settled ({@link #isSettled()}), the one that rooms and presences carry, or {@code null} while it is not
      */
     public @Nullable NetworkCoordinate getSettledCoordinate() {
         return this.isSettled() ? this.getCoordinate() : null;
@@ -164,15 +165,14 @@ public final class CoordinateEstimator {
 
     /**
      * Updates the coordinate from a measured round trip time to another host. A time of a resent request must not be given, since its answer
-     * may belong to the first send.
+     * may belong to the first send. A sample is skipped if its time is negative or above {@value #MAXIMUM_ROUND_TRIP_MILLIS}, or the other host
+     * gave a sample less than {@value #SAMPLE_INTERVAL_MILLIS} milliseconds ago.
      *
      * @param remoteKey       the other host's key
      * @param remote          the other host's report
      * @param roundTripMillis the measured round trip time, in milliseconds
      * @param nowMillis       the current time
-     * @return {@link CoordinateSample#TAKEN} if the sample moved the coordinate, {@link CoordinateSample#SKIPPED} if the time is negative or
-     * above {@value #MAXIMUM_ROUND_TRIP_MILLIS}, or the other host gave a sample less than {@value #SAMPLE_INTERVAL_MILLIS}
-     * milliseconds ago, {@link CoordinateSample#OUTLIER} if the settled coordinate rejected it
+     * @return {@link CoordinateSample#TAKEN} if the sample moved the coordinate, otherwise why it was not used
      */
     public @NotNull CoordinateSample update(@NotNull IdentityKey remoteKey, @NotNull CoordinateReport remote, long roundTripMillis, long nowMillis) {
         if (roundTripMillis < 0L || roundTripMillis > MAXIMUM_ROUND_TRIP_MILLIS) {
@@ -217,8 +217,7 @@ public final class CoordinateEstimator {
                 return CoordinateSample.OUTLIER;
             }
 
-            // Samples of many hosts in a row disagree: the host itself may have moved. One of a run is taken, so that the error grows until
-            // the coordinate is no longer settled and follows the samples again.
+            // The last outlier of a run is taken: the host itself may have moved.
         }
 
         this.outlierRun = 0;

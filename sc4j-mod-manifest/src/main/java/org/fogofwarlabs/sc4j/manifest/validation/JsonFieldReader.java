@@ -25,8 +25,7 @@ public final class JsonFieldReader {
      * @param value    the parsed value
      * @param path     the path of the value, empty for the manifest root
      * @param problems receives the problems
-     * @return the created {@link JsonFieldReader} instance, or {@code null} after a {@link ProblemCode#FIELD_TYPE} problem
-     * when the value is not an object
+     * @return the created {@link JsonFieldReader} instance, or {@code null} after a {@link ProblemCode#FIELD_TYPE} problem when the value is not an object
      */
     public static @Nullable JsonFieldReader of(@Nullable Object value, @NotNull String path, @NotNull ValidationResult.Builder problems) {
         if (!(value instanceof Map<?, ?> object)) {

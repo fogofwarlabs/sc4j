@@ -27,8 +27,7 @@ public final class CommandFrameWriter implements CommandSink, TurnSource {
     /**
      * Creates a {@link CommandFrameWriter} instance without commands and without state hash.
      *
-     * @param localPlayer the player the local participant plays, the only one that submits commands, or {@code null} for an observer, which
-     *                    submits none
+     * @param localPlayer the player the local participant plays, the only one that submits commands, or {@code null} for an observer, which submits none
      */
     public CommandFrameWriter(@Nullable Player localPlayer) {
         this.localPlayer = localPlayer;
@@ -63,14 +62,14 @@ public final class CommandFrameWriter implements CommandSink, TurnSource {
 
 
     /**
-     * Submits one command of a player: queues it into the next turn.
+     * Submits one command of a player: queues it into the next turn. The command is rejected if the player is not the player the local
+     * participant plays, the type id or the payload does not fit the turn format, or the turn holds the most commands it can.
      *
      * @param <C>     the command class
      * @param player  the issuing player, the player the local participant plays
      * @param type    the command type
      * @param command the command
-     * @throws IllegalArgumentException if the player is not the player the local participant plays, the type id or the payload does not fit
-     *                                  the turn format, or the turn holds the most commands it can
+     * @throws IllegalArgumentException if the command is rejected
      */
     @Override
     public <C> void submit(@NotNull Player player, @NotNull CommandType<C> type, @NotNull C command) {

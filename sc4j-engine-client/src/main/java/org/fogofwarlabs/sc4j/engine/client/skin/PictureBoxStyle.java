@@ -47,8 +47,7 @@ public final class PictureBoxStyle implements BoxStyle {
      * Creates a {@link PictureBoxStyle} instance.
      *
      * @param renderer  the renderer that draws the pictures, on the canvas the box is drawn on
-     * @param fill      the seamless picture repeated from the canvas origin over the whole rectangle under the sliced picture, or
-     *                  {@code null} for none
+     * @param fill      the seamless picture repeated from the canvas origin over the whole rectangle under the sliced picture, or {@code null} for none
      * @param picture   the picture with its borders
      * @param sliceFill how the edges and the centre of the sliced picture fill their parts
      * @param color     the packed {@code 0xRRGGBBAA} colour multiplied with the pictures, {@link PictureRenderer#OPAQUE_WHITE} for none

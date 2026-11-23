@@ -204,8 +204,7 @@ public final class ConfiguredNode {
 
     /**
      * @param other the other object
-     * @return {@code true} if the other object is a node with the same address (host ignoring case) and the same pinned key or none,
-     * {@code false} otherwise
+     * @return {@code true} if the other object is a node with the same address (host ignoring case) and the same pinned key or none, {@code false} otherwise
      */
     @Override
     public boolean equals(@Nullable Object other) {

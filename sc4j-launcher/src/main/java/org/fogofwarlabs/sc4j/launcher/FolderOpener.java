@@ -24,8 +24,7 @@ public final class FolderOpener {
     /**
      * Creates a {@link FolderOpener} instance.
      *
-     * @param showDocument opens a file address with the system's application, called on the JavaFX thread when the desktop API cannot open
-     *                     the folder
+     * @param showDocument opens a file address with the system's application, called on the JavaFX thread when the desktop API cannot open the folder
      */
     public FolderOpener(@NotNull Consumer<@NotNull String> showDocument) {
         this.showDocument = showDocument;

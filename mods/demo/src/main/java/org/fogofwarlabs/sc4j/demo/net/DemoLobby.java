@@ -117,8 +117,7 @@ public final class DemoLobby implements Closeable {
      * @param password the password a joiner must give, empty for a public room
      * @param clock    the clock of the lobby messages' resends
      * @return the created {@link DemoLobby} instance
-     * @throws IllegalArgumentException if a name is longer than a room advertisement allows, the capacity is out of range or the turn rate is
-     *                                  not one of the demo's
+     * @throws IllegalArgumentException if a name is longer than a room advertisement allows, the capacity is out of range or the turn rate is not one of the demo's
      */
     public static @NotNull DemoLobby host(@NotNull BeaconLinkSession session, @NotNull ModIdentity identity, @NotNull GameSetupCodec codec,
                                           @NotNull DemoMaps maps, @NotNull String name, @NotNull String roomName, @NotNull MapReference map,

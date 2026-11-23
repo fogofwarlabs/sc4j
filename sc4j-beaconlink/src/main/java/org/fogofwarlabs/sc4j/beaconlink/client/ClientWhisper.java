@@ -120,8 +120,10 @@ final class ClientWhisper {
     }
 
     /**
-     * @return {@code true} if every copy has its outcome (delivered, refused by every home peer of its connection, or out of attempts) and the
-     * outcome was taken, {@code false} otherwise
+     * Checks whether the whisper is finished. A copy has its outcome once it is delivered, refused by every home peer of its connection or out
+     * of attempts.
+     *
+     * @return {@code true} if every copy has its outcome and the outcome was taken, {@code false} otherwise
      */
     boolean isFinished() {
         return this.reported && (this.exhausted || !this.isPending());

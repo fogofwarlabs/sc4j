@@ -19,6 +19,9 @@ import java.util.List;
 public final class LinkLockstepTransport extends DatagramLockstepTransport<LinkParticipant> {
     /**
      * Creates a {@link LinkLockstepTransport} instance before the first turn.
+     * <p>
+     * The participants must not be empty, must name each participant once with a peer number up to {@code 0xFFFF} and must include the local
+     * participant.
      *
      * @param port         this machine's port of the overlay, which the caller closes after the session
      * @param clock        the clock of the resends and timeouts
@@ -26,8 +29,7 @@ public final class LinkLockstepTransport extends DatagramLockstepTransport<LinkP
      * @param sessionId    the id of the session, the same on every machine (the lobby's), which tells its datagrams from others
      * @param participants every participant in execution order with its Beacon.Link participant, the local one included; copied
      * @param localPeer    the local participant, one of the participants
-     * @throws IllegalArgumentException if the participants are empty, name a participant twice, have a peer number above {@code 0xFFFF} or do
-     *                                  not include the local participant
+     * @throws IllegalArgumentException if the participants break these rules
      */
     public LinkLockstepTransport(@NotNull DatagramLink<@NotNull LinkParticipant> port, @NotNull NetworkClock clock,
                                  @NotNull TransportTimeouts timeouts, int sessionId, @NotNull List<@NotNull LinkPeer> participants,

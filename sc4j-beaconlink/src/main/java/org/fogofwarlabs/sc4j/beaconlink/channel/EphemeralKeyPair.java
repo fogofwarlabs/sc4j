@@ -66,8 +66,7 @@ public final class EphemeralKeyPair {
      * Agrees the shared secret with the other side's public key.
      *
      * @param peerPublicKey the other side's public key bytes
-     * @return the {@value #KEY_LENGTH} secret bytes, or {@code null} if the key has the wrong length, is not a valid point or gives the
-     * all-zero secret of a small-order point
+     * @return the {@value #KEY_LENGTH} secret bytes, or {@code null} if the key has the wrong length, is not a valid point or gives the all-zero secret of a small-order point
      */
     public byte @Nullable [] agree(byte @NotNull [] peerPublicKey) {
         if (peerPublicKey.length != KEY_LENGTH) {

@@ -283,8 +283,7 @@ public final class RuntimeSession {
      * Reads the seeds the command line names, the node list ({@code --seeds}) first, then the nodes named one by one ({@code --seed}).
      *
      * @param account the account in use, or {@code null} for a guest
-     * @return the setup of the run's Beacon.Link, or {@code null} if the command line names no seed source, so that the run offers no
-     * Beacon.Link
+     * @return the setup of the run's Beacon.Link, or {@code null} if the command line names no seed source, so that the run offers no Beacon.Link
      */
     private @Nullable ClientSetup readBeaconLinkSetup(@Nullable Account account) throws SessionFailure {
         if (!this.commandLine.hasSeedSource()) {

@@ -137,24 +137,23 @@ public final class FoundRoom {
     }
 
     /**
-     * @return {@code true} if this run can join the room: it runs the run's mod identity, has a free place and its game has not started,
-     * {@code false} otherwise
+     * @return {@code true} if this run can join the room: it runs the run's mod identity, has a free place and its game has not started, {@code false} otherwise
      */
     public boolean isJoinable() {
         return this.joinRefusal == null && !this.settings.isStarted() && this.settings.getPlayers() < this.settings.getCapacity();
     }
 
     /**
-     * @return the refusal the room's host gives this run, because the room runs another version or content of the mod, or {@code null} if
-     * this run can join the room
+     * @return the refusal the room's host gives this run, because the room runs another version or content of the mod, or {@code null} if this run can join the room
      */
     public @Nullable JoinRefusal getJoinRefusal() {
         return this.joinRefusal;
     }
 
     /**
-     * @return the estimated round trip time to the room's host, from the network coordinates of the host and this run;
-     * {@link LatencyEstimate#UNKNOWN} while either has not settled
+     * Estimates the round trip time to the room's host from the network coordinates of the host and this run.
+     *
+     * @return the estimated round trip time, or {@link LatencyEstimate#UNKNOWN} while either side has not settled
      */
     public @NotNull LatencyEstimate getLatencyEstimate() {
         return this.latency;

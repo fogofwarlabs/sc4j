@@ -45,12 +45,12 @@ public final class NodeCommandLine {
     private static final int MAXIMUM_PORT = 0xffff;
 
     /**
-     * Parses the node's command line.
+     * Parses the node's command line. Only {@code --peer} may be repeated; {@code --state} and {@code --bind} are required without
+     * {@code --help}.
      *
      * @param arguments the process arguments
      * @return the parsed command line
-     * @throws IllegalArgumentException if an option is unknown, repeated (other than {@code --peer}) or lacks its value, a value is invalid,
-     *                                  or {@code --state} or {@code --bind} is missing without {@code --help}
+     * @throws IllegalArgumentException if an option is unknown, repeated or lacks its value, a value is invalid, or a required option is missing
      */
     public static @NotNull NodeCommandLine parse(@NotNull String @NotNull [] arguments) {
         Set<String> seen = new HashSet<>();

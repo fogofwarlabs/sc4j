@@ -45,12 +45,11 @@ import java.util.stream.Stream;
  * Tests the runtime's Beacon.Link entry with the account, seeds and peers file of a run: creating it touches nothing, a session plays with the
  * chosen account's key, learns the federated nodes from its seed into the shared peers file and contacts them in the next session, drops
  * learned nodes after three starts without an answer, a session that knows few nodes asks its node again and learns the nodes that federate
- * later, the game and the launcher's peer learn into one peers file, runs the runtime's embedded
- * peer, a leaf with a key made for the run in memory, in one open session at a time, two accounts of one computer are two players who see
- * each other's rooms, presence, status and lines, a line a node refused for a lost registration reaches the channel once it registers again,
- * one account on two computers is registered by both connections at one node at once, and the ignore list of an account hides a player in
- * every process of the account. The link describes the chosen account by its id, name and key ({@code Name#tag}) and has no account for a
- * guest.
+ * later, the game and the launcher's peer learn into one peers file, runs the runtime's embedded peer, a leaf with a key made for the run in memory,
+ * in one open session at a time, two accounts of one computer are two players who see each other's rooms, presence, status and lines, a line a
+ * node refused for a lost registration reaches the channel once it registers again, one account on two computers is registered by both connections
+ * at one node at once, and the ignore list of an account hides a player in every process of the account. The link describes the chosen account
+ * by its id, name and key ({@code Name#tag}) and has no account for a guest.
  */
 final class ClientBeaconLinkTest {
     private static final @NotNull Logger LOGGER = Logger.of(ClientBeaconLinkTest.class);

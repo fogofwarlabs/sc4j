@@ -34,8 +34,7 @@ public final class AnimationProgram {
      * @param name         the program name, for diagnostics
      * @param instructions the instructions in position order, at least one, copied
      * @param labels       the labels, copied
-     * @throws IllegalArgumentException if the index is negative, there is no instruction, a label or branch target lies
-     *                                  outside the program or a label name is used twice
+     * @throws IllegalArgumentException if the index is negative, there is no instruction, a label or branch target lies outside the program or a label name is used twice
      */
     public AnimationProgram(int index, @NotNull String name, @NotNull List<@NotNull AnimationInstruction> instructions,
                             @NotNull List<@NotNull AnimationLabel> labels) {
@@ -43,17 +42,15 @@ public final class AnimationProgram {
     }
 
     /**
-     * Creates an {@link AnimationProgram} instance with an optional successor table.
+     * Creates an {@link AnimationProgram} instance with an optional successor table. The program is checked as the class description says,
+     * successors included.
      *
      * @param index        the index of the program in its library, at least {@code 0}
      * @param name         the program name, for diagnostics
      * @param instructions the instructions in position order, at least one, copied
      * @param labels       the labels, copied
-     * @param successors   the next position of each position, one per instruction, copied, or {@code null} for the
-     *                     following position
-     * @throws IllegalArgumentException if the index is negative, there is no instruction, a label, branch target or
-     *                                  successor lies outside the program, the successor table has another length than
-     *                                  the program or a label name is used twice
+     * @param successors   the next position of each position, one per instruction, copied, or {@code null} for the following position
+     * @throws IllegalArgumentException if the index is negative, there is no instruction, the successor table has another length than the program or a check fails
      */
     public AnimationProgram(int index, @NotNull String name, @NotNull List<@NotNull AnimationInstruction> instructions,
                             @NotNull List<@NotNull AnimationLabel> labels, int @Nullable [] successors) {
@@ -156,8 +153,7 @@ public final class AnimationProgram {
     }
 
     /**
-     * @return {@code true} if a successor table names the next positions, {@code false} if every instruction goes on at
-     * the following position
+     * @return {@code true} if a successor table names the next positions, {@code false} if every instruction goes on at the following position
      */
     public boolean hasSuccessorTable() {
         return this.successors != null;

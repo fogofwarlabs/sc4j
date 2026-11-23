@@ -37,8 +37,7 @@ public final class HeadlessCursorSurface implements CursorSurface {
     }
 
     /**
-     * @return {@code true} if the platform shows cursor pictures (it has not refused one), {@code false} otherwise; without window always
-     * {@code false}
+     * @return {@code true} if the platform shows cursor pictures (it has not refused one), {@code false} otherwise; without window always {@code false}
      */
     @Override
     public boolean isAvailable() {

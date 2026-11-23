@@ -18,8 +18,10 @@ import java.util.List;
  */
 public interface BeaconLinkSession extends Closeable {
     /**
-     * @return the participant of this session: the account's player and the session's connection number, which every node, room and channel
-     * of the session names; other sessions of the account are other participants
+     * Returns the participant of this session, which every node, room and channel of the session names. Other sessions of the account are other
+     * participants.
+     *
+     * @return the account's player with the session's connection number
      */
     @NotNull LinkParticipant getParticipant();
 
@@ -34,8 +36,15 @@ public interface BeaconLinkSession extends Closeable {
     @Nullable InetSocketAddress getObservedAddress();
 
     /**
-     * @return why the session cannot reach Beacon.Link, or {@code null} while a node is registered or still being contacted for the first
-     * time
+     * Returns what the session knows of its network's direct connections. {@link #poll()} updates it; once settled, it keeps its last settled
+     * value while too few nodes are registered to settle it again.
+     *
+     * @return the network's direct connectivity
+     */
+    @NotNull LinkConnectivity getConnectivity();
+
+    /**
+     * @return why the session cannot reach Beacon.Link, or {@code null} while a node is registered or still being contacted for the first time
      */
     @Nullable LinkFailure getFailure();
 

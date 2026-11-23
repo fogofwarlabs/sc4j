@@ -106,8 +106,7 @@ final class RuntimeModRegistration implements ModRegistration {
      * mod registers at most one, and then neither a first scene nor a headless runner.
      *
      * @param application the application
-     * @throws IllegalStateException if the registration is closed, or an application, a first scene or a headless runner is already
-     *                               registered
+     * @throws IllegalStateException if the registration is closed, or an application, a first scene or a headless runner is already registered
      */
     @Override
     public void registerApplication(@NotNull ModApplication application) {

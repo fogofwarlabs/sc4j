@@ -335,8 +335,7 @@ final class FfmpegVideoStream implements VideoStream {
     }
 
     /**
-     * @return the presentation time of the frame last returned by {@link #readNextFrame} or {@link #readNextLoopedFrame} in milliseconds, or
-     * {@code -1} if the frame has none
+     * @return the presentation time of the frame last returned by {@link #readNextFrame} or {@link #readNextLoopedFrame} in milliseconds, or {@code -1} if the frame has none
      */
     @Override
     public long getLastFrameMilliseconds() {

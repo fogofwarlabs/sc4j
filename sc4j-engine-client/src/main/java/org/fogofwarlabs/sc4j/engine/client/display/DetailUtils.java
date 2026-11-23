@@ -105,8 +105,7 @@ public final class DetailUtils {
      * @return the picture with its details
      * @throws ResourceNotFoundException if the provider has no picture under the key
      * @throws IOException               if the picture or a detail cannot be read
-     * @throws IllegalArgumentException  if a detail does not place its size, anchor or borders at its multiple of the picture's, or differs in
-     *                                   its team colour mask
+     * @throws IllegalArgumentException  if a detail does not place its size, anchor or borders at its multiple of the picture's, or differs in its team colour mask
      */
     public static @NotNull DetailSet<Picture> loadPictures(@NotNull ResourceProvider resources, @NotNull ResourceKey key) throws IOException {
         return load(key, resources::loadPicture, DetailUtils::findPictureMismatch);
@@ -120,8 +119,7 @@ public final class DetailUtils {
      * @return the sprite sheet with its details
      * @throws ResourceNotFoundException if the provider has no sprite sheet under the key
      * @throws IOException               if the sheet or a detail cannot be read
-     * @throws IllegalArgumentException  if a detail does not place its frame box, anchor or frames at its multiple of the sheet's, or differs
-     *                                   in its frame count or layers
+     * @throws IllegalArgumentException  if a detail does not place its frame box, anchor or frames at its multiple of the sheet's, or differs in its frame count or layers
      */
     public static @NotNull DetailSet<SpriteSheet> loadSpriteSheets(@NotNull ResourceProvider resources, @NotNull ResourceKey key) throws IOException {
         return load(key, resources::loadSpriteSheet, DetailUtils::findSpriteSheetMismatch);
@@ -135,8 +133,7 @@ public final class DetailUtils {
      * @return the tile pictures with their details
      * @throws ResourceNotFoundException if the provider has no tileset under the key
      * @throws IOException               if the tile pictures or a detail cannot be read
-     * @throws IllegalArgumentException  if a detail's tile size is not its multiple of the tileset's, or it differs in its tile count, shape or
-     *                                   pixel format
+     * @throws IllegalArgumentException  if a detail's tile size is not its multiple of the tileset's, or it differs in its tile count, shape or pixel format
      */
     public static @NotNull DetailSet<TileGraphics> loadTileGraphics(@NotNull ResourceProvider resources, @NotNull ResourceKey key) throws IOException {
         return load(key, resources::loadTileGraphics, DetailUtils::findTileGraphicsMismatch);

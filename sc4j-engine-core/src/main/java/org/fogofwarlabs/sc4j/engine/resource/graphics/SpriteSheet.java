@@ -60,8 +60,7 @@ public final class SpriteSheet {
      * @param color    the colour layer, indexed or RGBA
      * @param teamMask the team colour mask, or {@code null}
      * @param shadow   the shadow layer, or {@code null}
-     * @throws IllegalArgumentException if the box is empty, a frame leaves the box or its layers, or a layer has the wrong
-     *                                  format or another length than the colour layer
+     * @throws IllegalArgumentException if the box is empty, a frame leaves the box or its layers, or a layer has the wrong format or another length than the colour layer
      */
     public SpriteSheet(int width, int height, int anchorX, int anchorY,
                        @NotNull List<@NotNull SpriteFrame> frames,

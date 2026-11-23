@@ -40,8 +40,7 @@ public final class SharedFile {
         /**
          * Merges the caller's change into the current contents; called while the file is locked.
          *
-         * @param contents the current contents: {@code null} if the file does not exist or is empty, empty if it is longer than the read
-         *                 limit
+         * @param contents the current contents: {@code null} if the file does not exist or is empty, empty if it is longer than the read limit
          * @return the contents to write
          */
         byte @NotNull [] merge(byte @Nullable [] contents);

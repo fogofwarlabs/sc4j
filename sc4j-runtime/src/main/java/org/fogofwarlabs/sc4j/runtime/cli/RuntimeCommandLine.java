@@ -66,12 +66,12 @@ public final class RuntimeCommandLine {
     private static final @NotNull String MOD_ARGUMENTS_SEPARATOR = "--";
 
     /**
-     * Creates a {@link RuntimeCommandLine} instance from the runtime's process arguments.
+     * Creates a {@link RuntimeCommandLine} instance from the runtime's process arguments. Every option but {@code --seed} may be given once,
+     * and {@code --mod} is required unless {@code --help} is given.
      *
      * @param arguments the process arguments
      * @return the created {@link RuntimeCommandLine} instance
-     * @throws IllegalArgumentException if an option is unknown, repeated (other than {@code --seed}) or lacks its value, a path or node address
-     *                                  is invalid, or {@code --mod} is missing without {@code --help}
+     * @throws IllegalArgumentException if an option is unknown, repeated or lacks its value, a path or node address is invalid, or {@code --mod} is missing
      */
     public static @NotNull RuntimeCommandLine parse(@NotNull String @NotNull [] arguments) {
         Set<String> seen = new HashSet<>();
@@ -298,8 +298,7 @@ public final class RuntimeCommandLine {
     }
 
     /**
-     * @return {@code true} if the command line names a seed source ({@code --seeds}, {@code --seed} or {@code --peers}), so that the run
-     * offers Beacon.Link, {@code false} otherwise
+     * @return {@code true} if the command line names a seed source ({@code --seeds}, {@code --seed} or {@code --peers}), {@code false} otherwise
      */
     public boolean hasSeedSource() {
         return this.seedsFile != null || !this.seeds.isEmpty() || this.peersFile != null;

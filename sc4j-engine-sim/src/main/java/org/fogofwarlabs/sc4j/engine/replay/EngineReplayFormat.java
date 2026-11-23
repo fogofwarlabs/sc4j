@@ -184,13 +184,13 @@ public final class EngineReplayFormat implements ReplayFormat {
     }
 
     /**
-     * Reads a replay of the engine replay format recorded by the running mod's identity.
+     * Reads a replay of the engine replay format recorded by the running mod's identity. A command is unknown when the mod's command types do
+     * not read its id.
      *
      * @param contents the file contents
      * @return the created {@link EngineReplay} instance
      * @throws ModIdentityException if the replay was recorded by another mod identity
-     * @throws IOException          if the contents are no engine replay, have another format version, are truncated or damaged, or name a
-     *                              command the mod's command types do not read
+     * @throws IOException          if the contents are no engine replay, have another format version, are truncated or damaged, or name an unknown command
      */
     public @NotNull EngineReplay read(byte @NotNull [] contents) throws IOException {
         DataInputStream input = FRAME.openBody(contents, this.identity);

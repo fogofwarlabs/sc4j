@@ -66,14 +66,15 @@ final class ToolCommand {
     }
 
     /**
-     * Lists or runs mod tools.
+     * Lists or runs mod tools. The status is {@code 1} when the mods cannot be listed, the mod has an error or the tool cannot be started, and
+     * {@code 2} for an unknown mod or tool.
      *
      * @param install   the install
      * @param arguments the arguments after {@value #COMMAND}
      * @param output    receives the lists
      * @param errors    receives the messages of a refused command
      * @param starter   runs a tool, normally {@link #startProcess}
-     * @return the tool's exit status when a tool ran, {@code 0} after a list, {@code 1} when the mods cannot be listed, the mod has an error or the tool cannot be started, {@code 2} for an unknown mod or tool
+     * @return the tool's exit status when a tool ran, {@code 0} after a list, else {@code 1} or {@code 2}
      */
     static int run(@NotNull InstallLayout install, @NotNull List<@NotNull String> arguments, @NotNull PrintStream output,
                    @NotNull PrintStream errors, @NotNull ToolStarter starter) {

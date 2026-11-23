@@ -64,12 +64,13 @@ public final class AccountStore {
     }
 
     /**
-     * Reads the account of an account folder, wherever the folder lies: a game started with an account folder reads it so.
+     * Reads the account of an account folder, wherever the folder lies: a game started with an account folder reads it so. A folder holds no
+     * readable account if its key or account file is missing or broken, it is not named by the id of its key, or its stamp does not bind the
+     * name to the key.
      *
      * @param folder the account folder, named by the account's id
      * @return the account
-     * @throws IOException if the folder holds no readable account: a missing or broken key or account file, a folder not named by the id of
-     *                     its key, or a stamp that does not bind the name to the key
+     * @throws IOException if the folder holds no readable account
      */
     public static @NotNull Account read(@NotNull Path folder) throws IOException {
         Path directory = folder.toAbsolutePath().normalize();
@@ -159,15 +160,15 @@ public final class AccountStore {
     }
 
     /**
-     * Creates an account: its folder with the key file and the account file. The account's name is the stamp's, fixed from now on.
+     * Creates an account: its folder with the key file and the account file. The account's name is the stamp's, fixed from now on. A name that
+     * is not a valid player name gives {@link AccountProblem#NAME_INVALID}, a key that has an account {@link AccountProblem#ALREADY_ADDED}.
      *
      * @param keyPair    the player key pair
      * @param stamp      the player stamp of the key and the name ({@link PlayerStamp#solve})
      * @param difficulty the difficulty the stamp meets
      * @param nowMillis  the current time, the account's last use
      * @return the created account
-     * @throws AccountException         if the stamp's name is not a valid player name ({@link AccountProblem#NAME_INVALID}) or an account of
-     *                                  the key exists ({@link AccountProblem#ALREADY_ADDED})
+     * @throws AccountException         if the stamp's name is not a valid player name or an account of the key exists
      * @throws IOException              if a file cannot be written
      * @throws IllegalArgumentException if the stamp is of another key or does not meet the difficulty
      */

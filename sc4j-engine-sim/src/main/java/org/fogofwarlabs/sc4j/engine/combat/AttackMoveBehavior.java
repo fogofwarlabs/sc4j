@@ -132,13 +132,13 @@ public final class AttackMoveBehavior implements OrderBehavior<OrderContext, Uni
     }
 
     /**
-     * Checks whether a unit that fights no enemy has reached the target point, and heads it there again when a fight moved it off its way.
+     * Checks whether a unit that fights no enemy has reached the target point, and heads it there again when a fight moved it off its way. The
+     * unit has arrived when it is within the arrival distance of the target point, arrived with its group, cannot reach it
+     * ({@link PathfindingSystem#isReachable}, with a path finding system) or stands still at its destination or where the movement stopped it.
      *
      * @param context the context of the dispatch
      * @param unit    the unit whose order runs
-     * @return {@code true} if the unit is within the arrival distance of the target point, arrived with its group, cannot reach it
-     * ({@link PathfindingSystem#isReachable}, with a path finding system) or stands still at its destination or where the movement stopped
-     * it, {@code false} otherwise
+     * @return {@code true} if the unit has arrived, {@code false} otherwise
      */
     boolean hasArrived(@NotNull OrderContext context, @NotNull Unit unit) {
         MovementSystem movement = context.getGame().getMovement();

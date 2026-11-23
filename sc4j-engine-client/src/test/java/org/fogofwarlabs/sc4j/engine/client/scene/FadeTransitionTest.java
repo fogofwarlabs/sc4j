@@ -73,8 +73,7 @@ final class FadeTransitionTest {
          *
          * @param width  the image width in pixels
          * @param height the image height in pixels
-         * @param colors the row-major pixels, top row first, packed {@code 0xAARRGGBB} with straight alpha as the resource model
-         *               stores them
+         * @param colors the row-major pixels, top row first, packed {@code 0xAARRGGBB} with straight alpha as the resource model stores them
          * @return never
          * @throws UnsupportedOperationException always
          */

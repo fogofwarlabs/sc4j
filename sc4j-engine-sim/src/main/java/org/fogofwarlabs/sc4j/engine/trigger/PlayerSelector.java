@@ -51,8 +51,7 @@ public final class PlayerSelector {
      * Returns the player the selector names in a running trigger.
      *
      * @param context the context of the evaluation
-     * @return the player, or {@code null} if the selector names the current player outside the triggers of a player, or a slot the game does
-     * not have
+     * @return the player, or {@code null} if the selector names the current player outside the triggers of a player, or a slot the game does not have
      */
     public @Nullable Player resolve(@NotNull TriggerContext context) {
         if (this.isCurrent()) {

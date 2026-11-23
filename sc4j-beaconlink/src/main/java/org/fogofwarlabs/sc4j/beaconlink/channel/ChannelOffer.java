@@ -88,8 +88,7 @@ public final class ChannelOffer extends ChannelSignal {
      * @param receiveNumber    the number under which the initiator receives the channel's datagrams
      * @param ephemeralKey     the initiator's ephemeral public key
      * @param candidates       the initiator's address candidates
-     * @throws IllegalArgumentException if the key length is not {@value EphemeralKeyPair#KEY_LENGTH} or there are more than
-     *                                  {@value #MAXIMUM_CANDIDATES} candidates
+     * @throws IllegalArgumentException if the key length is not {@value EphemeralKeyPair#KEY_LENGTH} or there are more than {@value #MAXIMUM_CANDIDATES} candidates
      */
     public ChannelOffer(long senderConnection, long receiveNumber, byte @NotNull [] ephemeralKey,
                         @NotNull List<@NotNull InetSocketAddress> candidates) {
@@ -97,7 +96,8 @@ public final class ChannelOffer extends ChannelSignal {
     }
 
     /**
-     * Creates a {@link ChannelOffer} instance without a password proof.
+     * Creates a {@link ChannelOffer} instance without a password proof. The key has {@value EphemeralKeyPair#KEY_LENGTH} bytes, there are at
+     * most {@value #MAXIMUM_CANDIDATES} candidates, and the room number is {@link #NO_ROOM} exactly when the identity is {@code null}.
      *
      * @param senderConnection the connection number of the initiator's session
      * @param receiveNumber    the number under which the initiator receives the channel's datagrams
@@ -105,8 +105,7 @@ public final class ChannelOffer extends ChannelSignal {
      * @param roomNumber       the number of the room the initiator joins, or {@link #NO_ROOM}
      * @param identity         the initiator's mod identity in its wire form when it joins a room, otherwise {@code null}
      * @param candidates       the initiator's address candidates
-     * @throws IllegalArgumentException if the key length is not {@value EphemeralKeyPair#KEY_LENGTH}, there are more than
-     *                                  {@value #MAXIMUM_CANDIDATES} candidates, or the room number and the identity do not belong together
+     * @throws IllegalArgumentException if the key length, the candidate count, or the room number and the identity are invalid
      */
     public ChannelOffer(long senderConnection, long receiveNumber, byte @NotNull [] ephemeralKey, long roomNumber,
                         @Nullable ModFingerprint identity, @NotNull List<@NotNull InetSocketAddress> candidates) {
@@ -114,19 +113,18 @@ public final class ChannelOffer extends ChannelSignal {
     }
 
     /**
-     * Creates a {@link ChannelOffer} instance.
+     * Creates a {@link ChannelOffer} instance. The key has {@value EphemeralKeyPair#KEY_LENGTH} bytes, there are at most
+     * {@value #MAXIMUM_CANDIDATES} candidates, the room number is {@link #NO_ROOM} exactly when the identity is {@code null}, and a proof has
+     * {@value JoinProofUtils#PROOF_LENGTH} bytes and comes only with a join.
      *
      * @param senderConnection the connection number of the initiator's session
      * @param receiveNumber    the number under which the initiator receives the channel's datagrams
      * @param ephemeralKey     the initiator's ephemeral public key
      * @param roomNumber       the number of the room the initiator joins, or {@link #NO_ROOM}
      * @param identity         the initiator's mod identity in its wire form when it joins a room, otherwise {@code null}
-     * @param proof            the proof of a private room's password ({@value JoinProofUtils#PROOF_LENGTH} bytes, copied) when the
-     *                         initiator joins a private room, otherwise {@code null}
+     * @param proof            the proof of a private room's password (copied) when the initiator joins a private room, otherwise {@code null}
      * @param candidates       the initiator's address candidates
-     * @throws IllegalArgumentException if the key length is not {@value EphemeralKeyPair#KEY_LENGTH}, there are more than
-     *                                  {@value #MAXIMUM_CANDIDATES} candidates, the room number and the identity do not belong together, or a
-     *                                  proof has the wrong length or comes without a join
+     * @throws IllegalArgumentException if the key length, the candidate count, the room number and the identity, or the proof are invalid
      */
     public ChannelOffer(long senderConnection, long receiveNumber, byte @NotNull [] ephemeralKey, long roomNumber,
                         @Nullable ModFingerprint identity, byte @Nullable [] proof, @NotNull List<@NotNull InetSocketAddress> candidates) {

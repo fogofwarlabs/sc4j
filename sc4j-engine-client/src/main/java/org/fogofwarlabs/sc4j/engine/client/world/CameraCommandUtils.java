@@ -10,7 +10,7 @@ import java.util.Locale;
 /**
  * Registers the engine camera slash commands of a client: {@code /camera} (show or centre the camera), {@code /zoom} (zoom and zoom
  * limits in percent), {@code /edgescroll} (edge scrolling on, off or its speed) and {@code /keyscroll} (arrow key scrolling on, off or its
- * speed) of a camera scroll with a continuous rate. Camera extras are slash commands with their {@code /help}, never client-only key bindings.
+ * speed) of a camera scroll with a continuous rate.
  */
 public final class CameraCommandUtils {
     private static final float PERCENT = 100;

@@ -58,8 +58,9 @@ public final class LinkPlayer {
     }
 
     /**
-     * @return the player's tag: the first six hexadecimal digits of the SHA-256 hash of its key, shown after a display name
-     * ({@code Name#abcd12}) so that players of equal names stay apart without a registry
+     * Returns the player's tag, shown after a display name ({@code Name#abcd12}) so that players of equal names stay apart without a registry.
+     *
+     * @return the first six hexadecimal digits of the SHA-256 hash of the player's key
      */
     public @NotNull String getTag() {
         try {

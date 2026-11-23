@@ -13,8 +13,7 @@ public interface TerrainReleaseHook {
      * Called while a unit dies, where it stops changing the terrain around it.
      *
      * @param unit     the dying unit
-     * @param released {@code true} if the hooks before this one finished their release, {@code false} otherwise; the first hook receives
-     *                 {@code true}
+     * @param released {@code true} if the hooks before this one finished their release, {@code false} otherwise; the first hook receives {@code true}
      * @return {@code true} if every release so far is finished, {@code false} if one must be retried before the unit is released
      */
     boolean releaseTerrain(@NotNull Unit unit, boolean released);

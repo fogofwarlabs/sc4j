@@ -303,8 +303,7 @@ public final class ModalDialog {
      * was taken already. A failure of the work or of taking its result hides the progress and shows the reason in the message line, unless
      * the work was cancelled.
      *
-     * @param progressText gives the text over the progress bar from the share done, which is {@link ProgressBar#INDETERMINATE_PROGRESS}
-     *                     while it is not known
+     * @param progressText gives the text over the progress bar from the share done, which is {@link ProgressBar#INDETERMINATE_PROGRESS} while it is not known
      * @param cancelled    set by the dialog's Cancel
      * @param work         the work
      * @param done         takes the result

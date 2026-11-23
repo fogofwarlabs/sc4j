@@ -92,8 +92,7 @@ public final class FileTreeUtils {
              * Invoked for a directory after entries in the directory, and all of their descendants, have been visited.
              *
              * @param directory a reference to the directory
-             * @param failure   {@code null} if the iteration of the directory completes without an error; otherwise the I/O exception
-             *                  that caused the iteration of the directory to complete prematurely
+             * @param failure   {@code null} if the iteration of the directory completes without an error, else the I/O exception that ended it early
              * @return the visit result
              * @throws IOException if an I/O error occurs
              */

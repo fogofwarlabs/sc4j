@@ -60,8 +60,7 @@ public final class WaitingPeers {
      *
      * @param overdueMillis the time after which an awaited participant is overdue, {@code 0} or more
      * @param dropMillis    the time after which an awaited participant is dropped, at least the overdue time
-     * @param countdown     the countdown of the waiting dialog, which the transport advances and closes, or {@code null} for a dialog that
-     *                      counts down to the drop time
+     * @param countdown     the countdown of the waiting dialog, which the transport advances and closes, or {@code null} for a dialog that counts down to the drop time
      * @throws IllegalArgumentException if a time is negative or the drop time is below the overdue time
      */
     public WaitingPeers(long overdueMillis, long dropMillis, @Nullable WaitCountdown countdown) {
@@ -128,8 +127,7 @@ public final class WaitingPeers {
     }
 
     /**
-     * @return the time from the latest update until the first overdue participant is dropped, {@code 0} or more, or {@code -1} if no
-     * participant is overdue
+     * @return the time from the latest update until the first overdue participant is dropped, {@code 0} or more, or {@code -1} if no participant is overdue
      */
     public long getCountdownMillis() {
         long countdown = -1L;
@@ -148,9 +146,10 @@ public final class WaitingPeers {
     }
 
     /**
-     * @return the seconds the waiting dialog shows: the count of the transport's {@link WaitCountdown} when it has one, otherwise the time
-     * from the latest update until the first overdue participant is dropped in whole seconds, rounded up; {@code 0} once the overdue
-     * participants may be dropped, {@link WaitCountdown#CLOSED} while no dialog shows
+     * Returns the seconds the waiting dialog shows; without a {@link WaitCountdown}, the time from the latest update until the first overdue
+     * participant is dropped, rounded up to whole seconds.
+     *
+     * @return the seconds the waiting dialog shows, {@code 0} once the overdue participants may be dropped, {@link WaitCountdown#CLOSED} while no dialog shows
      */
     public int getCountdownSeconds() {
         WaitCountdown dialog = this.countdown;

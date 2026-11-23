@@ -51,8 +51,7 @@ public final class ChannelAnswer extends ChannelSignal {
      * @param receiveNumber    the number under which the responder receives the channel's datagrams
      * @param ephemeralKey     the responder's ephemeral public key
      * @param candidates       the responder's address candidates
-     * @throws IllegalArgumentException if the key length is not {@value EphemeralKeyPair#KEY_LENGTH} or there are more than
-     *                                  {@value #MAXIMUM_CANDIDATES} candidates
+     * @throws IllegalArgumentException if the key length is not {@value EphemeralKeyPair#KEY_LENGTH} or there are more than {@value #MAXIMUM_CANDIDATES} candidates
      */
     public ChannelAnswer(long senderConnection, long offerNumber, long receiveNumber, byte @NotNull [] ephemeralKey,
                          @NotNull List<@NotNull InetSocketAddress> candidates) {

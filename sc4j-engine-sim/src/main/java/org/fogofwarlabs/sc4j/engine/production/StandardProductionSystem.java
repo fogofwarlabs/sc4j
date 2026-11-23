@@ -191,8 +191,7 @@ public final class StandardProductionSystem implements ProductionSystem, FramePh
          * held from the start of an entry and the phase instruction limit {@code 0}. The game definition needs the entry columns of the queue
          * capacity ({@link StandardProductionSystem#addColumns(GameDefinition.Builder, int)}).
          *
-         * @param queueCapacity the number of entries a producer's queue holds, {@code 1} up to
-         *                      {@link StandardProductionSystem#MAXIMUM_QUEUE_CAPACITY}
+         * @param queueCapacity the number of entries a producer's queue holds, {@code 1} up to {@link StandardProductionSystem#MAXIMUM_QUEUE_CAPACITY}
          * @throws IllegalArgumentException if the number is outside {@code 1} to {@link StandardProductionSystem#MAXIMUM_QUEUE_CAPACITY}
          */
         public Builder(int queueCapacity) {
@@ -471,8 +470,10 @@ public final class StandardProductionSystem implements ProductionSystem, FramePh
     }
 
     /**
-     * @return {@code true} if a queue entry holds its supply from the enqueue, which then refuses an entry without free supply, {@code false}
-     * if it holds it from the start of the front entry
+     * Checks whether a queue entry holds its supply from the enqueue, which then refuses an entry without free supply, or from the start of the
+     * front entry.
+     *
+     * @return {@code true} if an entry holds its supply from the enqueue, {@code false} if from the start of the front entry
      */
     public boolean isSupplyHeldWhenQueued() {
         return this.supplyHeldWhenQueued;
@@ -482,11 +483,11 @@ public final class StandardProductionSystem implements ProductionSystem, FramePh
     /**
      * Resolves what this system uses from the game. Called once, after every system exists.
      * <p>
-     * Binds the content, the resource kinds, the queue hooks and the unit pool with this system's columns.
+     * Binds the content, the resource kinds, the queue hooks and the unit pool with this system's columns
+     * ({@link #addColumns(GameDefinition.Builder, int)}).
      *
      * @param game the game
      * @throws IllegalArgumentException if the unit pool lacks a column of this system or an entry column of its queue capacity
-     *                                  ({@link #addColumns(GameDefinition.Builder, int)})
      */
     @Override
     public void attach(@NotNull Game game) {
@@ -1009,8 +1010,7 @@ public final class StandardProductionSystem implements ProductionSystem, FramePh
      * @param x                the x coordinate of the site's center in pixels
      * @param y                the y coordinate of the site's center in pixels
      * @param instructionLimit the instruction limit of each animation program run the order starts
-     * @return {@code true} if the worker got the order, {@code false} if the settings have no build order, the game has no order system or the
-     * worker has no owner
+     * @return {@code true} if the worker got the order, {@code false} if the settings have no build order, the game has no order system or the worker has no owner
      * @throws IllegalStateException if the system is not attached
      */
     @Override
@@ -1078,15 +1078,16 @@ public final class StandardProductionSystem implements ProductionSystem, FramePh
     }
 
     /**
-     * Places a building under construction for a worker's owner, centered on a point, as the class description says.
+     * Places a building under construction for a worker's owner, centered on a point, as the class description says. No building is placed
+     * when the worker has no owner, the requirement system does not allow it, the site is not free, the owner lacks the supply or the cost, or
+     * the unit pool is full.
      *
      * @param worker           the worker, the actor of the requirement check
      * @param type             the building type
      * @param x                the x coordinate of the center in pixels
      * @param y                the y coordinate of the center in pixels
      * @param instructionLimit the instruction limit of each animation program run the placement starts
-     * @return the building, or {@code null} if the worker has no owner, the requirement system does not allow it, the site is not free, the owner
-     * lacks the supply or the cost, or the unit pool is full
+     * @return the building, or {@code null} if no building is placed
      * @throws IllegalStateException if the system is not attached
      */
     public @Nullable Unit placeBuilding(@NotNull Unit worker, @NotNull UnitType type, int x, int y, int instructionLimit) {

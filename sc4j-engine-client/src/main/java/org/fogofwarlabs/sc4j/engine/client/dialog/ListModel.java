@@ -199,8 +199,7 @@ public final class ListModel<T> {
      * the first and the last item; Home and End go to them; Up and Down move by one item. Without a selection only Home and End select an
      * item.
      *
-     * @param key  {@link DialogKey#UP}, {@link DialogKey#DOWN}, {@link DialogKey#HOME}, {@link DialogKey#END}, {@link DialogKey#PAGE_UP}
-     *             or {@link DialogKey#PAGE_DOWN}
+     * @param key  {@link DialogKey#UP}, {@link DialogKey#DOWN}, {@link DialogKey#HOME}, {@link DialogKey#END}, {@link DialogKey#PAGE_UP} or {@link DialogKey#PAGE_DOWN}
      * @param rows the number of shown rows
      * @throws IllegalArgumentException if the key is not a navigation key
      */

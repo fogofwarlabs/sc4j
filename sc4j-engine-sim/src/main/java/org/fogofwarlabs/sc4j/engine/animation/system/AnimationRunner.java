@@ -251,8 +251,7 @@ public final class AnimationRunner {
         }
 
         /**
-         * @return the budget of a bounded update, shared with the nested runs the instruction starts, or {@code null} for an
-         * update without a budget
+         * @return the budget of a bounded update, shared with the nested runs the instruction starts, or {@code null} for an update without a budget
          */
         @Override
         public @Nullable InstructionBudget getInstructionBudget() {
@@ -312,8 +311,7 @@ public final class AnimationRunner {
      * @param random           the random generator of the game
      * @param randomSource     the call source of every animation draw
      * @param instructionLimit the number of instructions one update may run, at least {@code 1}
-     * @throws IllegalArgumentException if the instruction limit is below {@code 1} or the random source is out of the
-     *                                  generator's range
+     * @throws IllegalArgumentException if the instruction limit is below {@code 1} or the random source is out of the generator's range
      */
     public AnimationRunner(@NotNull AnimationState state, @NotNull AnimationTarget target, @NotNull AnimationEffects effects,
                            @NotNull DeterministicRandom random, int randomSource, int instructionLimit) {
@@ -352,8 +350,7 @@ public final class AnimationRunner {
      * @param image the image
      * @param set   the animation set of the image
      * @param kind  the kind
-     * @return {@code true} if the set has the animation and it was started, {@code false} if the set has none and the
-     * state is unchanged
+     * @return {@code true} if the set has the animation and it was started, {@code false} if the set has none and the state is unchanged
      */
     public boolean start(@NotNull Image image, @NotNull AnimationSet set, @NotNull AnimationKind kind) {
         AnimationProgram program = set.getProgram(kind);
@@ -373,8 +370,7 @@ public final class AnimationRunner {
      * first and skips the preparation for a waiting image.
      *
      * @param image the image
-     * @return {@code true} if the image waited and its timer was counted down, {@code false} if an update would run
-     * instructions or the image does not run its program
+     * @return {@code true} if the image waited and its timer was counted down, {@code false} if an update would run instructions or the image does not run its program
      */
     public boolean countDown(@NotNull Image image) {
         AnimationState animations = this.state;
@@ -396,8 +392,7 @@ public final class AnimationRunner {
      *
      * @param image the image
      * @return {@code false} if an instruction of this update ended the program, {@code true} otherwise
-     * @throws IllegalStateException if the update reaches the instruction limit or the end of the program, or an
-     *                               instruction fails
+     * @throws IllegalStateException if the update reaches the instruction limit or the end of the program, or an instruction fails
      */
     public boolean update(@NotNull Image image) {
         return this.run(image, null);
@@ -411,8 +406,7 @@ public final class AnimationRunner {
      * @param budget the budget of this update and of the nested runs its instructions start
      * @return {@code false} if an instruction of this update ended the program, {@code true} otherwise
      * @throws InstructionBudgetExhaustedException if the budget is used up before an instruction
-     * @throws IllegalStateException               if the update reaches the instruction limit or the end of the program, or
-     *                                             an instruction fails
+     * @throws IllegalStateException               if the update reaches the instruction limit or the end of the program, or an instruction fails
      */
     public boolean update(@NotNull Image image, @NotNull InstructionBudget budget) {
         return this.run(image, budget);

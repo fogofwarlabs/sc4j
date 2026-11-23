@@ -33,6 +33,7 @@ import org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem;
 import org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository;
 import org.fogofwarlabs.sc4j.catalog.mods.ModIndex;
 import org.fogofwarlabs.sc4j.catalog.mods.ModRelease;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModCatalog;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModEntry;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModStatus;
@@ -101,9 +102,11 @@ import java.util.function.Function;
  * the Mods screen; the account and its menu are at the right end of the app bar, and the Chat screen shows the session's channels and
  * whispers; Whisper in the menu's Friends opens the friend's conversation there. The Chat entry of the navigation shows a dot while a line or
  * a whisper is unread ({@link Conversations#hasUnread()}), and a line or whisper that arrives in a conversation the user is not looking at
- * plays the chat sound unless the launcher settings mute it ({@link ChatAlerts}). Log out, from that menu, closes the session and returns to
- * the login step. Closing the window asks first: Minimize, the default, minimizes the window and keeps the session and its chat running; Quit
- * closes the session and the launcher; Cancel keeps the window. A running game keeps running after a log out or a quit.
+ * plays the chat sound unless the launcher settings mute it ({@link ChatAlerts}). The first time in a run that the session finds the network
+ * restricted ({@link LinkConnectivity#RESTRICTED}), a warning notice shows above every screen until the user closes it or the session finds
+ * direct connections working ({@link LinkConnectivity#DIRECT}, {@link LinkConnectivity#OPEN}). Log out, from that menu, closes the session
+ * and returns to the login step. Closing the window asks first: Minimize, the default, minimizes the window and keeps the session and its
+ * chat running; Quit closes the session and the launcher; Cancel keeps the window. A running game keeps running after a log out or a quit.
  * <p>
  * While the runtime runs, the window is minimized; it comes back when the runtime ends and shows the run's report. Closing
  * the launcher does not stop a running runtime.
@@ -317,6 +320,8 @@ public final class LauncherWindow {
     private @Nullable LauncherSessionView session;
     private @Nullable Conversations conversations;
     private @Nullable ChatAlerts chatAlerts;
+    private boolean networkWarned;
+    private boolean networkWarningShown;
 
     private @Nullable LauncherRelease launcherUpdate;
     private @Nullable ReleaseVersion offeredVersion;
@@ -383,16 +388,18 @@ public final class LauncherWindow {
 
         this.imageScale = ThemeUtils.getImageScale();
 
-        this.settingsProblem = null;
-        this.settings        = this.readSettings();
-        this.nodesProblem    = null;
-        this.nodes           = this.readNodes();
-        this.catalogProblem  = null;
-        this.catalog         = this.scanCatalog();
-        this.account         = null;
-        this.session         = null;
-        this.conversations   = null;
-        this.chatAlerts      = null;
+        this.settingsProblem     = null;
+        this.settings            = this.readSettings();
+        this.nodesProblem        = null;
+        this.nodes               = this.readNodes();
+        this.catalogProblem      = null;
+        this.catalog             = this.scanCatalog();
+        this.account             = null;
+        this.session             = null;
+        this.conversations       = null;
+        this.chatAlerts          = null;
+        this.networkWarned       = false;
+        this.networkWarningShown = false;
 
         this.launcherUpdate   = null;
         this.offeredVersion   = null;
@@ -663,10 +670,12 @@ public final class LauncherWindow {
     }
 
     /**
-     * Shows the session's new views: in the account menu, on the Chat screen and in the dot of the Chat entry, and plays the chat sound for
-     * what arrived where the user is not looking ({@link ChatAlerts}).
+     * Shows the session's new views: in the account menu, on the Chat screen, in the dot of the Chat entry and in the network warning, and
+     * plays the chat sound for what arrived where the user is not looking ({@link ChatAlerts}).
      */
     private void onSessionChanged() {
+        LauncherSessionView opened = this.session;
+        LinkConnectivity connectivity = opened == null ? LinkConnectivity.UNKNOWN : opened.getSelf().getConnectivity();
         AccountMenu shownMenu = this.accountMenu;
         ChatScreen shownChat = this.chatScreen;
         ChatAlerts alerts = this.chatAlerts;
@@ -686,6 +695,15 @@ public final class LauncherWindow {
         }
 
         this.updateChatDot();
+
+        if (connectivity == LinkConnectivity.RESTRICTED && !this.networkWarned) {
+            this.networkWarned       = true;
+            this.networkWarningShown = true;
+            this.updateNotices();
+        } else if ((connectivity == LinkConnectivity.DIRECT || connectivity == LinkConnectivity.OPEN) && this.networkWarningShown) {
+            this.networkWarningShown = false;
+            this.updateNotices();
+        }
     }
 
     /**
@@ -708,12 +726,13 @@ public final class LauncherWindow {
     private void closeSession() {
         LauncherSessionView closed = this.session;
 
-        this.accountMenu   = null;
-        this.chatScreen    = null;
-        this.conversations = null;
-        this.chatAlerts    = null;
-        this.session       = null;
-        this.account       = null;
+        this.accountMenu         = null;
+        this.chatScreen          = null;
+        this.conversations       = null;
+        this.chatAlerts          = null;
+        this.networkWarningShown = false;
+        this.session             = null;
+        this.account             = null;
 
         if (closed != null) {
             closed.setOnChanged(null);
@@ -1230,7 +1249,8 @@ public final class LauncherWindow {
 
     /**
      * Shows the launcher's notices: a settings file problem, why the last update failed and, once logged in, a newer launcher version that
-     * the player did not skip with its Update button and, on the Mods screen, a mods folder problem.
+     * the player did not skip with its Update button, the network warning with its Close button and, on the Mods screen, a mods folder
+     * problem.
      */
     private void updateNotices() {
         List<Node> shown = new ArrayList<>();
@@ -1250,6 +1270,16 @@ public final class LauncherWindow {
 
             update.setOnAction(event -> this.openLauncherUpdate());
             shown.add(ComponentUtils.createNotice(Tone.ACCENT, this.texts.format("update.available", available.getVersion()), update));
+        }
+
+        if (this.networkWarningShown && loggedIn) {
+            Button close = ComponentUtils.createSmallButton(this.texts.get("notice.network.close"), ButtonRole.SECONDARY);
+
+            close.setOnAction(event -> {
+                this.networkWarningShown = false;
+                this.updateNotices();
+            });
+            shown.add(ComponentUtils.createNotice(Tone.WARNING, this.texts.get("notice.network"), close));
         }
 
         if (this.catalogProblem != null && loggedIn && this.section == LauncherShell.Section.MODS) {

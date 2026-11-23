@@ -270,8 +270,7 @@ public final class TopicSwarms {
      * @param address    the connection's registered address
      * @param backlog    whether the client asked for the backlog
      * @param nowMillis  the current time
-     * @return {@link ResultStatus#ACCEPTED} if the client is subscribed, {@link ResultStatus#LIMIT_REACHED} if the peer takes part in the most
-     * topics or the topic has the most subscribers
+     * @return {@link ResultStatus#ACCEPTED} if the client is subscribed, {@link ResultStatus#LIMIT_REACHED} if a topic or subscriber limit is reached
      */
     public @NotNull ResultStatus subscribe(@NotNull TopicKey topic, @NotNull IdentityKey key, long connection, @NotNull InetSocketAddress address,
                                            boolean backlog, long nowMillis) {
@@ -309,8 +308,7 @@ public final class TopicSwarms {
     /**
      * Handles a message of the topic protocol whose signature and replay check passed.
      *
-     * @param envelope  the message: {@code GET_TOPIC}, {@code TOPIC_PEERS}, {@code ANNOUNCE}, {@code GRAFT}, {@code PRUNE}, {@code GOSSIP},
-     *                  {@code IHAVE} or {@code IWANT}
+     * @param envelope  the message: {@code GET_TOPIC}, {@code TOPIC_PEERS}, {@code ANNOUNCE}, {@code GRAFT}, {@code PRUNE}, {@code GOSSIP}, {@code IHAVE} or {@code IWANT}
      * @param source    the observed source address
      * @param nowMillis the current time
      * @return {@code null} if the message was handled, otherwise why it was dropped
@@ -575,8 +573,7 @@ public final class TopicSwarms {
      * hands the swarm the peers it knows at their address instead, at once.
      *
      * @param swarm the swarm
-     * @return {@code true} if the lookup started, {@code false} otherwise (the swarm got the known peers, or nothing: the most
-     * lookups run)
+     * @return {@code true} if the lookup started, {@code false} otherwise (the swarm got the known peers, or nothing: the most lookups run)
      */
     boolean findStoringPeers(@NotNull Swarm swarm) {
         long nowMillis = this.clock.getEpochMillis();

@@ -17,8 +17,7 @@ public final class PriorityChannelPolicy implements ChannelPolicy {
     /**
      * Chooses the channel of a new sound.
      *
-     * @param channels the channels, whose state ({@link SoundChannels#isPlaying}, {@link SoundChannels#getCue},
-     *                 {@link SoundChannels#getStartSequence}) the policy reads
+     * @param channels the channels, whose state ({@link SoundChannels#isPlaying}, {@link SoundChannels#getCue}, {@link SoundChannels#getStartSequence}) the policy reads
      * @param cue      the new sound
      * @return the channel index, or {@link #NO_CHANNEL} if the sound does not play
      */

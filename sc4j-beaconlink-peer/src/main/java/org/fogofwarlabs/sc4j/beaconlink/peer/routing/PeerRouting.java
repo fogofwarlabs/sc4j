@@ -110,8 +110,7 @@ public final class PeerRouting {
      * @param configuration the peer's limits and timings
      * @param encoder       the encoder of the peer's messages
      * @param proofNonce    the peer's proof nonce, valid for its key
-     * @param coordinates   the estimator of the peer's network coordinate: sent in the peer's cards and answers, fed by the round trip times
-     *                      of its hellos and lookup requests
+     * @param coordinates   the estimator of the peer's network coordinate: sent in the peer's cards and answers, fed by the round trip times of its hellos and lookup requests
      * @param reachable     tells whether the peer's self-test proved that strangers reach it
      * @param sink          the peer's socket
      * @param random        the source of request numbers and random targets
@@ -161,8 +160,7 @@ public final class PeerRouting {
     }
 
     /**
-     * @return the length of the peer's answer to a hello: a hello request shorter than it is not answered, since its source address is not
-     * proved
+     * @return the length of the peer's answer to a hello: a hello request shorter than it is not answered, since its source address is not proved
      */
     public int getHelloReplyLength() {
         return this.helloReplyLength;
@@ -182,8 +180,7 @@ public final class PeerRouting {
     }
 
     /**
-     * @return every peer proved at its address with its proof nonce, the full peers of the table first, then the others in the order they
-     * became known
+     * @return every peer proved at its address with its proof nonce, the full peers of the table first, then the others in the order they became known
      */
     public @NotNull List<@NotNull PeerContact> getKnownPeers() {
         List<PeerContact> known = new ArrayList<>(this.table.getSize() + this.leaves.size());
@@ -263,13 +260,13 @@ public final class PeerRouting {
     }
 
     /**
-     * Handles a message of the peer layer whose signature and replay check passed: a hello, a lookup request or a lookup answer.
+     * Handles a message of the peer layer whose signature and replay check passed: a hello, a lookup request or a lookup answer. An answer
+     * whose round trip sample the settled coordinate rejected is handled and gives {@link DropReason#COORDINATE_OUTLIER}.
      *
      * @param envelope  the message
      * @param source    the observed source address
      * @param nowMillis the current time
-     * @return {@code null} if the message was handled, otherwise why it was dropped; an answer whose round trip sample the settled coordinate
-     * rejected is handled and gives {@link DropReason#COORDINATE_OUTLIER}
+     * @return {@code null} if the message was handled, otherwise why it was dropped
      */
     public @Nullable DropReason handle(@NotNull Envelope envelope, @NotNull InetSocketAddress source, long nowMillis) {
         return switch (envelope.getKind()) {

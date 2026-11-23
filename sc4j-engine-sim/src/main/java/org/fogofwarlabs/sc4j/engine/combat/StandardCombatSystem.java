@@ -448,8 +448,7 @@ public final class StandardCombatSystem implements CombatSystem {
      * @param unit             the attacking unit
      * @param targetUnit       the target unit
      * @param instructionLimit the instruction limit of each animation program run the pursuit starts
-     * @return {@code true} if the pursuit goes on, {@code false} if it ended: the unit arrived without reaching the target,
-     * or another system took the unit over
+     * @return {@code true} if the pursuit goes on, {@code false} if it ended: the unit arrived without reaching the target, or another system took the unit over
      * @throws IllegalStateException if the system is not attached
      */
     @Override

@@ -1615,16 +1615,14 @@ public final class PeerConfiguration {
     }
 
     /**
-     * @return the silence after which a member sends a mesh neighbour an empty record list, so that the link and its NAT mappings stay, in
-     * milliseconds
+     * @return the silence after which a member sends a mesh neighbour an empty record list, so that the link and its NAT mappings stay, in milliseconds
      */
     public long getMeshKeepaliveMillis() {
         return this.meshKeepaliveMillis;
     }
 
     /**
-     * @return the time after its last use after which the peer leaves a topic that holds no unexpired room published through the peer, in
-     * milliseconds
+     * @return the time after its last use after which the peer leaves a topic that holds no unexpired room published through the peer, in milliseconds
      */
     public long getTopicIdleMillis() {
         return this.topicIdleMillis;
@@ -1652,8 +1650,7 @@ public final class PeerConfiguration {
     }
 
     /**
-     * @return the penalty points after which a peer is graylisted: an invalid record counts 10, a record over its author's rate 2, an expired record
-     * and a topic message from a peer outside the topic's mesh 1
+     * @return the penalty points after which a peer is graylisted
      */
     public int getPenaltyLimit() {
         return this.penaltyLimit;
@@ -1786,8 +1783,7 @@ public final class PeerConfiguration {
     }
 
     /**
-     * @return {@code true} if the peer stays a leaf whatever its socket lets through (no self-test, never a full peer), {@code false}
-     * otherwise
+     * @return {@code true} if the peer stays a leaf whatever its socket lets through (no self-test, never a full peer), {@code false} otherwise
      */
     public boolean isLeafOnly() {
         return this.leafOnly;

@@ -73,8 +73,7 @@ public final class StandardOrderSystem implements OrderSystem, FramePhase, Snaps
         }
 
         /**
-         * @return the instruction limit of each animation program run the behavior starts, which it also passes to the order system when it
-         * changes an order
+         * @return the instruction limit of each animation program run the behavior starts, which it also passes to the order system when it changes an order
          */
         @Override
         public int getInstructionLimit() {
@@ -105,9 +104,7 @@ public final class StandardOrderSystem implements OrderSystem, FramePhase, Snaps
      * Creates a {@link StandardOrderSystem} instance whose phase runs the orders with the instruction limit {@code 0}; it holds no behavior and
      * no queued order until it is attached.
      *
-     * @param registration registers the behavior of each order type that has one in the registry the system creates over the order types of
-     *                     the game content, once, when the system is attached, with the game (whose hooks and systems a behavior may keep);
-     *                     the system freezes the registry afterwards
+     * @param registration registers the behavior of each order type that has one when the system is attached ({@link #attach})
      */
     public StandardOrderSystem(@NotNull BiConsumer<@NotNull Game, @NotNull OrderRegistry<OrderBehavior<OrderContext, Unit>>> registration) {
         this(registration, 0);
@@ -116,9 +113,7 @@ public final class StandardOrderSystem implements OrderSystem, FramePhase, Snaps
     /**
      * Creates a {@link StandardOrderSystem} instance; it holds no behavior and no queued order until it is attached.
      *
-     * @param registration          registers the behavior of each order type that has one in the registry the system creates over the order
-     *                              types of the game content, once, when the system is attached, with the game (whose hooks and systems a
-     *                              behavior may keep); the system freezes the registry afterwards
+     * @param registration          registers the behavior of each order type that has one when the system is attached ({@link #attach})
      * @param phaseInstructionLimit the instruction limit of each animation program run an order of the phase starts
      */
     public StandardOrderSystem(@NotNull BiConsumer<@NotNull Game, @NotNull OrderRegistry<OrderBehavior<OrderContext, Unit>>> registration,
@@ -168,8 +163,9 @@ public final class StandardOrderSystem implements OrderSystem, FramePhase, Snaps
     /**
      * Resolves what this system uses from the game. Called once, after every system exists.
      * <p>
-     * Creates the behavior registry over the order types of the content and runs the registration, binds the unit type table, reads the
-     * controller kind of each player slot of the setup and fills the pool with the game's order limit of queued orders.
+     * Creates the behavior registry over the order types of the content, calls the registration once with the game (whose hooks and systems a
+     * behavior may keep) and freezes the registry; binds the unit type table, reads the controller kind of each player slot of the setup and
+     * fills the pool with the game's order limit of queued orders.
      *
      * @param game the game
      */
@@ -396,11 +392,11 @@ public final class StandardOrderSystem implements OrderSystem, FramePhase, Snaps
 
     /**
      * Reads this part of the simulation state back, replacing the current values: every queue returns to the pool first, then the written
-     * queues are rebuilt from it in slot order.
+     * queues are rebuilt from it in slot order. The snapshot is invalid if it ends early, holds another number of slots, more queued orders
+     * than the order limit or names no order type or unit of the game.
      *
      * @param reader the reader of the snapshot
-     * @throws IOException           if the snapshot ends early, holds another number of slots, more queued orders than the order limit or
-     *                               names no order type or unit of the game
+     * @throws IOException           if the snapshot is invalid
      * @throws IllegalStateException if the system is not attached
      */
     @Override

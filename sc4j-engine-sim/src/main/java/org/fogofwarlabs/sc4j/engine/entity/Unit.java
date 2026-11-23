@@ -109,8 +109,7 @@ public class Unit extends MovingEntity {
     }
 
     /**
-     * @return the index of this unit's minimum edge in the horizontal edge list of the spatial index: {@code -1} after the index removed the
-     * unit, {@code 0} in a slot that the index never held
+     * @return the index of this unit's minimum edge in the horizontal edge list, {@code -1} after the spatial index removed the unit, {@code 0} in a slot it never held
      */
     public int getMinimumHorizontalEdgeIndex() {
         return this.minimumHorizontalEdgeIndex;
@@ -126,8 +125,7 @@ public class Unit extends MovingEntity {
     }
 
     /**
-     * @return the index of this unit's maximum edge in the horizontal edge list of the spatial index: {@code -1} after the index removed the
-     * unit, {@code 0} in a slot that the index never held
+     * @return the index of this unit's maximum edge in the horizontal edge list, {@code -1} after the spatial index removed the unit, {@code 0} in a slot it never held
      */
     public int getMaximumHorizontalEdgeIndex() {
         return this.maximumHorizontalEdgeIndex;
@@ -143,8 +141,7 @@ public class Unit extends MovingEntity {
     }
 
     /**
-     * @return the index of this unit's minimum edge in the vertical edge list of the spatial index: {@code -1} after the index removed the
-     * unit, {@code 0} in a slot that the index never held
+     * @return the index of this unit's minimum edge in the vertical edge list, {@code -1} after the spatial index removed the unit, {@code 0} in a slot it never held
      */
     public int getMinimumVerticalEdgeIndex() {
         return this.minimumVerticalEdgeIndex;
@@ -160,8 +157,7 @@ public class Unit extends MovingEntity {
     }
 
     /**
-     * @return the index of this unit's maximum edge in the vertical edge list of the spatial index: {@code -1} after the index removed the
-     * unit, {@code 0} in a slot that the index never held
+     * @return the index of this unit's maximum edge in the vertical edge list, {@code -1} after the spatial index removed the unit, {@code 0} in a slot it never held
      */
     public int getMaximumVerticalEdgeIndex() {
         return this.maximumVerticalEdgeIndex;

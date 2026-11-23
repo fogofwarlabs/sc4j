@@ -20,6 +20,9 @@ public final class UdpLockstepTransport extends DatagramLockstepTransport<InetSo
 
     /**
      * Creates a {@link UdpLockstepTransport} instance before the first turn.
+     * <p>
+     * The participants must not be empty, must name each participant once with a peer number up to {@code 0xFFFF} and must include the local
+     * participant.
      *
      * @param endpoint     the local datagram endpoint, which the caller closes after the session
      * @param clock        the clock of the resends and timeouts
@@ -27,8 +30,7 @@ public final class UdpLockstepTransport extends DatagramLockstepTransport<InetSo
      * @param sessionId    the id of the session, the same on every machine (the lobby's), which tells its datagrams from others
      * @param participants every participant in execution order with its endpoint's address, the local one included; copied
      * @param localPeer    the local participant, one of the participants
-     * @throws IllegalArgumentException if the participants are empty, name a participant twice, have a peer number above {@code 0xFFFF} or do
-     *                                  not include the local participant
+     * @throws IllegalArgumentException if the participants break these rules
      */
     public UdpLockstepTransport(@NotNull DatagramEndpoint endpoint, @NotNull NetworkClock clock, @NotNull TransportTimeouts timeouts,
                                 int sessionId, @NotNull List<@NotNull PeerAddress> participants, @NotNull LockstepPeer localPeer) {

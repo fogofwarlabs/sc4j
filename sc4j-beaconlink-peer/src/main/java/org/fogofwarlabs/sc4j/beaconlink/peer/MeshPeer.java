@@ -220,8 +220,7 @@ public final class MeshPeer {
     }
 
     /**
-     * @return every peer proved at its address: the full peers of the routing table first, then the leaves and the full peers without room in
-     * the table
+     * @return every peer proved at its address: the full peers of the routing table first, then the leaves and the full peers without room in the table
      */
     public @NotNull List<@NotNull NodeEndpoint> getLiveNodes() {
         return this.routing.getLiveNodes();
@@ -340,8 +339,7 @@ public final class MeshPeer {
      * it yet and stays in it for the idle time after the last listing.
      *
      * @param topic the mod topic
-     * @return the published rooms that are neither withdrawn nor expired, in room key order; none while the peer joins or if it takes part
-     * in the most topics
+     * @return the published rooms that are neither withdrawn nor expired, in room key order; none while the peer joins or if it takes part in the most topics
      */
     public @NotNull List<@NotNull RoomAdvertisement> listRooms(@NotNull TopicKey topic) {
         long nowMillis = this.clock.getEpochMillis();
@@ -371,7 +369,6 @@ public final class MeshPeer {
         try {
             this.handleDatagram(datagram, length, source);
         } catch (RuntimeException exception) {
-            // A defect in a handler must not stop the owner's loop; the datagram is lost, the defect logged and counted.
             this.statistics.countDropped(DropReason.DEFECT);
             LOGGER.exception(LogLevel.ERROR, exception, "Failed to handle a datagram from {0}.", source);
         }

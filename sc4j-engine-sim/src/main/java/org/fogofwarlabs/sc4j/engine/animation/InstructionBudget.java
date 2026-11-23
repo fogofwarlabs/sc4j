@@ -53,8 +53,7 @@ public final class InstructionBudget {
     /**
      * Takes one instruction from the budget.
      *
-     * @return {@code true} if the budget allowed the instruction and now allows one fewer, {@code false} if it is used
-     * up and unchanged
+     * @return {@code true} if the budget allowed the instruction and now allows one fewer, {@code false} if it is used up and unchanged
      */
     public boolean consume() {
         if (this.remaining == 0) {

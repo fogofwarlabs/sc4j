@@ -293,8 +293,7 @@ final class PeerChannel implements ParticipantChannel, RequestOwner {
     }
 
     /**
-     * @return {@code true} if the channel's datagrams go through a third participant, {@code false} if they go directly or the channel has no
-     * path
+     * @return {@code true} if the channel's datagrams go through a third participant, {@code false} if they go directly or the channel has no path
      */
     @Override
     public boolean isRelayed() {
@@ -335,8 +334,7 @@ final class PeerChannel implements ParticipantChannel, RequestOwner {
     }
 
     /**
-     * @return {@code true} if the other participant joined a room of this side and the channel never opened and is not closed, {@code false}
-     * otherwise
+     * @return {@code true} if the other participant joined a room of this side and the channel never opened and is not closed, {@code false} otherwise
      */
     boolean isPendingJoin() {
         return this.room != null && !this.opened && this.phase != Phase.CLOSED;
@@ -354,8 +352,7 @@ final class PeerChannel implements ParticipantChannel, RequestOwner {
      * the channel; the signals of one participant carry its own clock's times, while their order of arrival may differ.
      *
      * @param signalMillis the signal's signed time
-     * @return {@code true} if the signal is newer than the other participant's signal the channel took, or the channel took none,
-     * {@code false} otherwise
+     * @return {@code true} if the signal is newer than the other participant's signal the channel took, or the channel took none, {@code false} otherwise
      */
     boolean isOlderThan(long signalMillis) {
         return signalMillis > this.remoteSignalMillis;
@@ -369,8 +366,7 @@ final class PeerChannel implements ParticipantChannel, RequestOwner {
     }
 
     /**
-     * @return {@code true} if the channel is open on a direct path with a measured delay, so that it can relay for others, {@code false}
-     * otherwise
+     * @return {@code true} if the channel is open on a direct path with a measured delay, so that it can relay for others, {@code false} otherwise
      */
     boolean isDirectlyOpen() {
         return this.phase == Phase.OPEN && this.directAddress != null && this.delayMillis != UNKNOWN_DELAY;

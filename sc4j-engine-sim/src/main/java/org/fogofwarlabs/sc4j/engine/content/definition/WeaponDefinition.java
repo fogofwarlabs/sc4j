@@ -335,8 +335,7 @@ public final class WeaponDefinition {
     }
 
     /**
-     * @return {@code true} if the projectile follows its target, {@code false} otherwise; a projectile that does not home lands
-     * where the target stood at its launch
+     * @return {@code true} if the projectile follows its target, {@code false} otherwise; a projectile that does not home lands where the target stood at its launch
      */
     public boolean isHoming() {
         return this.homing;

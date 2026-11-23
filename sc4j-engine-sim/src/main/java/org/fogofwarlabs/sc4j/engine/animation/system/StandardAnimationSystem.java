@@ -168,8 +168,7 @@ public final class StandardAnimationSystem implements AnimationSystem, StateHash
      * Updates the animation of one image outside the frame phase, for example right after it is started.
      *
      * @param image the image
-     * @throws IllegalStateException if the system is not attached, the update reaches the instruction limit or the end of
-     *                               the program, or an instruction fails
+     * @throws IllegalStateException if the system is not attached, the update reaches the instruction limit or the end of the program, or an instruction fails
      */
     @Override
     public void update(@NotNull Image image) {
@@ -231,8 +230,7 @@ public final class StandardAnimationSystem implements AnimationSystem, StateHash
      * Reads this part of the simulation state back, replacing the current values.
      *
      * @param reader the reader of the snapshot
-     * @throws IOException           if the snapshot ends early, holds another number of images or names no set or program of the
-     *                               library
+     * @throws IOException           if the snapshot ends early, holds another number of images or names no set or program of the library
      * @throws IllegalStateException if the system is not attached
      */
     @Override

@@ -49,13 +49,13 @@ final class PackPictureUtils {
     private static final @NotNull String BORDER_BOTTOM_FIELD = "bottom";
 
     /**
-     * Reads a picture.
+     * Reads a picture. The picture is invalid if the path is neither a PNG picture nor a JSON definition, a picture is not a PNG, the team
+     * mask has another size than the picture, or a field is invalid.
      *
      * @param source the pack files
      * @param path   the pack path of the PNG picture or of the picture definition
      * @return the picture
-     * @throws IOException if a file cannot be read, the path is neither a PNG picture nor a JSON definition, a picture is not a PNG, the team
-     *                     mask has another size than the picture, or a field is invalid
+     * @throws IOException if a file cannot be read or the picture is invalid
      */
     static @NotNull Picture read(@NotNull PackSource source, @NotNull String path) throws IOException {
         String name = path.toLowerCase(Locale.ROOT);

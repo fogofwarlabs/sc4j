@@ -67,11 +67,11 @@ public final class DemoNetworkGame implements Closeable {
     private boolean left;
 
     /**
-     * Creates a {@link DemoNetworkGame} instance before the game's first loop.
+     * Creates a {@link DemoNetworkGame} instance before the game's first loop. The game keeps the room's connections open while it runs, so
+     * that the start reaches every member, and closes the room with itself.
      *
      * @param start              the started game of the room
-     * @param room               the machine's room, which creates the game's transport; the game keeps the room's connections open while it
-     *                           runs, so the start reaches every member, and closes the room with itself
+     * @param room               the machine's room, which creates the game's transport
      * @param clock              the clock of the transport's resends and timeouts
      * @param settings           the network settings with the transport's timing
      * @param content            the demo content
@@ -218,8 +218,7 @@ public final class DemoNetworkGame implements Closeable {
     }
 
     /**
-     * @return {@code true} if this machine left and every other machine acknowledged it, or the others dropped this machine, {@code false}
-     * otherwise
+     * @return {@code true} if this machine left and every other machine acknowledged it, or the others dropped this machine, {@code false} otherwise
      */
     public boolean isDepartureComplete() {
         return this.transport.isDepartureComplete() || this.transport.isLocalDropped();

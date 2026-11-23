@@ -132,8 +132,7 @@ public final class StandardHarvestSystem implements HarvestSystem, BlockingHook 
      * @param bounds       reads the bounds of a unit, for the reach of workers
      * @param gatherAmount the amount a worker carries from one trip, at least {@code 1}
      * @param gatherTime   the frames one gathering trip takes at the container, at least {@code 1}
-     * @param reach        the largest gap in pixels between a worker's bounds and a container's or drop-off's bounds at which it gathers or
-     *                     delivers, at least {@code 0}
+     * @param reach        the largest gap in pixels between a worker's bounds and a container's or drop-off's bounds at which it gathers or delivers, at least {@code 0}
      * @throws IllegalArgumentException if the amount or the time is below {@code 1} or the reach is negative
      */
     public StandardHarvestSystem(@NotNull UnitBounds<Unit> bounds, int gatherAmount, int gatherTime, int reach) {

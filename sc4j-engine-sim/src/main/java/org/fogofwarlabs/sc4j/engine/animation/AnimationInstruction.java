@@ -15,9 +15,6 @@ import org.jetbrains.annotations.NotNull;
  *     {@link AnimationContext#getRandomSource()}, a fixed number of draws in a fixed order for the same state, and uses
  *     no clock and no floating point.</li>
  * </ul>
- * <p>
- * The type is an abstract class rather than an interface: a program runs many instruction classes at one call site, and
- * a class method dispatches faster there than an interface method.
  */
 public abstract class AnimationInstruction {
     /**

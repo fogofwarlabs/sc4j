@@ -41,8 +41,7 @@ public final class PongMessage extends Message {
      *
      * @param address  the observed source address of the ping, resolved
      * @param software the node software version
-     * @throws IllegalArgumentException if the address is not resolved or the version is longer than
-     *                                  {@value HelloMessage#MAXIMUM_SOFTWARE_LENGTH} UTF-8 bytes
+     * @throws IllegalArgumentException if the address is not resolved or the version is longer than {@value HelloMessage#MAXIMUM_SOFTWARE_LENGTH} UTF-8 bytes
      */
     public PongMessage(@NotNull InetSocketAddress address, @NotNull String software) {
         if (address.isUnresolved() || WireWriter.getTextLength(software) > HelloMessage.MAXIMUM_SOFTWARE_LENGTH) {

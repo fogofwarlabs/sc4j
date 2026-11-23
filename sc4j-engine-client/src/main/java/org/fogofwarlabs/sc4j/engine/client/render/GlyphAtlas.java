@@ -50,8 +50,7 @@ public final class GlyphAtlas implements AutoCloseable {
         }
 
         /**
-         * Returns the canvas name of the page texture, for drawing through {@link GpuCanvas#drawSdfTexture} (the canvas's texture
-         * name fast path).
+         * Returns the canvas name of the page texture, for drawing through {@link GpuCanvas#drawSdfTexture}.
          *
          * @return the page texture name
          */

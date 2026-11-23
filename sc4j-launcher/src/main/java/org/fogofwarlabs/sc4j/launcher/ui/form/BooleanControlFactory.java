@@ -57,8 +57,7 @@ public final class BooleanControlFactory implements FieldControlFactory {
         }
 
         /**
-         * @return {@code true} if the control shows the setting's label itself (a check box) instead of the form showing it above
-         * the control, {@code false} otherwise
+         * @return {@code true} if the control shows the setting's label itself (a check box) instead of the form showing it above the control, {@code false} otherwise
          */
         @Override
         public boolean isLabelled() {

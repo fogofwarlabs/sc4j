@@ -64,8 +64,7 @@ public interface AnimationSystem extends GameSystem, FramePhase {
      * Updates the animation of one image outside the frame phase, for example right after it is started.
      *
      * @param image the image
-     * @throws IllegalStateException if the update reaches the instruction limit or the end of the program, or an
-     *                               instruction fails
+     * @throws IllegalStateException if the update reaches the instruction limit or the end of the program, or an instruction fails
      */
     void update(@NotNull Image image);
 }

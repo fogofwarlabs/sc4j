@@ -56,8 +56,7 @@ public final class HelloMessage extends Message {
      * @param card         the sender's card
      * @param capabilities the sender's capability bits
      * @param software     the peer software version
-     * @throws IllegalArgumentException if the capabilities do not fit two bytes or the version is longer than {@value #MAXIMUM_SOFTWARE_LENGTH}
-     *                                  UTF-8 bytes
+     * @throws IllegalArgumentException if the capabilities do not fit two bytes or the version is longer than {@value #MAXIMUM_SOFTWARE_LENGTH} UTF-8 bytes
      */
     public HelloMessage(@NotNull PeerCard card, int capabilities, @NotNull String software) {
         if (capabilities < 0 || capabilities > MAXIMUM_CAPABILITIES) {

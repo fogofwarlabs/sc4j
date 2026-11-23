@@ -37,8 +37,7 @@ public final class TransportTimeouts {
      * @param resendMillis  the time a datagram waits for its acknowledgement before it is sent again, at least {@code 1}
      * @param overdueMillis the time after which an awaited participant is overdue, {@code 0} or more
      * @param dropMillis    the time after which an awaited participant is dropped, at least the overdue time
-     * @throws IllegalArgumentException if the resend time is below {@code 1}, the overdue time is negative or the drop time is below the
-     *                                  overdue time
+     * @throws IllegalArgumentException if the resend time is below {@code 1}, the overdue time is negative or the drop time is below the overdue time
      */
     public TransportTimeouts(long resendMillis, long overdueMillis, long dropMillis) {
         if (resendMillis < 1L || overdueMillis < 0L || dropMillis < overdueMillis) {

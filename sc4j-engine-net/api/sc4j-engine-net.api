@@ -86,6 +86,7 @@ public interface org.fogofwarlabs.sc4j.engine.net.beaconlink.BeaconLinkSession e
   public abstract java.net.InetSocketAddress getObservedAddress();
   public abstract java.util.List<org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkNode> getNodes();
   public abstract org.fogofwarlabs.sc4j.engine.net.beaconlink.HostedRoom publishRoom(org.fogofwarlabs.sc4j.engine.net.beaconlink.RoomSettings, java.lang.String);
+  public abstract org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity getConnectivity();
   public abstract org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkFailure getFailure();
   public abstract org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkOverlay getOverlay();
   public abstract org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkParticipant getParticipant();
@@ -190,6 +191,15 @@ public final class org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkAccount {
   public java.lang.String getTaggedName();
   public org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkAccount(java.lang.String, java.lang.String, org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer);
   public org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkPlayer getPlayer();
+}
+
+public final class org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity extends java.lang.Enum<org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity> {
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity DIRECT;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity OPEN;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity RESTRICTED;
+  public static final org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity UNKNOWN;
+  public static org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity valueOf(java.lang.String);
+  public static org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity[] values();
 }
 
 public final class org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkFailure extends java.lang.Enum<org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkFailure> {

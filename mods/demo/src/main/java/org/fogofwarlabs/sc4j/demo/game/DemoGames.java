@@ -140,12 +140,12 @@ public final class DemoGames {
     /**
      * Creates the setup of a network game on a two-player map from the members of its room: each member with a slot plays it with the faction
      * it chose (Dawnhold in the first slot and Cindermaw in the second if it chose none), a slot no member takes is a computer player of its
-     * slot's faction, and the map's neutral slot.
+     * slot's faction, and the map's neutral slot. The members' slots are {@link ControllerKind#HUMAN} for people, or
+     * {@link ControllerKind#COMPUTER} for computer players every machine runs.
      *
      * @param map     the map reference, one of {@link DemoMaps#getReferences()}
      * @param members the room's members; observers take no slot
-     * @param kind    the controller kind of the members' slots: {@link ControllerKind#HUMAN} for people, {@link ControllerKind#COMPUTER} for
-     *                computer players every machine runs
+     * @param kind    the controller kind of the members' slots
      * @param seed    the seed of the game's random generator
      * @return the created {@link GameSetup} instance
      * @throws IllegalArgumentException if the demo has no such map, or a member takes another slot than the first or the second
@@ -180,8 +180,7 @@ public final class DemoGames {
      *
      * @param game   the game, whose map is one of the demo's maps
      * @param player the player
-     * @return the created {@link IssueOrderCommand} instance, or {@code null} if the player has no faction, no worker type or no worker, or the
-     * map no other start location
+     * @return the created {@link IssueOrderCommand} instance, or {@code null} if the player has no faction, no worker type or no worker, or the map no other start location
      * @throws IllegalArgumentException if the demo has no map of the game's setup
      */
     public @Nullable IssueOrderCommand createScoutOrder(@NotNull Game game, @NotNull Player player) {

@@ -190,8 +190,7 @@ public final class PeerStore {
     }
 
     /**
-     * @return the user's view of the learned peers in the total order; a peer tried in this start and not answering yet counts one more
-     * failed start
+     * @return the user's view of the learned peers in the total order; a peer tried in this start and not answering yet counts one more failed start
      */
     public @NotNull List<@NotNull LearnedPeer> getPeers() {
         List<LearnedPeer> view = new ArrayList<>(this.peers.size());

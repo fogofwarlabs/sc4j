@@ -30,8 +30,7 @@ public final class ActorTypeCondition implements RequirementCondition {
      * @param content   the content of the game
      * @param player    the player
      * @param actorType the unit type of the acting unit, or {@code null} without one
-     * @return {@link StandardRequirementResult#MET} if the actor is of a listed type, otherwise
-     * {@link StandardRequirementResult#WRONG_ACTOR}
+     * @return {@link StandardRequirementResult#MET} if the actor is of a listed type, otherwise {@link StandardRequirementResult#WRONG_ACTOR}
      */
     @Override
     public @NotNull RequirementResult test(@NotNull GameContent content, @NotNull Player player, @Nullable UnitType actorType) {

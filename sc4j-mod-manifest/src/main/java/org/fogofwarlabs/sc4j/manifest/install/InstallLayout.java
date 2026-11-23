@@ -84,10 +84,8 @@ public final class InstallLayout {
      * Detects the install from the location of a program's classes.
      *
      * @param programClass       a class of the program's own jar or class folder, such as its main class
-     * @param distributionFolder the program's distribution folder below the install, {@link #LAUNCHER_FOLDER} or
-     *                           {@link #RUNTIME_FOLDER}
-     * @return the detected install layout, or {@code null} when the classes are neither in
-     * {@code <install>/<distributionFolder>/lib} nor in a class folder of the source tree
+     * @param distributionFolder the program's distribution folder below the install, {@link #LAUNCHER_FOLDER} or {@link #RUNTIME_FOLDER}
+     * @return the detected install layout, or {@code null} when the classes are neither in {@code <install>/<distributionFolder>/lib} nor in a class folder of the source tree
      */
     public static @Nullable InstallLayout detect(@NotNull Class<?> programClass, @NotNull String distributionFolder) {
         try {
@@ -100,14 +98,12 @@ public final class InstallLayout {
     }
 
     /**
-     * Creates a {@link InstallLayout} instance from the location of a program's classes.
+     * Creates a {@link InstallLayout} instance from the location of a program's classes. A jar in {@code <install>/<distributionFolder>/lib}
+     * gives {@code <install>}; a class folder {@code <repository>/<module>/build/classes/java/main} gives the development install.
      *
      * @param codeLocation       a jar or a class folder
-     * @param distributionFolder the program's distribution folder below the install, {@link #LAUNCHER_FOLDER} or
-     *                           {@link #RUNTIME_FOLDER}
-     * @return the created {@link InstallLayout} instance: {@code <install>} for a jar in
-     * {@code <install>/<distributionFolder>/lib}, the development install for a class folder
-     * {@code <repository>/<module>/build/classes/java/main}; {@code null} otherwise
+     * @param distributionFolder the program's distribution folder below the install, {@link #LAUNCHER_FOLDER} or {@link #RUNTIME_FOLDER}
+     * @return the created {@link InstallLayout} instance, or {@code null} for any other location
      */
     public static @Nullable InstallLayout fromCodeLocation(@NotNull Path codeLocation, @NotNull String distributionFolder) {
         Path location = codeLocation.toAbsolutePath().normalize();
@@ -221,8 +217,10 @@ public final class InstallLayout {
     }
 
     /**
-     * @return {@code <install>/userdata/shared-settings.json}, the value of each shared setting ({@code shared}) by its shared
-     * name, one value for every mod that declares the same name
+     * Returns the file of the value of each shared setting ({@code shared}) by its shared name, one value for every mod that declares the same
+     * name.
+     *
+     * @return {@code <install>/userdata/shared-settings.json}
      */
     public @NotNull Path getSharedSettingsFile() {
         return this.getUserDataDirectory().resolve(SHARED_SETTINGS_FILE);
@@ -266,8 +264,10 @@ public final class InstallLayout {
     }
 
     /**
-     * @return {@code <install>/userdata/beaconlink/nodes.json}, the user's Beacon.Link node list, which the launcher writes once
-     * the user saves it; while it does not exist the seed list ({@link #getSeedsFile()}) stands in for it
+     * Returns the file of the user's Beacon.Link node list, which the launcher writes once the user saves it. While it does not exist, the seed
+     * list ({@link #getSeedsFile()}) stands in for it.
+     *
+     * @return {@code <install>/userdata/beaconlink/nodes.json}
      */
     public @NotNull Path getNodesFile() {
         return this.getBeaconLinkDirectory().resolve(NODES_FILE);

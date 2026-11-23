@@ -1,5 +1,6 @@
 package org.fogofwarlabs.sc4j.launcher.ui.session;
 
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind;
 import org.fogofwarlabs.sc4j.launcher.session.*;
 import org.jetbrains.annotations.NotNull;
@@ -41,7 +42,7 @@ final class ChatAlertsTest {
     }
 
     private static @NotNull RecordingLauncherSession createSession() {
-        return new RecordingLauncherSession(RAYNOR, new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null));
+        return new RecordingLauncherSession(RAYNOR, new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null, LinkConnectivity.UNKNOWN));
     }
 
     private static void addEntries(@NotNull RecordingLauncherSession session, @NotNull ChatEntryView @NotNull ... added) {

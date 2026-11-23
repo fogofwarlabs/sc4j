@@ -205,8 +205,7 @@ public final class UnitSprite {
      * Selects the frame of the sheet a unit shows.
      *
      * @param unit            the unit's view
-     * @param screenDirection the unit's heading on the screen, in {@value WorldProjection#DIRECTION_COUNT} directions, {@code 0} up and
-     *                        clockwise
+     * @param screenDirection the unit's heading on the screen, in {@value WorldProjection#DIRECTION_COUNT} directions, {@code 0} up and clockwise
      * @param frame           the game loop, the clock of the poses' steps
      * @return the frame index in the sheet
      */

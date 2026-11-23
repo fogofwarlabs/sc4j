@@ -12,8 +12,7 @@ public interface HostTickClock {
     /**
      * Creates a {@link HostTickClock} instance of the platform the client runs on.
      *
-     * @return the created {@link HostTickClock} instance: the Windows tick count on Windows when its system function can be bound, a
-     * {@link MonotonicHostTickClock} otherwise
+     * @return the created {@link HostTickClock} instance: the Windows tick count on Windows when its system function can be bound, a {@link MonotonicHostTickClock} otherwise
      */
     static @NotNull HostTickClock getDefault() {
         HostTickClock windows = WindowsHostTickClock.create();

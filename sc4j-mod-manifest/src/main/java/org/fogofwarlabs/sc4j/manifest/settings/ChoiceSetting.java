@@ -57,8 +57,9 @@ public final class ChoiceSetting extends SettingDefinition {
     }
 
     /**
-     * @return the value used when none is saved: with {@code systemDefault} the option of the operating system's locale when
-     * there is one, otherwise the declared default or {@code null}
+     * Returns the value used when none is saved: with {@code systemDefault} the option of the operating system's locale when there is one.
+     *
+     * @return the locale's option, otherwise the declared default or {@code null}
      */
     @Override
     public @Nullable Object getDefaultValue() {
@@ -75,8 +76,7 @@ public final class ChoiceSetting extends SettingDefinition {
     }
 
     /**
-     * @return {@code true} if the options name locales and the option of the operating system's locale is the default,
-     * {@code false} otherwise
+     * @return {@code true} if the options name locales and the option of the operating system's locale is the default, {@code false} otherwise
      */
     public boolean isSystemDefault() {
         return this.systemDefault;

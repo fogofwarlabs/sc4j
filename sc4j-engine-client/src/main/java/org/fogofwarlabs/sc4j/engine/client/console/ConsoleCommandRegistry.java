@@ -114,8 +114,7 @@ public final class ConsoleCommandRegistry {
     }
 
     /**
-     * @return the line of each command, {@code "/name arguments - summary"} wrapped at {@link ConsoleCommand#HELP_WIDTH}, starting with the built-in
-     * commands
+     * @return the line of each command, {@code "/name arguments - summary"} wrapped at {@link ConsoleCommand#HELP_WIDTH}, starting with the built-in commands
      */
     public @NotNull List<String> getHelpLines() {
         List<String> lines = new ArrayList<>();

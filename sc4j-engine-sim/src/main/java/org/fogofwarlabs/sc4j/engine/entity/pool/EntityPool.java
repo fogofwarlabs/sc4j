@@ -84,8 +84,7 @@ public final class EntityPool<E extends Entity> implements StateHashContributor,
      * @param factory  creates the entity object of each slot
      * @param policy   decides the order of the free slots and the generation rule
      * @param columns  the extension column keys in registration order
-     * @throws IllegalArgumentException if the capacity is out of range, a column is listed twice or the factory creates an
-     *                                  entity with another index
+     * @throws IllegalArgumentException if the capacity is out of range, a column is listed twice or the factory creates an entity with another index
      */
     @SuppressWarnings("unchecked")
     public EntityPool(int capacity, @NotNull EntityFactory<E> factory, @NotNull SlotPolicy policy, @NotNull List<@NotNull ColumnKey<?>> columns) {

@@ -32,8 +32,7 @@ public final class ChannelDatagramUtils {
      * @param data   the bytes
      * @param offset the first byte
      * @param length the datagram length
-     * @return {@code true} if the bytes have the channel magic, a whole header and at most {@value #MAXIMUM_DATAGRAM_LENGTH} bytes,
-     * {@code false} otherwise
+     * @return {@code true} if the bytes have the channel magic, a whole header and at most {@value #MAXIMUM_DATAGRAM_LENGTH} bytes, {@code false} otherwise
      */
     public static boolean isChannelDatagram(byte @NotNull [] data, int offset, int length) {
         return length >= HEADER_LENGTH && length <= MAXIMUM_DATAGRAM_LENGTH && offset + length <= data.length &&

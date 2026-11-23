@@ -51,8 +51,7 @@ public final class CompletedUnitCondition implements RequirementCondition {
      * @param content   the content of the game
      * @param player    the player
      * @param actorType the unit type of the acting unit, or {@code null} without one
-     * @return {@link StandardRequirementResult#MET} if the player owns enough completed units, otherwise
-     * the condition's {@link MissingUnitResult}
+     * @return {@link StandardRequirementResult#MET} if the player owns enough completed units, otherwise the condition's {@link MissingUnitResult}
      */
     @Override
     public @NotNull RequirementResult test(@NotNull GameContent content, @NotNull Player player, @Nullable UnitType actorType) {

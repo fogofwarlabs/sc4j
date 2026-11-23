@@ -21,7 +21,7 @@ public enum MessageKind {
      */
     PUBLISH_ROOM(3, true, false),
     /**
-     * A client lists the rooms of a mod fingerprint (client to node).
+     * A client lists the rooms of a mod topic (client to node).
      */
     LIST_ROOMS(4, true, false),
     /**

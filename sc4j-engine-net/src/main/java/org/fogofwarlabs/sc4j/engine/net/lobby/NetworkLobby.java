@@ -434,8 +434,10 @@ public final class NetworkLobby implements GameLobby, Closeable {
     }
 
     /**
-     * @return {@code true} if this machine hosts the open room and every member has the room's map and is ready and, over Beacon.Link, every
-     * joiner has an open channel to every other member, {@code false} otherwise
+     * Tells whether the game can start: this machine hosts the open room, every member has the room's map and is ready and, over Beacon.Link,
+     * every joiner has an open channel to every other member.
+     *
+     * @return {@code true} if the game can start, {@code false} otherwise
      */
     public boolean isReadyToStart() {
         if (!this.isHost() || this.state != LobbyState.OPEN) {
@@ -469,8 +471,7 @@ public final class NetworkLobby implements GameLobby, Closeable {
     }
 
     /**
-     * @return the host's text with its refusal, naming the host's identity, the failure of a connection to the host that could not be made,
-     * or an empty text
+     * @return the host's text with its refusal, naming the host's identity, the failure of a connection to the host that could not be made, or an empty text
      */
     public @NotNull String getRefusalText() {
         return this.refusalText;
@@ -620,15 +621,16 @@ public final class NetworkLobby implements GameLobby, Closeable {
 
     /**
      * Starts the game: sends every member the session id, the turn timing, the participants' game addresses and the setup.
+     * <p>
+     * The setup must be of the room's map and have a wire form; every member's slot must be one of its player slots, with the member's faction
+     * if it chose one.
      *
-     * @param setup    the game setup with its seed, of the room's map; every member's slot is one of its player slots, with the member's faction
-     *                 if it chose one
+     * @param setup    the game setup with its seed
      * @param schedule the turn timing
      * @return the started game at this machine
      * @throws IOException              if a joiner's connection fails
      * @throws IllegalStateException    if this machine joined the room, the game started, or a member is not ready or misses the map
-     * @throws IllegalArgumentException if the setup is not of the room's map, a member's slot is not a player slot of the setup or has another
-     *                                  faction than the member chose, or the setup has no wire form
+     * @throws IllegalArgumentException if the setup breaks these rules
      */
     public @NotNull NetworkGameStart start(@NotNull GameSetup setup, @NotNull TurnSchedule schedule) throws IOException {
         InetSocketAddress gameAddress = this.hostGameAddress;

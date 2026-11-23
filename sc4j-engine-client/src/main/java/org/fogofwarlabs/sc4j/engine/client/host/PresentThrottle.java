@@ -70,8 +70,10 @@ public final class PresentThrottle {
     }
 
     /**
-     * @return the shortest time between two presented passes while the throttle is active: the draw interval, or the frame rate limit's period
-     * rounded up to whole milliseconds when that is longer
+     * Returns the shortest time between two presented passes while the throttle is active: the draw interval, or the frame rate limit's period
+     * rounded up to whole milliseconds when that is longer.
+     *
+     * @return the present interval in milliseconds
      */
     public int getPresentIntervalMilliseconds() {
         int limit = this.frameRateLimit;
@@ -104,11 +106,11 @@ public final class PresentThrottle {
 
 
     /**
-     * Tests whether the current pass presents, and starts the next draw interval when it does.
+     * Tests whether the current pass presents, and starts the next draw interval when it does. A pass presents while the throttle is inactive,
+     * or when the present interval ({@link #getPresentIntervalMilliseconds()}) passed since the previous presented pass.
      *
      * @param currentMilliseconds the host clock
-     * @return {@code true} if the throttle is inactive or the present interval ({@link #getPresentIntervalMilliseconds()}) passed since the previous
-     * presented pass, {@code false} otherwise
+     * @return {@code true} if the current pass presents, {@code false} otherwise
      */
     public boolean takePresentDue(long currentMilliseconds) {
         if (!this.active) {

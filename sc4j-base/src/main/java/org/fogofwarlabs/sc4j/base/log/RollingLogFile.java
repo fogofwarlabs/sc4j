@@ -99,7 +99,7 @@ final class RollingLogFile {
 
 
     /**
-     * Closes the current file; a close failure is ignored because the file is abandoned either way.
+     * Closes the current file; a close failure is ignored.
      */
     void close() {
         try {

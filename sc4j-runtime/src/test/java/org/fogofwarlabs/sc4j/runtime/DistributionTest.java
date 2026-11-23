@@ -41,9 +41,9 @@ import java.util.stream.Stream;
  * runtime, the launcher with the shipped seed list and its empty JVM temporary folder, the runtime, mods and the licence files but no user
  * data and no cache file, with its programs executable on Unix; the launcher, started from the package root by the start file and on Windows
  * by {@code SC4J.exe} and {@code SC4J-cli.exe}, lists the mods with the package's Java without a JVM warning; and its runtime, started
- * headless with no user data and
- * no Java of the computer and with the Beacon.Link options the launcher passes a fresh install (the shipped seed list, here naming a node on
- * 127.0.0.1, and the install's peers file), opens a Beacon.Link session and keeps the node in the peers file without writing a node list of the user.
+ * headless with no user data and no Java of the computer and with the Beacon.Link options the launcher passes a fresh install (the shipped
+ * seed list, here naming a node on 127.0.0.1, and the install's peers file), opens a Beacon.Link session and keeps the node in the peers file
+ * without writing a node list of the user.
  */
 @RequiresDistribution
 final class DistributionTest {

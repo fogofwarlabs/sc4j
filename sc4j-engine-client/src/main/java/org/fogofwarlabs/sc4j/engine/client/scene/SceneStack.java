@@ -308,8 +308,7 @@ public final class SceneStack<C, S, T extends Scene<C, S>> {
      * Closes a modal scene wherever it is in the modal layer; the modal scenes above it stay open.
      *
      * @param modal the modal scene
-     * @return {@code true} if the scene was a modal scene of this stack and is closed now, {@code false} if it was not (nothing
-     * is closed then)
+     * @return {@code true} if the scene was a modal scene of this stack and is closed now, {@code false} if it was not (nothing is closed then)
      */
     public boolean closeModal(@NotNull T modal) {
         if (!this.modalScenes.remove(modal)) {

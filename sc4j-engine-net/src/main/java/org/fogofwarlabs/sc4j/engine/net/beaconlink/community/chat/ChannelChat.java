@@ -159,8 +159,7 @@ public final class ChannelChat implements CommunityListener {
      * @param community    the community session, whose ignore list holds the blocked players
      * @param locale       the locale of the texts
      * @param channelBase  the base name of the default channels
-     * @param keepChannels whether joining a channel keeps the channels the chat is in, up to {@value CommunitySession#MAXIMUM_CHANNELS}, instead
-     *                     of leaving the current one
+     * @param keepChannels whether joining a channel keeps the channels the chat is in, up to {@value CommunitySession#MAXIMUM_CHANNELS}, instead of leaving the current one
      */
     public ChannelChat(@NotNull CommunitySession community, @NotNull Locale locale, @NotNull String channelBase, boolean keepChannels) {
         this.community    = community;

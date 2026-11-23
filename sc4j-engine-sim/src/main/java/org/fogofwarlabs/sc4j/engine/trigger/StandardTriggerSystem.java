@@ -398,8 +398,7 @@ public final class StandardTriggerSystem implements TriggerSystem, StateHashCont
     }
 
     /**
-     * @return {@code true} if every player of a setup slot that is not neutral has an outcome other than {@link PlayerOutcome#PLAYING},
-     * {@code false} otherwise
+     * @return {@code true} if every player of a setup slot that is not neutral has an outcome other than {@link PlayerOutcome#PLAYING}, {@code false} otherwise
      */
     public boolean isGameOver() {
         for (int index = 0; index < this.outcomes.length; index++) {

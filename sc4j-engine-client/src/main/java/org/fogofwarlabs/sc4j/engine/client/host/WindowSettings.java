@@ -6,7 +6,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Holds how a {@link HostWindow} is created: its title, client area size, the smallest size the user may resize it to,
  * whether it has a frame, and the OpenGL core profile version of its context. A window is always created hidden;
- * {@link HostWindow#show} shows it, so an offscreen client simply never calls it.
+ * {@link HostWindow#show} shows it, so an offscreen client never calls it.
  */
 public final class WindowSettings {
     /**

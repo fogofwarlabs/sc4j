@@ -68,8 +68,7 @@ final class PackFontUtils {
      * @param source         the pack files
      * @param definitionPath the pack path of the font definition
      * @return the font face
-     * @throws IOException if a file cannot be read, the sheet is not a PNG of whole cells or too small for the characters, a character is
-     *                     listed twice or a field is invalid
+     * @throws IOException if a file cannot be read, the sheet is not a PNG of whole cells or too small for the characters, a character is listed twice or a field is invalid
      */
     static @NotNull FontFace read(@NotNull PackSource source, @NotNull String definitionPath) throws IOException {
         JsonObjectReader definition = JsonObjectReader.parse(source.read(definitionPath), definitionPath);

@@ -155,7 +155,7 @@ final class FirstScene implements ClientScene {
 ... INFO  [main] RuntimeSession - RUNTIME END: exit code 0 (SUCCESS)
 ```
 
-시작 스크립트는 `JAVA_HOME`의 JDK(없으면 `PATH`의 `java`), JDK 25를 씁니다. 모드 인자는 `--` 뒤에 씁니다(`ModContext.getArguments()`).
+시작 스크립트는 설치본의 Java 런타임 `<install>/java`가 있으면 그것을, 없으면 `JAVA_HOME`의 JDK(없으면 `PATH`의 `java`), JDK 25를 씁니다. 모드 인자는 `--` 뒤에 씁니다(`ModContext.getArguments()`).
 
 ### 2.5 런처에서 실행
 
@@ -403,10 +403,10 @@ for (String file : List.of("maps/first-field.json")) {
 
 ### 14.1 Beacon.Link 방
 
-명령줄에 시드 출처(`--seeds <file>`, `--seed <host:port>`, `--peers <file>`)가 없으면 `ModLaunch.getBeaconLink()`는 `null`입니다. `--account <dir>`는 계정을 정하며, 없으면 게스트 `Guest`(`BeaconLink.GUEST_NAME`)입니다. 런처는 이 모두를 넘깁니다. `BeaconLink.open()`은 계정의 연결 하나인 `BeaconLinkSession`을 반환합니다(`getParticipant()`: `LinkParticipant`, 플레이어와 연결 번호). 호출은 작업을 시작하기만 하며, 세션의 스레드가 루프에서 `poll()`을, 끝에 `close()`를 호출합니다. `getFailure()`(`LinkFailure`)는 노드에 닿지 못한 이유를, `getNodes()`는 노드마다의 상태를 줍니다.
+명령줄에 시드 출처(`--seeds <file>`, `--seed <host:port>`, `--peers <file>`)가 없으면 `ModLaunch.getBeaconLink()`는 `null`입니다. `--account <dir>`는 계정을 정하며, 없으면 게스트 `Guest`(`BeaconLink.GUEST_NAME`)입니다. 런처는 이 모두를 넘깁니다. `BeaconLink.open()`은 계정의 연결 하나인 `BeaconLinkSession`을 반환합니다(`getParticipant()`: `LinkParticipant`, 플레이어와 연결 번호). 호출은 작업을 시작하기만 하며, 세션의 스레드가 루프에서 `poll()`을, 끝에 `close()`를 호출합니다. `getFailure()`(`LinkFailure`)는 노드에 닿지 못한 이유를, `getNodes()`는 노드마다의 상태를 줍니다. `getConnectivity()`(`LinkConnectivity`)는 다른 플레이어와의 직접 연결이 될 만한지 알려 주며, 노드가 세션을 서로 다른 포트로 관찰하면 `RESTRICTED`입니다([프로토콜](beaconlink/protocol.ko.md#등록과-관찰된-주소)).
 
 - **호스트**: `publishRoom(settings, password)`(빈 비밀번호는 공개 방)는 `HostedRoom`을 반환합니다: `getState()`(`PUBLISHING`, `PUBLISHED`, `WITHDRAWN`, `FAILED`), `update(settings)`, 확인을 통과한 참가자마다 `acceptChannel()`, `withdraw()`. `RoomSettings`: 방 이름과 맵 이름(각각 UTF-8 최대 48바이트), 플레이어 수, 정원, 시작 여부, 최대 64바이트의 모드 데이터(데모: 턴 속도).
-- **검색**: `searchRooms()`는 `RoomSearch`를 반환합니다: `getRooms()`(자기 정체성), `getOtherRooms()`(다른 버전, `FoundRoom.getJoinRefusal()`과 함께), `isComplete()`. `FoundRoom`은 호스트, 설정, `isJoinable()`, `isPrivate()`, 모드 id와 버전, `getLatencyEstimate()`(`LatencyClass`: 100 ms까지 `GOOD`, 200 ms까지 `FAIR`, `POOR`, `UNKNOWN`)를 줍니다.
+- **검색**: `searchRooms()`는 `RoomSearch`를 반환합니다: `getRooms()`(자기 정체성), `getOtherRooms()`(다른 버전, `FoundRoom.getJoinRefusal()`과 함께), `isComplete()`. `FoundRoom`은 호스트, 설정, `isJoinable()`, `isPrivate()`, 모드 id와 버전, `getLatencyEstimate()`(`LatencyEstimate.getLatencyClass()`: 100 ms까지 `GOOD`, 200 ms까지 `FAIR`, `POOR`, `UNKNOWN`)를 줍니다.
 - **참가**: `joinRoom(room, password)`는 `ParticipantChannel`을 엽니다: `CONNECTING` 다음 `OPEN`, 또는 `ChannelFailure`와 함께 `CLOSED`. `JOIN_REFUSED`에는 `JoinRefusal`이 따릅니다.
 - **플레이**: `getOverlay()`는 `LinkOverlay`(참가자 단위 데이터그램, 최대 1023바이트, 신뢰성 없음)를 줍니다. 포트 1(`LOBBY_PORT`)은 `NetworkLobby`, 포트 2(`GAME_PORT`)는 `LinkLockstepTransport`, 포트 16부터 255(`FIRST_MOD_PORT`)는 모드의 것입니다. `NetworkLobby.host(room, overlay, ...)`와 `NetworkLobby.join(channel, overlay, ...)`는 LAN과 같은 로비와 게임을 줍니다.
 
@@ -427,7 +427,7 @@ for (String file : List.of("maps/first-field.json")) {
 ## 15. 빌드, 설치, 실행
 
 - **설치**: jar를 `<install>/mods/`에 넣습니다. 런처는 `READY`, `WARNING`(고칠 설정), `ERROR`(망가진 jar나 매니페스트, 지원하지 않는 엔진 버전, 없는 그림, 중복 id)로 보여 줍니다.
-- **런타임**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]`(`--help`). 종료 코드: 0 정상, 1 실행 실패, 2 명령줄이나 설정 오류, 3 모드 로드나 검증 실패. 로그: `<install>/userdata/logs/<id>/sc4j.log`.
+- **런타임**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--no-port-mapping] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]`(`--help`). 종료 코드: 0 정상, 1 실행 실패, 2 명령줄이나 설정 오류, 3 모드 로드나 검증 실패. 로그: `<install>/userdata/logs/<id>/sc4j.log`.
 - **런처**: 모드의 설정, 저장 폴더, 로그 폴더로 런타임을 시작합니다.
 - **모드 도구**: `SC4J.bat tool <mod id> <tool id> [arguments]`(Linux는 `SC4J`, Windows 콘솔은 `SC4J-cli.exe`)는 설치본의 Java 런타임과 런타임이 모드에 주는 클래스 경로(런타임 라이브러리와 모드 jar)로 도구의 `main`을 실행합니다. 작업 폴더는 호출한 곳의 현재 폴더이고, 런타임의 JVM 옵션과 함께 설치 폴더를 시스템 속성 `sc4j.install`(`InstallLayout.INSTALL_PROPERTY`)로 넘기며, 인수를 그대로 넘기고 도구의 종료 코드를 돌려줍니다. `tool`은 설치된 모드의 도구를, `tool <mod id>`는 한 모드의 도구를 보여 줍니다.
 

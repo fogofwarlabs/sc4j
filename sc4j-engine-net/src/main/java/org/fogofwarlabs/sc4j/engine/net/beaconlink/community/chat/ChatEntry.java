@@ -36,8 +36,7 @@ public final class ChatEntry {
      * @param prefix     the sender's prefix, for example {@code "Name#abcd12: "}, empty for an entry without a sender
      * @param text       the text
      * @param channel    the channel the entry belongs to, or {@code null} for a whisper or an entry made outside any channel
-     * @param player     the player the entry names: the author of a line, a player who came into or left the channel, or the other player
-     *                   of a whisper; {@code null} for none
+     * @param player     the player the entry names: the author of a line, a player who came into or left the channel, or the other player of a whisper; {@code null} for none
      * @param playerName the player's tagged name ({@code Name#abcd12}), or {@code null} without a player
      */
     public ChatEntry(@NotNull ChatEntryKind kind, @NotNull String prefix, @NotNull String text, @Nullable ChatChannel channel,
@@ -100,8 +99,7 @@ public final class ChatEntry {
     }
 
     /**
-     * @return the player the entry names: the author of a line, a player who came into or left the channel, or the other player of a whisper;
-     * {@code null} for none
+     * @return the player the entry names: the author of a line, a player who came into or left the channel, or the other player of a whisper; {@code null} for none
      */
     public @Nullable LinkPlayer getPlayer() {
         return this.player;

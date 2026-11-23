@@ -17,8 +17,7 @@ public interface ComputerInstruction<C extends ComputerScriptContext> {
      * Executes the instruction for the running script of the context.
      *
      * @param context the context of the running script
-     * @return {@code true} if the script continues with its next instruction, {@code false} if it stops for this frame (a wait, an end
-     * or a retry later)
+     * @return {@code true} if the script continues with its next instruction, {@code false} if it stops for this frame (a wait, an end or a retry later)
      */
     boolean execute(@NotNull C context);
 }

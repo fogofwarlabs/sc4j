@@ -18,8 +18,7 @@ public final class SoundClip {
      * @param sampleRate   the number of sample frames per second, at least {@code 1}
      * @param channelCount the number of channels, at least {@code 1}
      * @param samples      the samples, interleaved by channel, a whole number of sample frames, copied
-     * @throws IllegalArgumentException if the rate or the channel count is below {@code 1}, or the samples hold no whole
-     *                                  number of sample frames
+     * @throws IllegalArgumentException if the rate or the channel count is below {@code 1}, or the samples hold no whole number of sample frames
      */
     public SoundClip(int sampleRate, int channelCount, short @NotNull [] samples) {
         if (sampleRate < 1 || channelCount < 1) {

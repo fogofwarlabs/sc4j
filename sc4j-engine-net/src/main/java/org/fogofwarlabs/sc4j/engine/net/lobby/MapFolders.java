@@ -195,8 +195,7 @@ public final class MapFolders {
      * @param fileName the received file name
      * @param contents the map file contents
      * @return the absolute, normalized file that holds the contents
-     * @throws IOException if there is no save folder, the name is no single name inside it, the folder or file cannot be written, or every
-     *                     name holds another file
+     * @throws IOException if there is no save folder, the name is no single name inside it, the folder or file cannot be written, or every name holds another file
      */
     public @NotNull Path saveFile(@NotNull String fileName, byte @NotNull [] contents) throws IOException {
         Path folder = this.saveFolder;

@@ -191,8 +191,7 @@ public final class LockstepSession {
      * @param transport         the transport of the session's participants
      * @param commands          the command types of the game by id, which decode the received turns
      * @param localPeer         the local participant, whose player submits to the outgoing sink
-     * @param peerPlayers       the player of this machine's game each participant plays, by peer number, {@code null} for an observer;
-     *                          copied
+     * @param peerPlayers       the player of this machine's game each participant plays, by peer number, {@code null} for an observer; copied
      * @param schedule          the turn timing
      * @param desyncListener    the receiver of detected desyncs, or {@code null} to only count them
      * @param departureListener the receiver of the transport's departures, or {@code null} to only keep them ({@link #getDepartures()})

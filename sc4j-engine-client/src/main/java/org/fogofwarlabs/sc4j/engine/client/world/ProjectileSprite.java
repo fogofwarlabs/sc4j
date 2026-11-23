@@ -101,8 +101,7 @@ public final class ProjectileSprite {
     /**
      * Selects the frame of the flight's sheet.
      *
-     * @param screenDirection the projectile's heading on the screen, in {@value WorldProjection#DIRECTION_COUNT} directions, {@code 0} up and
-     *                        clockwise
+     * @param screenDirection the projectile's heading on the screen, in {@value WorldProjection#DIRECTION_COUNT} directions, {@code 0} up and clockwise
      * @param frame           the game loop, the clock of the columns
      * @return the frame index in the sheet
      */

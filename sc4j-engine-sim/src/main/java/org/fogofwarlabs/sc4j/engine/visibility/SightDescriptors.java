@@ -289,8 +289,7 @@ public final class SightDescriptors {
     /**
      * @param radiusIndex the descriptor index
      * @param recordIndex the ordered record index
-     * @return the index of the second record nearer the center a ground reveal tests, the first one if there is one only, {@code -1} for the
-     * center
+     * @return the index of the second record nearer the center a ground reveal tests, the first one if there is one only, {@code -1} for the center
      */
     public int getSecondPredecessor(int radiusIndex, int recordIndex) {
         return this.descriptors[radiusIndex].secondPredecessors[recordIndex];
