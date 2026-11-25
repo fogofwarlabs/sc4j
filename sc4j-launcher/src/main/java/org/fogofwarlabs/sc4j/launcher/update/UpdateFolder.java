@@ -9,13 +9,13 @@ import java.nio.file.Path;
  * Resolves the folder of downloads and updates below the install, {@code <install>/.cache/update}:
  * {@snippet lang = "text":
  * <install>/.cache/update/
- *   SC4J-<version>.zip     the downloaded user package, once its checksum matched
- *   package/               the unpacked user package, which the updater runs from
- *   backup/                the replaced programs while the updater runs
- *   mods/                  downloaded mod jars before they join mods/
- *   tmp/                   the updater's temporary files
- *   updater.log            the updater's output
- *   failure.txt            why the last update failed, until the launcher shows it
+ *   SC4J-<version>-<platform>.zip  the downloaded user package, once its checksum matched
+ *   package/                       the unpacked user package, which the updater runs from
+ *   backup/                        the replaced programs while the updater runs
+ *   mods/                          downloaded mod jars before they join mods/
+ *   tmp/                           the updater's temporary files
+ *   updater.log                    the updater's output
+ *   failure.txt                    why the last update failed, until the launcher shows it
  *}
  * Nothing in it is needed once an update or a mod install has ended; the launcher removes the folder at its start.
  */
@@ -61,7 +61,7 @@ public final class UpdateFolder {
     /**
      * Returns a downloaded file of the folder.
      *
-     * @param fileName the file name, such as {@code SC4J-1.2.0.zip}
+     * @param fileName the file name, such as {@code SC4J-1.2.0-linux-x64.zip}
      * @return {@code <install>/.cache/update/<fileName>}
      */
     public @NotNull Path getDownloadFile(@NotNull String fileName) {

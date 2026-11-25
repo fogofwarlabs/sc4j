@@ -2,6 +2,8 @@ package org.fogofwarlabs.sc4j.beaconlink.client;
 
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
 import org.fogofwarlabs.sc4j.beaconlink.channel.ChannelSignal;
+import org.fogofwarlabs.sc4j.beaconlink.client.firewall.FirewallState;
+import org.fogofwarlabs.sc4j.beaconlink.client.firewall.InboundFirewall;
 import org.fogofwarlabs.sc4j.beaconlink.client.mapping.MappingProtocol;
 import org.fogofwarlabs.sc4j.beaconlink.peer.PeerSocket;
 import org.fogofwarlabs.sc4j.beaconlink.peer.bootstrap.KnownNodes;
@@ -34,6 +36,7 @@ import java.net.InetSocketAddress;
 import java.net.StandardProtocolFamily;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
+import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,8 +45,8 @@ import java.util.SplittableRandom;
 /**
  * Tests the Beacon.Link client against real nodes on 127.0.0.1, directly and behind every emulated NAT type: registration with the observed
  * address and its refresh, the connections of one account up to the node's limit, room publication, update and withdrawal, searches by mod
- * identity, several nodes with one that dies, two federated nodes, the failure reasons, and the rejection of datagrams that answer no waiting
- * request.
+ * identity, several nodes with one that dies, two federated nodes, the failure reasons, the rejection of datagrams that answer no waiting
+ * request, the port mapping offered once a node observed its address, and the firewall check of the process's executable.
  */
 final class BeaconLinkClientTest {
     private static final @NotNull ModIdentity IDENTITY = ClientScenario.createIdentity("1.0.0");
@@ -69,9 +72,57 @@ final class BeaconLinkClientTest {
     private static final @NotNull InetAddress MAPPED_ADDRESS = InetAddress.ofLiteral("203.0.113.7");
     private static final int MAPPING_LEASE_SECONDS = 3_600;
     /**
+     * The public port a node observes in the mapping tests: another port than the mapped one, as behind a NAT.
+     */
+    private static final int OBSERVED_PORT = 40_000;
+    /**
      * More nodes than a channel signal carries candidates: behind a symmetric NAT each node observes another address.
      */
     private static final int MANY_NODES = ChannelSignal.MAXIMUM_CANDIDATES + 1;
+
+    /**
+     * Answers each check with the next given state, the last one repeated, and records the checked and requested programs.
+     */
+    private static final class RecordingFirewall implements InboundFirewall {
+        private final @NotNull List<@NotNull FirewallState> states;
+        private final @NotNull List<@NotNull Path> checked;
+        private final @NotNull List<@NotNull List<@NotNull Path>> requests;
+
+        private RecordingFirewall(@NotNull FirewallState @NotNull ... states) {
+            this.states   = new ArrayList<>(List.of(states));
+            this.checked  = new ArrayList<>();
+            this.requests = new ArrayList<>();
+        }
+
+        private synchronized @NotNull List<@NotNull Path> getChecked() {
+            return List.copyOf(this.checked);
+        }
+
+        private synchronized @NotNull List<@NotNull List<@NotNull Path>> getRequests() {
+            return List.copyOf(this.requests);
+        }
+
+        @Override
+        public synchronized @NotNull FirewallState check(@NotNull Path program) {
+            this.checked.add(program);
+
+            return this.states.size() > 1 ? this.states.removeFirst() : this.states.getFirst();
+        }
+
+        @Override
+        public synchronized boolean requestAllow(@NotNull List<@NotNull Path> programs) {
+            this.requests.add(programs);
+
+            return true;
+        }
+    }
+
+    /**
+     * Creates a client configuration that maps the session's port at a gateway.
+     */
+    private static @NotNull ClientConfiguration.Builder createMappedConfiguration(@NotNull GatewayScenario gateway) {
+        return new ClientConfiguration.Builder().setPortMapping(gateway.createConfiguration().build());
+    }
 
     private static boolean isRegistered(@NotNull BeaconLinkClient client) {
         return client.getObservedAddress() != null;
@@ -111,14 +162,13 @@ final class BeaconLinkClientTest {
     }
 
     /**
-     * Opens a client that maps its port at a gateway and that the scenario polls; the caller closes it.
+     * Opens a client with a configuration of its own, at the scenario's stamp difficulty, that the scenario polls; the caller closes it.
      */
-    private @NotNull BeaconLinkClient openMappedClient(@NotNull GatewayScenario gateway, @NotNull List<@NotNull ConfiguredNode> listed,
-                                                       @NotNull DatagramEndpoint endpoint) {
+    private @NotNull BeaconLinkClient openConfiguredClient(@NotNull ClientConfiguration.Builder builder,
+                                                           @NotNull List<@NotNull ConfiguredNode> listed,
+                                                           @NotNull DatagramEndpoint endpoint) {
         int difficulty = this.scenario.getConfiguration().getStampDifficulty();
-        ClientConfiguration configuration = new ClientConfiguration.Builder().setStampDifficulty(difficulty)
-                                                                             .setPortMapping(gateway.createConfiguration().build())
-                                                                             .build();
+        ClientConfiguration configuration = builder.setStampDifficulty(difficulty).build();
         IdentityKeyPair keyPair = IdentityKeyPair.generate(new SecureRandom());
         PlayerStamp stamp = PlayerStamp.solve(keyPair.getPublicKey(), "mapped player", difficulty);
         BeaconLinkClient client = new BeaconLinkClient(configuration, this.scenario.getClock(), new SplittableRandom(), keyPair, stamp, 1L, IDENTITY,
@@ -135,16 +185,18 @@ final class BeaconLinkClientTest {
 
     @Test
     void candidates_start_with_the_mapped_address_and_the_close_releases_it() throws IOException {
-        PeerSocket node = this.scenario.openNode(ClientScenario.createNodeConfiguration());
+        InetSocketAddress observed = new InetSocketAddress(MAPPED_ADDRESS, OBSERVED_PORT);
 
-        try (GatewayScenario gateway = GatewayScenario.open(MAPPED_ADDRESS)) {
+        try (GatewayScenario gateway = GatewayScenario.open(MAPPED_ADDRESS);
+             ObservingNodeScenario node = new ObservingNodeScenario(this.scenario, observed)) {
             UdpDatagramEndpoint endpoint = UdpDatagramEndpoint.open(new InetSocketAddress(ClientScenario.LOOPBACK, 0));
-            BeaconLinkClient client = this.openMappedClient(gateway, List.of(ClientScenario.listed(node)), endpoint);
+            BeaconLinkClient client = this.openConfiguredClient(createMappedConfiguration(gateway), List.of(node.getListed()), endpoint);
             int port = endpoint.getLocalAddress().getPort();
 
             this.scenario.await(() -> isRegistered(client) && client.getMappedAddress() != null, "the client registers and maps its port");
 
-            Assertions.assertEquals(List.of(new InetSocketAddress(MAPPED_ADDRESS, port), requireObservedAddress(client)), client.getCandidates());
+            Assertions.assertEquals(List.of(new InetSocketAddress(MAPPED_ADDRESS, port), observed, endpoint.getLocalAddress()),
+                                    client.getCandidates());
 
             client.close();
 
@@ -155,16 +207,40 @@ final class BeaconLinkClientTest {
     }
 
     @Test
+    void a_mapping_is_not_offered_while_no_node_observed_a_public_address() throws IOException {
+        PeerSocket node = this.scenario.openNode(ClientScenario.createNodeConfiguration());
+
+        try (GatewayScenario gateway = GatewayScenario.open(MAPPED_ADDRESS)) {
+            UdpDatagramEndpoint endpoint = UdpDatagramEndpoint.open(new InetSocketAddress(ClientScenario.LOOPBACK, 0));
+            BeaconLinkClient client = this.openConfiguredClient(createMappedConfiguration(gateway), List.of(ClientScenario.listed(node)), endpoint);
+
+            this.scenario.await(() -> isRegistered(client) && !gateway.getRequestedLifetimes(MappingProtocol.PCP).isEmpty(),
+                                "the client registers and the router maps its port");
+
+            Assertions.assertNull(client.getMappedAddress(), "the loopback address the node observed chooses no mapping");
+            Assertions.assertEquals(List.of(endpoint.getLocalAddress()), client.getCandidates());
+
+            client.close();
+
+            Assertions.assertEquals(List.of(MAPPING_LEASE_SECONDS, 0), gateway.getRequestedLifetimes(MappingProtocol.PCP),
+                                    "the close releases the mapping");
+        }
+    }
+
+    @Test
     void mapped_address_stays_first_within_the_candidate_limit() throws IOException {
         List<ConfiguredNode> listed = new ArrayList<>();
 
-        for (int index = 0; index < MANY_NODES; index++) {
-            listed.add(ClientScenario.listed(this.scenario.openNode(ClientScenario.createNodeConfiguration())));
-        }
+        try (GatewayScenario gateway = GatewayScenario.open(MAPPED_ADDRESS);
+             ObservingNodeScenario observing = new ObservingNodeScenario(this.scenario, new InetSocketAddress(MAPPED_ADDRESS, OBSERVED_PORT))) {
+            listed.add(observing.getListed());
 
-        try (GatewayScenario gateway = GatewayScenario.open(MAPPED_ADDRESS)) {
+            for (int index = 0; index < MANY_NODES; index++) {
+                listed.add(ClientScenario.listed(this.scenario.openNode(ClientScenario.createNodeConfiguration())));
+            }
+
             NatEndpoint endpoint = this.scenario.openNat(NatType.SYMMETRIC).openEndpoint();
-            BeaconLinkClient client = this.openMappedClient(gateway, listed, endpoint);
+            BeaconLinkClient client = this.openConfiguredClient(createMappedConfiguration(gateway), listed, endpoint);
             int port = endpoint.getLocalAddress().getPort();
 
             try {
@@ -180,6 +256,27 @@ final class BeaconLinkClientTest {
                 client.close();
             }
         }
+    }
+
+    @Test
+    void session_checks_the_firewall_for_its_executable_and_requests_the_allow() throws IOException {
+        Path program = InboundFirewall.findCurrentProgram();
+        RecordingFirewall firewall = new RecordingFirewall(FirewallState.BLOCKED, FirewallState.ALLOWED);
+        UdpDatagramEndpoint endpoint = UdpDatagramEndpoint.open(new InetSocketAddress(ClientScenario.LOOPBACK, 0));
+        BeaconLinkClient client = this.openConfiguredClient(new ClientConfiguration.Builder().setFirewall(firewall), List.of(), endpoint);
+
+        Assertions.assertNotNull(program);
+        this.scenario.await(() -> client.getFirewallState() == FirewallState.BLOCKED, "the firewall check ends");
+        client.requestFirewallAllow();
+        this.scenario.await(() -> client.getFirewallState() == FirewallState.ALLOWED, "the allow request ends");
+        client.requestFirewallAllow();
+
+        Assertions.assertEquals(List.of(program, program), firewall.getChecked());
+        Assertions.assertEquals(List.of(List.of(program)), firewall.getRequests(), "an allowed executable is not requested again");
+        Assertions.assertEquals(FirewallState.NOT_NEEDED, this.scenario.openClient(IDENTITY, List.of()).getFirewallState(),
+                                "a session without a firewall checks nothing");
+
+        client.close();
     }
 
     @Test

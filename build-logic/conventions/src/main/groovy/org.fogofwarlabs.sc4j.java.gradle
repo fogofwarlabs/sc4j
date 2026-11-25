@@ -96,8 +96,12 @@ plugins.withId('application') {
                                   '[ -d "$APP_HOME/.cache/tmp" ] || die "The JVM temporary path is not a directory"\n\n'
             unixText = unixText.replace('# Add default JVM options here.', unixPreparation + '# Add default JVM options here.')
             def unixJava = 'if [ -x "$APP_HOME/../java/bin/java" ] ; then\n    JAVA_HOME=$APP_HOME/../java\nfi\n\n'
+            // The JVM names files in the charset of the locale (sun.jnu.encoding): a C or POSIX locale on Linux gets its UTF-8 variant, which
+            // the processes the program starts inherit. macOS always names files in UTF-8.
+            def unixLocale = 'case ${LC_ALL:-${LC_CTYPE:-${LANG:-C}}} in\n' +
+                             '    C|POSIX) [ "$( uname )" = Darwin ] || export LC_ALL=C.UTF-8 ;;\nesac\n\n'
             unixScript.text = unixText.replace('# Determine the Java command to use to start the JVM.',
-                unixJava + '# Determine the Java command to use to start the JVM.')
+                                               unixJava + unixLocale + '# Determine the Java command to use to start the JVM.')
         }
     }
     // Every application distribution carries LICENSE, NOTICE and licenses/ at its root; the install task fails when its folder misses one of

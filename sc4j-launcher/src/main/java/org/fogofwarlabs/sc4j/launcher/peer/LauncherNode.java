@@ -47,9 +47,9 @@ import java.util.List;
  * The role ({@link NodeSettings}) decides how the node takes part. In the {@link NodeRole#AUTOMATIC} role it listens on its port on every
  * IPv4 interface (a free port, logged, when another program holds that port) and becomes a full peer once its reachability self-test proves
  * that strangers reach it; until then, or when the test fails, it is a leaf. With port mapping on ({@link NodeSettings#isPortMapping()}), the
- * automatic role asks the router to map the node's port ({@link PortMapper}), so that the self-test can pass without a manual forward; a
- * mapping behind another NAT is skipped against the address the self-test observed. In the {@link NodeRole#OFF} role it is leaf-only on a
- * free port and maps nothing.
+ * automatic role asks the routers to map the node's port ({@link PortMapper}), so that the self-test can pass without a manual forward; the
+ * mapping whose external address equals the address the self-test observed is kept, and the others are released. In the {@link NodeRole#OFF}
+ * role it is leaf-only on a free port and maps nothing.
  * Either way it joins through the install's seeds (the user's node list once saved, otherwise the shipped seed list,
  * {@link KnownNodes#readSeeds}) and the learned peers of the install's shared peers file, which it merges into the file every five minutes
  * and when it stops. Host names are resolved on the node's thread. The node's state is published as a {@link LauncherNodeStatus} after every
@@ -255,7 +255,7 @@ public final class LauncherNode implements Closeable {
     }
 
     /**
-     * @return the router's mapping of the node's port, or {@code null} while the node holds none; may be called from any thread
+     * @return the mapping of the node's port kept for the address the peers observed, or {@code null} while none is kept; may be called from any thread
      */
     public @Nullable PortMapping getPortMapping() {
         PortMapper mapper = this.portMapper;

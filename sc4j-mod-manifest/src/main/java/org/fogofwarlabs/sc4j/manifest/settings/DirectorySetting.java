@@ -13,7 +13,8 @@ import java.util.List;
 
 /**
  * Defines a {@code directory} setting: the value must name an existing directory that holds every relative path of
- * {@code check.contains}.
+ * {@code check.contains} and, when {@code check.containsAny} lists paths, at least one of them (for example the program file of each
+ * platform's build of a game).
  * <p>
  * A directory setting may also declare where a directory of its kind is usually recorded on the computer ({@code detect}): the names of
  * uninstall entries ({@code uninstallEntries}) and folder names below the program folders ({@code programFolders}); an empty value is
@@ -21,7 +22,10 @@ import java.util.List;
  * that name for every mod that declares the same name, instead of once per mod.
  */
 public final class DirectorySetting extends SettingDefinition {
+    private static final @NotNull String PATH_LIST_SEPARATOR = ", ";
+
     private final @NotNull List<@NotNull String> containedPaths;
+    private final @NotNull List<@NotNull String> anyContainedPaths;
 
     private final @NotNull List<@NotNull String> uninstallEntries;
     private final @NotNull List<@NotNull String> programFolders;
@@ -31,25 +35,27 @@ public final class DirectorySetting extends SettingDefinition {
     /**
      * Creates a {@link DirectorySetting} instance.
      *
-     * @param key              the key of the value in the settings value file
-     * @param label            the label of the launcher's form field
-     * @param description      the longer description, or {@code null}
-     * @param required         whether a value (or a default) must exist before the mod runs
-     * @param defaultValue     the directory used when none is saved, or {@code null}
-     * @param message          the localized message the launcher shows when a check fails, or {@code null} for the generic one
-     * @param containedPaths   the relative paths, with {@code /} separators, that must exist in the directory
-     * @param uninstallEntries the names of the uninstall entries whose install location is a directory of this kind
-     * @param programFolders   the folder names below the program folders, with {@code /} separators, of a directory of this kind
-     * @param sharedName       the name under which mods share one value, or {@code null} for a value of this mod only
+     * @param key               the key of the value in the settings value file
+     * @param label             the label of the launcher's form field
+     * @param description       the longer description, or {@code null}
+     * @param required          whether a value (or a default) must exist before the mod runs
+     * @param defaultValue      the directory used when none is saved, or {@code null}
+     * @param message           the localized message the launcher shows when a check fails, or {@code null} for the generic one
+     * @param containedPaths    the relative paths, with {@code /} separators, that must exist in the directory
+     * @param anyContainedPaths the relative paths, with {@code /} separators, of which one must exist in the directory; empty for no check
+     * @param uninstallEntries  the names of the uninstall entries whose install location is a directory of this kind
+     * @param programFolders    the folder names below the program folders, with {@code /} separators, of a directory of this kind
+     * @param sharedName        the name under which mods share one value, or {@code null} for a value of this mod only
      */
     public DirectorySetting(@NotNull String key, @NotNull LocalizedText label, @Nullable LocalizedText description,
                             boolean required, @Nullable Path defaultValue, @Nullable LocalizedText message,
-                            @NotNull List<@NotNull String> containedPaths,
+                            @NotNull List<@NotNull String> containedPaths, @NotNull List<@NotNull String> anyContainedPaths,
                             @NotNull List<@NotNull String> uninstallEntries, @NotNull List<@NotNull String> programFolders,
                             @Nullable String sharedName) {
         super(key, label, description, required, defaultValue, message);
 
-        this.containedPaths = List.copyOf(containedPaths);
+        this.containedPaths    = List.copyOf(containedPaths);
+        this.anyContainedPaths = List.copyOf(anyContainedPaths);
 
         this.uninstallEntries = List.copyOf(uninstallEntries);
         this.programFolders   = List.copyOf(programFolders);
@@ -80,6 +86,13 @@ public final class DirectorySetting extends SettingDefinition {
      */
     public @NotNull List<@NotNull String> getContainedPaths() {
         return this.containedPaths;
+    }
+
+    /**
+     * @return the relative paths, with {@code /} separators, of which one must exist in the directory ({@code check.containsAny}), or none
+     */
+    public @NotNull List<@NotNull String> getAnyContainedPaths() {
+        return this.anyContainedPaths;
     }
 
     /**
@@ -151,5 +164,18 @@ public final class DirectorySetting extends SettingDefinition {
                                          "The directory {0} does not contain {1}.", directory, containedPath);
             }
         }
+
+        if (this.anyContainedPaths.isEmpty()) {
+            return;
+        }
+
+        for (String anyContainedPath : this.anyContainedPaths) {
+            if (Files.exists(directory.resolve(anyContainedPath))) {
+                return;
+            }
+        }
+
+        problems.addCheckFailure(ProblemCode.VALUE_CONTAINS_ANY, this.getKey(), this.getMessage(), "The directory {0} contains none of {1}.",
+                                 directory, String.join(PATH_LIST_SEPARATOR, this.anyContainedPaths));
     }
 }

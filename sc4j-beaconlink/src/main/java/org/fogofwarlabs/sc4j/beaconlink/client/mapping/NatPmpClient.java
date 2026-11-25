@@ -10,15 +10,13 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
 
 /**
- * Maps a UDP port with NAT-PMP (RFC 6886): the external address request finds the server among the gateways and gives the external address,
- * a UDP mapping request maps, the same request with the mapping's external port renews and one with lifetime {@code 0} deletes. An answer is
- * told from a PCP answer by its first byte, the version: a server that answers version {@code 2} speaks PCP only and gives no NAT-PMP mapping.
+ * Maps a UDP port with NAT-PMP (RFC 6886) at one router: the external address request checks that the router speaks it and gives the external
+ * address, a UDP mapping request maps, the same request with the mapping's external port renews and one with lifetime {@code 0} deletes. An
+ * answer is told from a PCP answer by its first byte, the version: a server that answers version {@code 2} speaks PCP only and gives no
+ * NAT-PMP mapping.
  */
 final class NatPmpClient implements MappingClient {
     private static final @NotNull Logger LOGGER = Logger.of(NatPmpClient.class);
@@ -44,23 +42,21 @@ final class NatPmpClient implements MappingClient {
     private static final int ANY_PORT = 0;
 
     private final @NotNull PortMappingConfiguration configuration;
-    private final @NotNull Collection<@NotNull InetAddress> gateways;
+    private final @NotNull GatewayRoute gateway;
 
-    private @Nullable InetSocketAddress server;
     private @Nullable InetAddress externalAddress;
     private @NotNull String problem;
 
     /**
      * Creates a {@link NatPmpClient} instance.
      *
-     * @param configuration the ports and times
-     * @param gateways      the gateway addresses, which may grow while the client looks for a server
+     * @param configuration the times
+     * @param gateway       the router and the local address the requests go out from
      */
-    NatPmpClient(@NotNull PortMappingConfiguration configuration, @NotNull Collection<@NotNull InetAddress> gateways) {
+    NatPmpClient(@NotNull PortMappingConfiguration configuration, @NotNull GatewayRoute gateway) {
         this.configuration = configuration;
-        this.gateways      = gateways;
+        this.gateway       = gateway;
 
-        this.server          = null;
         this.externalAddress = null;
         this.problem         = "no answer";
     }
@@ -71,6 +67,14 @@ final class NatPmpClient implements MappingClient {
     @Override
     public @NotNull MappingProtocol getProtocol() {
         return MappingProtocol.NAT_PMP;
+    }
+
+    /**
+     * @return the router this client asks and the local address its requests go out from
+     */
+    @Override
+    public @NotNull GatewayRoute getGateway() {
+        return this.gateway;
     }
 
     /**
@@ -90,17 +94,16 @@ final class NatPmpClient implements MappingClient {
     }
 
     /**
-     * Looks for a NAT-PMP server among the gateways with an external address request.
+     * Checks that the router speaks NAT-PMP with an external address request.
      *
-     * @return {@code true} if a server answered in version {@code 0} with an external address, {@code false} otherwise
+     * @return {@code true} if the router answered in version {@code 0} with an external address, {@code false} otherwise
      */
     @Override
     public boolean find() {
         DatagramPacket answer;
 
         try {
-            answer = GatewayDatagramUtils.exchange(this::listTargets, target -> new byte[]{VERSION, OPCODE_EXTERNAL_ADDRESS},
-                                                   this.configuration.getAnswerMillis(),
+            answer = GatewayDatagramUtils.exchange(this.gateway, new byte[]{VERSION, OPCODE_EXTERNAL_ADDRESS}, this.configuration.getAnswerMillis(),
                                                    packet -> packet.getLength() >= MINIMUM_ANSWER_LENGTH &&
                                                              (packet.getData()[0] == PCP_VERSION ||
                                                               packet.getData()[0] == VERSION &&
@@ -140,19 +143,7 @@ final class NatPmpClient implements MappingClient {
             return false;
         }
 
-        this.server = (InetSocketAddress) answer.getSocketAddress();
-
         return true;
-    }
-
-    private @NotNull List<@NotNull InetSocketAddress> listTargets() {
-        List<InetSocketAddress> targets = new ArrayList<>();
-
-        for (InetAddress gateway : List.copyOf(this.gateways)) {
-            targets.add(new InetSocketAddress(gateway, this.configuration.getGatewayPort()));
-        }
-
-        return targets;
     }
 
     /**
@@ -186,7 +177,7 @@ final class NatPmpClient implements MappingClient {
     @Override
     public void release(@NotNull PortMapping mapping) {
         if (this.requestMapping(mapping.getInternalPort(), ANY_PORT, RELEASE_LIFETIME) == null) {
-            LOGGER.info("BEACON.LINK: port mapping release by NAT-PMP failed: {0}", this.problem);
+            LOGGER.info("BEACON.LINK: port mapping release by NAT-PMP at {0} failed: {1}", this.gateway, this.problem);
         }
     }
 
@@ -196,10 +187,9 @@ final class NatPmpClient implements MappingClient {
      * @return the granted mapping, or {@code null} if the server refused or did not answer
      */
     private @Nullable PortMapping requestMapping(int internalPort, int externalPort, int lifetimeSeconds) {
-        InetSocketAddress target = this.server;
         InetAddress external = this.externalAddress;
 
-        if (target == null || external == null) {
+        if (external == null) {
             return null;
         }
 
@@ -214,7 +204,7 @@ final class NatPmpClient implements MappingClient {
         request.putInt(lifetimeSeconds);
 
         try {
-            answer = GatewayDatagramUtils.exchange(() -> List.of(target), gateway -> request.array(), this.configuration.getAnswerMillis(),
+            answer = GatewayDatagramUtils.exchange(this.gateway, request.array(), this.configuration.getAnswerMillis(),
                                                    packet -> packet.getLength() >= MAP_ANSWER_LENGTH && packet.getData()[0] == VERSION &&
                                                              (packet.getData()[1] & BYTE_MASK) == (RESPONSE_BIT | OPCODE_MAP_UDP) &&
                                                              (ByteBuffer.wrap(packet.getData()).getShort(INTERNAL_PORT_OFFSET) & PORT_MASK) ==
@@ -242,8 +232,8 @@ final class NatPmpClient implements MappingClient {
 
         int grantedPort = data.getShort(EXTERNAL_PORT_OFFSET) & PORT_MASK;
 
-        return new PortMapping(MappingProtocol.NAT_PMP, target.getAddress(), new InetSocketAddress(external, grantedPort), internalPort,
-                               data.getInt(LIFETIME_OFFSET));
+        return new PortMapping(MappingProtocol.NAT_PMP, this.gateway.getAddress().getAddress(), new InetSocketAddress(external, grantedPort),
+                               internalPort, data.getInt(LIFETIME_OFFSET));
     }
 
     /**

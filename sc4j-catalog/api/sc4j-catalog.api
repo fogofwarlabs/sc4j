@@ -53,6 +53,7 @@ public final class org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem extends j
   public static final org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem INVALID_REPOSITORY;
   public static final org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem INVALID_RESPONSE;
   public static final org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem NOT_FOUND;
+  public static final org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem PLATFORM_MISSING;
   public static final org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem TOO_LARGE;
   public static final org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem UNAVAILABLE;
   public static org.fogofwarlabs.sc4j.catalog.github.ReleaseProblem valueOf(java.lang.String);

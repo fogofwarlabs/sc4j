@@ -232,8 +232,7 @@ public final class GatewayScenario implements Closeable {
      * @return the created {@link PortMappingConfiguration.Builder} instance
      */
     public @NotNull PortMappingConfiguration.Builder createConfiguration() {
-        return new PortMappingConfiguration.Builder().setGateways(List.of(LOOPBACK))
-                                                     .setGatewayPort(this.getAddress().getPort())
+        return new PortMappingConfiguration.Builder().setGateways(List.of(this.getAddress()))
                                                      .setSearchAddress(this.getAddress())
                                                      .setAnswerMillis(ANSWER_MILLIS);
     }

@@ -16,8 +16,8 @@ import java.util.List;
 /**
  * Replaces the programs of an install with those of an unpacked user package: the items {@link #ITEMS}, that is {@code java/},
  * {@code launcher/}, {@code runtime/}, the start program {@code SC4J.exe} and the console program {@code SC4J-cli.exe} with their folder
- * {@code app/}, the start files, {@code LICENSE}, {@code NOTICE} and {@code licenses/}. Only the Windows package has the items
- * {@link #WINDOWS_ITEMS}; an install updated from a package without them loses its own.
+ * {@code app/}, the start files, {@code LICENSE}, {@code NOTICE} and {@code licenses/}. Only the packages of some platforms have the items
+ * {@link #PLATFORM_ITEMS}; an install updated from a package without them loses its own.
  * <p>
  * The mod jars the package ships, listed in its file {@link #PACKAGE_MODS_FILE}, are updated too, compared with the same list of the install:
  * a listed jar the install has is replaced when the install's list names it too, a listed jar the install's list does not name is added when
@@ -61,16 +61,28 @@ public final class PackageSwap {
     public static final @NotNull String UNIX_START_FILE = "SC4J";
 
     /**
+     * The start file of the launcher that Finder opens with a double click on macOS.
+     */
+    public static final @NotNull String MACOS_START_FILE = "SC4J.command";
+
+    /**
      * The items of the install an update replaces, in the order they are replaced.
      */
     public static final @NotNull List<@NotNull String> ITEMS = List.of(JAVA_FOLDER, InstallLayout.LAUNCHER_FOLDER, InstallLayout.RUNTIME_FOLDER,
                                                                        WINDOWS_PROGRAM, WINDOWS_CONSOLE_PROGRAM, WINDOWS_PROGRAM_FOLDER,
-                                                                       WINDOWS_START_FILE, UNIX_START_FILE, "LICENSE", "NOTICE", "licenses");
+                                                                       WINDOWS_START_FILE, UNIX_START_FILE, MACOS_START_FILE, "LICENSE", "NOTICE",
+                                                                       "licenses");
 
     /**
-     * The items of {@link #ITEMS} that only the Windows package has.
+     * The items of {@link #ITEMS} that only the packages of some platforms have: the Windows programs and the macOS start file.
      */
-    public static final @NotNull List<@NotNull String> WINDOWS_ITEMS = List.of(WINDOWS_PROGRAM, WINDOWS_CONSOLE_PROGRAM, WINDOWS_PROGRAM_FOLDER);
+    public static final @NotNull List<@NotNull String> PLATFORM_ITEMS = List.of(WINDOWS_PROGRAM, WINDOWS_CONSOLE_PROGRAM, WINDOWS_PROGRAM_FOLDER,
+                                                                                MACOS_START_FILE);
+
+    /**
+     * The file of a package that names the platform it is built for ({@link PackagePlatform#getId()}), one line.
+     */
+    public static final @NotNull String PACKAGE_PLATFORM_FILE = InstallLayout.LAUNCHER_FOLDER + "/package-platform.txt";
 
     /**
      * The file of a package, kept in the install, that lists the jars of {@code mods/} the package ships, one file name per line.
@@ -85,7 +97,7 @@ public final class PackageSwap {
     private static final @NotNull String JAR_EXTENSION = ".jar";
 
     /**
-     * Checks that an unpacked user package holds every item an update replaces, the {@link #WINDOWS_ITEMS} aside, and every mod jar its
+     * Checks that an unpacked user package holds every item an update replaces, the {@link #PLATFORM_ITEMS} aside, and every mod jar its
      * {@link #PACKAGE_MODS_FILE} lists.
      *
      * @param packageRoot the package's folder
@@ -93,7 +105,7 @@ public final class PackageSwap {
      */
     public static void checkPackage(@NotNull Path packageRoot) throws IOException {
         for (String item : ITEMS) {
-            if (!WINDOWS_ITEMS.contains(item) && !Files.exists(packageRoot.resolve(item), LinkOption.NOFOLLOW_LINKS)) {
+            if (!PLATFORM_ITEMS.contains(item) && !Files.exists(packageRoot.resolve(item), LinkOption.NOFOLLOW_LINKS)) {
                 throw Exceptions.newIOException("The package {0} has no {1}.", packageRoot, item);
             }
         }

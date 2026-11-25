@@ -23,8 +23,9 @@ import java.util.Set;
 import java.util.function.DoubleConsumer;
 
 /**
- * Updates the install from the releases of the update repository. A release {@code v<version>} carries the user package
- * {@code SC4J-<version>.zip} and its checksum file {@code SC4J-<version>.zip.sha256}.
+ * Updates the install from the releases of the update repository. A release {@code v<version>} carries one user package per platform,
+ * {@code SC4J-<version>-<platform>.zip} ({@link PackagePlatform}), each with its checksum file {@code SC4J-<version>-<platform>.zip.sha256}; the
+ * updater takes only the package of the platform it runs on, and unpacks only a package that names that platform.
  * <p>
  * {@link #findUpdate} reads the latest release and tells whether it is newer than the running launcher. {@link #download} keeps the package
  * in the update folder ({@link UpdateFolder}) only when its checksum matches, and {@link #unpack} unpacks it there and checks that it holds
@@ -34,6 +35,7 @@ import java.util.function.DoubleConsumer;
  */
 public final class LauncherUpdater {
     private static final @NotNull String PACKAGE_PREFIX = "SC4J-";
+    private static final @NotNull String PLATFORM_SEPARATOR = "-";
     private static final @NotNull String PACKAGE_EXTENSION = ".zip";
     private static final @NotNull String CHECKSUM_EXTENSION = ".sha256";
     private static final long MAXIMUM_PACKAGE_SIZE = 2L * 1024 * 1024 * 1024;
@@ -85,23 +87,57 @@ public final class LauncherUpdater {
         }
 
         Files.setPosixFilePermissions(packageRoot.resolve(PackageSwap.UNIX_START_FILE), EXECUTABLE);
+
+        Path finderStartFile = packageRoot.resolve(PackageSwap.MACOS_START_FILE);
+
+        if (Files.isRegularFile(finderStartFile)) {
+            Files.setPosixFilePermissions(finderStartFile, EXECUTABLE);
+        }
+    }
+
+    /**
+     * Reads the platform an unpacked package names in its {@link PackageSwap#PACKAGE_PLATFORM_FILE}.
+     *
+     * @param packageRoot the package's folder
+     * @return the platform id, or an empty string when the package names none
+     * @throws IOException if the file exists but cannot be read
+     */
+    private static @NotNull String readPackagePlatform(@NotNull Path packageRoot) throws IOException {
+        try {
+            return Files.readString(packageRoot.resolve(PackageSwap.PACKAGE_PLATFORM_FILE), StandardCharsets.UTF_8).strip();
+        } catch (NoSuchFileException exception) {
+            return "";
+        }
     }
 
 
     private final @NotNull InstallLayout install;
     private final @NotNull UpdateFolder folder;
     private final @NotNull ReleaseClient client;
+    private final @Nullable PackagePlatform platform;
 
     /**
-     * Creates a {@link LauncherUpdater} instance.
+     * Creates a {@link LauncherUpdater} instance for the platform the launcher runs on ({@link PackagePlatform#findCurrent()}).
      *
      * @param install the install
      * @param client  reads the releases
      */
     public LauncherUpdater(@NotNull InstallLayout install, @NotNull ReleaseClient client) {
-        this.install = install;
-        this.folder  = UpdateFolder.of(install);
-        this.client  = client;
+        this(install, client, PackagePlatform.findCurrent());
+    }
+
+    /**
+     * Creates a {@link LauncherUpdater} instance.
+     *
+     * @param install  the install
+     * @param client   reads the releases
+     * @param platform the platform whose packages the install takes, or {@code null} when no package is built for the install's platform
+     */
+    public LauncherUpdater(@NotNull InstallLayout install, @NotNull ReleaseClient client, @Nullable PackagePlatform platform) {
+        this.install  = install;
+        this.folder   = UpdateFolder.of(install);
+        this.client   = client;
+        this.platform = platform;
     }
 
     /**
@@ -111,7 +147,8 @@ public final class LauncherUpdater {
      * @param repository the update repository
      * @param running    the running launcher's version, or {@code null} when it is not a semantic version
      * @return the newer release, or {@code null} when the running launcher is up to date
-     * @throws ReleaseException if the release cannot be read, its tag is not a version or it lacks the package or its checksum file
+     * @throws ReleaseException if the release cannot be read, its tag is not a version, it lacks the package of this platform
+     *                          ({@link ReleaseProblem#PLATFORM_MISSING}) or the package's checksum file
      */
     public @Nullable LauncherRelease findUpdate(@NotNull ReleaseRepository repository, @Nullable ReleaseVersion running) throws ReleaseException {
         ReleaseCheck check = ReleaseCheck.read(this.client, repository, running);
@@ -122,12 +159,24 @@ public final class LauncherUpdater {
             return null;
         }
 
-        String packageName = PACKAGE_PREFIX + latest + PACKAGE_EXTENSION;
+        PackagePlatform current = this.platform;
+
+        if (current == null) {
+            throw new ReleaseException(ReleaseProblem.PLATFORM_MISSING, Exceptions.format("No package of the release {0} runs on this system",
+                                                                                          release.getTag()));
+        }
+
+        String packageName = PACKAGE_PREFIX + latest + PLATFORM_SEPARATOR + current.getId() + PACKAGE_EXTENSION;
         ReleaseAsset packageFile = release.findAsset(packageName);
         ReleaseAsset checksumFile = release.findAsset(packageName + CHECKSUM_EXTENSION);
 
-        if (packageFile == null || checksumFile == null) {
-            throw new ReleaseException(ReleaseProblem.ASSET_MISSING, Exceptions.format("The release {0} has no {1} with its checksum file",
+        if (packageFile == null) {
+            throw new ReleaseException(ReleaseProblem.PLATFORM_MISSING, Exceptions.format("The release {0} has no package for {1} ({2})",
+                                                                                          release.getTag(), current.getId(), packageName));
+        }
+
+        if (checksumFile == null) {
+            throw new ReleaseException(ReleaseProblem.ASSET_MISSING, Exceptions.format("The release {0} has no checksum file of {1}",
                                                                                        release.getTag(), packageName));
         }
 
@@ -152,12 +201,13 @@ public final class LauncherUpdater {
 
     /**
      * Unpacks a downloaded user package into the update folder, replacing a package unpacked before, and checks that it holds every item an
-     * update replaces. On systems with POSIX permissions the programs of the package are made executable.
+     * update replaces and names the platform of this updater. On systems with POSIX permissions the programs of the package are made
+     * executable.
      *
      * @param release     the release the package belongs to
      * @param packageFile the downloaded package
      * @return the unpacked package's folder {@code SC4J-<version>}
-     * @throws InvalidPackageException if the package is broken or not an SC4J package of the release
+     * @throws InvalidPackageException if the package is broken, not an SC4J package of the release or a package of another platform
      * @throws IOException             if the package cannot be written
      */
     public @NotNull Path unpack(@NotNull LauncherRelease release, @NotNull Path packageFile) throws IOException {
@@ -166,12 +216,23 @@ public final class LauncherUpdater {
 
         FileTreeUtils.delete(packageDirectory);
 
+        String packagePlatform;
+
         try {
             FileTreeUtils.unzip(packageFile, packageDirectory, MAXIMUM_UNPACKED_SIZE);
             PackageSwap.checkPackage(packageRoot);
+            packagePlatform = readPackagePlatform(packageRoot);
         } catch (IOException exception) {
             throw new InvalidPackageException(Exceptions.format("{0} is not an SC4J package: {1}", packageFile.getFileName(), exception.getMessage()),
                                               exception);
+        }
+
+        PackagePlatform current = this.platform;
+
+        if (current == null || !current.getId().equals(packagePlatform)) {
+            throw new InvalidPackageException(Exceptions.format("{0} is a package for {1}, not for this system ({2})", packageFile.getFileName(),
+                                                                packagePlatform.isEmpty() ? "no named platform" : packagePlatform,
+                                                                current == null ? "no package platform" : current.getId()));
         }
 
         markExecutable(packageRoot);

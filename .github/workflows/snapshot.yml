@@ -12,18 +12,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  snapshot:
-    name: snapshot
-    # The client module ships FFmpeg natives for windows-x86_64 only.
-    runs-on: windows-latest
-    timeout-minutes: 120
-    defaults:
-      run:
-        shell: bash
+  version:
+    name: version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      snapshot: ${{ steps.version.outputs.snapshot }}
     steps:
-      - name: Keep line endings
-        run: git config --global core.autocrlf false
-
       - name: Check out
         uses: actions/checkout@v7
 
@@ -43,16 +38,33 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "snapshot=$snapshot" >> "$GITHUB_OUTPUT"
 
-      - name: Check the secrets
-        if: steps.version.outputs.snapshot == 'true'
-        env:
-          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-        run: |
-          if [ -z "$MAVEN_CENTRAL_USERNAME" ] || [ -z "$MAVEN_CENTRAL_PASSWORD" ]; then
-            echo "::error::Set the repository secrets MAVEN_CENTRAL_USERNAME and MAVEN_CENTRAL_PASSWORD (the Central Portal user token)."
-            exit 1
-          fi
+  # One user package per platform, built and tested on a runner of that platform, kept as a workflow artifact.
+  packages:
+    name: package (${{ matrix.platform }})
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x64
+            runner: windows-latest
+          - platform: linux-x64
+            runner: ubuntu-latest
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: macos-arm64
+            runner: macos-latest
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Keep line endings
+        run: git config --global core.autocrlf false
+
+      - name: Check out
+        uses: actions/checkout@v7
 
       - name: Set up the JDK
         uses: actions/setup-java@v6
@@ -65,11 +77,77 @@ jobs:
         with:
           cache-provider: basic
 
-      - name: Test
-        run: ./gradlew test -Psc4j.render.smoke=false
+      # The runners have no GPU, so the OpenGL checks are off; Linux runs the JavaFX tests on a virtual display (Xvfb).
+      - name: Test and build the user package
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          run_gradle() {
+            if [ "$RUNNER_OS" = Linux ]; then
+              xvfb-run --auto-servernum ./gradlew "$@"
+            else
+              ./gradlew "$@"
+            fi
+          }
+          run_gradle test distributionTest -Psc4j.render.smoke=false
+          if [ ! -f "build/distributions/SC4J-$VERSION-$PLATFORM.zip" ]; then
+            echo "::error::The runner built no SC4J-$VERSION-$PLATFORM.zip."
+            exit 1
+          fi
+
+      - name: Upload the user package
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-${{ matrix.platform }}
+          path: build/distributions/SC4J-${{ needs.version.outputs.version }}-${{ matrix.platform }}.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload the reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports-${{ matrix.platform }}
+          path: |
+            **/build/reports/
+            **/build/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # The Maven Central snapshot, once, after every package was built and tested.
+  snapshot:
+    name: snapshot
+    needs: [version, packages]
+    if: needs.version.outputs.snapshot == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check the secrets
+        env:
+          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+        run: |
+          if [ -z "$MAVEN_CENTRAL_USERNAME" ] || [ -z "$MAVEN_CENTRAL_PASSWORD" ]; then
+            echo "::error::Set the repository secrets MAVEN_CENTRAL_USERNAME and MAVEN_CENTRAL_PASSWORD (the Central Portal user token)."
+            exit 1
+          fi
+
+      - name: Check out
+        uses: actions/checkout@v7
+
+      - name: Set up the JDK
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
 
       - name: Publish the snapshot
-        if: steps.version.outputs.snapshot == 'true'
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
@@ -82,14 +160,3 @@ jobs:
             unset ORG_GRADLE_PROJECT_signingInMemoryKeyId
           fi
           ./gradlew publishToMavenCentral
-
-      - name: Upload the reports
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: reports
-          path: |
-            **/build/reports/
-            **/build/test-results/
-          if-no-files-found: ignore
-          retention-days: 14

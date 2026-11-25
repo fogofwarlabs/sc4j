@@ -1,6 +1,5 @@
 package org.fogofwarlabs.sc4j.beaconlink.client.mapping;
 
-import org.fogofwarlabs.sc4j.base.exception.Exceptions;
 import org.fogofwarlabs.sc4j.base.log.Logger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -11,18 +10,19 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * Maps a local UDP port on the router of the local network, on a daemon thread of its own, so that strangers reach the socket on that port.
+ * Maps a local UDP port on the routers of the local networks, on a daemon thread of its own, so that strangers reach the socket on that port.
  * <p>
- * The mapper asks with PCP, NAT-PMP and UPnP at once: each looks for a router that speaks it, and the first protocol in the order of
- * {@link MappingProtocol} whose router answered maps the port, the next one only if that fails. So one router that speaks several of them
- * holds one mapping. PCP and NAT-PMP requests go to the configured gateways (by default the first address of each local IPv4 subnet) and to the
- * address of a UPnP device that answers the search. The mapper asks for the same external port and takes another one if the router gives it,
- * asks for the configured lease, renews the mapping after half the granted lease and releases it when it is closed; a mapping left by a
- * process that ended expires with its lease.
+ * The mapper looks for routers with PCP, NAT-PMP and UPnP at once. PCP and NAT-PMP requests go to the configured gateways, by default the first
+ * address of each local IPv4 subnet asked from the local address of that subnet, and a UPnP search goes out from each local IPv4 address. Every
+ * router that answered maps the port with the first protocol, in the order of {@link MappingProtocol}, that it speaks and that grants a
+ * mapping, so a router that speaks several protocols holds one mapping. The mapper asks for the same external port and takes another one if
+ * the router gives it, asks for the configured lease, renews each mapping after half its granted lease and releases them when it is closed; a
+ * mapping left by a process that ended expires with its lease.
  * <p>
- * Another NAT outside the router makes the mapping useless: a mapped external address that is not public (a private network or carrier-grade
- * NAT address) is skipped at once, and one that differs from the public address a node observed is skipped when the owner reports that
- * address ({@link #checkObservedAddress}). A skipped mapping is released and never offered.
+ * Only the router on the route of the traffic, with no other NAT outside it, maps to the public address a node observes. So no mapping is
+ * offered before the owner reports that address ({@link #checkObservedAddress}): then the mapper keeps the mapping whose external address
+ * equals it, of the preferred protocol if several do, and releases the others; it keeps none if no mapped address equals it. A mapped external
+ * address that is not public (a private network or carrier-grade NAT address) is skipped and released at once.
  * <p>
  * Each step is logged with the protocol, the router and the mapping, or the problem of each protocol when none maps.
  */
@@ -46,10 +46,29 @@ public final class PortMapper implements Closeable {
     private static final int CARRIER_GRADE_SECOND_OCTET = 0x40;
 
     /**
+     * Holds a mapping a router granted, the client that renews and releases it and the time of its next renewal.
+     */
+    private static final class HeldMapping {
+        private final @NotNull MappingClient client;
+        private @NotNull PortMapping mapping;
+        private long renewNanos;
+
+        private HeldMapping(@NotNull MappingClient client, @NotNull PortMapping mapping) {
+            this.client     = client;
+            this.mapping    = mapping;
+            this.renewNanos = computeRenewNanos(mapping);
+        }
+
+        private @NotNull InetAddress getExternalAddress() {
+            return this.mapping.getExternalAddress().getAddress();
+        }
+    }
+
+    /**
      * Starts mapping a local UDP port in the background.
      *
      * @param internalPort  the local UDP port
-     * @param configuration where and how the router is asked
+     * @param configuration where and how the routers are asked
      * @return the started mapper
      */
     public static @NotNull PortMapper start(int internalPort, @NotNull PortMappingConfiguration configuration) {
@@ -81,10 +100,11 @@ public final class PortMapper implements Closeable {
     }
 
     /**
-     * Lists the first address of each IPv4 subnet of the local interfaces that are up, without the loopback ones: the usual router addresses.
+     * Lists the first address of each IPv4 subnet of the local interfaces that are up, without the loopback ones, at the PCP and NAT-PMP port:
+     * the usual router addresses, each asked from the local address of its subnet.
      */
-    private static @NotNull List<@NotNull InetAddress> findSubnetGateways() {
-        Set<InetAddress> gateways = new LinkedHashSet<>();
+    private static @NotNull List<@NotNull GatewayRoute> findSubnetGateways() {
+        List<GatewayRoute> gateways = new ArrayList<>();
 
         try {
             for (NetworkInterface networkInterface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
@@ -109,8 +129,10 @@ public final class PortMapper implements Closeable {
                     int first = (value & (-1 << (ADDRESS_BITS - prefix))) + 1;
 
                     if (first != value) {
-                        gateways.add(InetAddress.getByAddress(new byte[]{(byte) (first >>> 3 * BYTE_BITS), (byte) (first >>> 2 * BYTE_BITS),
-                                                                         (byte) (first >>> BYTE_BITS), (byte) first}));
+                        InetAddress gateway = InetAddress.getByAddress(new byte[]{(byte) (first >>> 3 * BYTE_BITS), (byte) (first >>> 2 * BYTE_BITS),
+                                                                                  (byte) (first >>> BYTE_BITS), (byte) first});
+
+                        gateways.add(new GatewayRoute(address, new InetSocketAddress(gateway, PortMappingConfiguration.DEFAULT_GATEWAY_PORT)));
                     }
                 }
             }
@@ -118,21 +140,59 @@ public final class PortMapper implements Closeable {
             LOGGER.debug("BEACON.LINK: the interface addresses are not available: {0}", exception.getMessage());
         }
 
-        return List.copyOf(gateways);
+        return gateways;
     }
 
-    private static @NotNull MappingClient findOwner(@NotNull List<@NotNull MappingClient> clients, @NotNull PortMapping mapping) {
-        for (MappingClient client : clients) {
-            if (client.getProtocol() == mapping.getProtocol()) {
-                return client;
+    /**
+     * Groups the clients whose routers answered by router, each group in the preferred order of the protocols. PCP and NAT-PMP clients ask one
+     * router when they share the local address, the router's address and port; a UPnP client asks the router of a PCP or NAT-PMP client with
+     * the same local address and router address.
+     */
+    private static @NotNull List<@NotNull List<@NotNull MappingClient>> groupRouters(@NotNull List<@NotNull MappingClient> found) {
+        List<List<MappingClient>> routers = new ArrayList<>();
+
+        for (MappingProtocol protocol : MappingProtocol.values()) {
+            for (MappingClient client : found) {
+                if (client.getProtocol() != protocol) {
+                    continue;
+                }
+
+                List<MappingClient> router = routers.stream().filter(group -> isSameRouter(group.getFirst(), client)).findFirst().orElse(null);
+
+                if (router == null) {
+                    router = new ArrayList<>();
+                    routers.add(router);
+                }
+
+                router.add(client);
             }
         }
 
-        throw Exceptions.newIllegalStateException("No client speaks {0}.", mapping.getProtocol().getName());
+        return routers;
+    }
+
+    private static boolean isSameRouter(@NotNull MappingClient first, @NotNull MappingClient second) {
+        GatewayRoute firstGateway = first.getGateway();
+        GatewayRoute secondGateway = second.getGateway();
+        boolean samePort = first.getProtocol() == MappingProtocol.UPNP || second.getProtocol() == MappingProtocol.UPNP ||
+                           firstGateway.getAddress().getPort() == secondGateway.getAddress().getPort();
+
+        return samePort && Objects.equals(firstGateway.getLocalAddress(), secondGateway.getLocalAddress()) &&
+               firstGateway.getAddress().getAddress().equals(secondGateway.getAddress().getAddress());
+    }
+
+    private static long computeRenewNanos(@NotNull PortMapping mapping) {
+        long renewMillis = Math.max(mapping.getLeaseSeconds() * MILLIS_PER_SECOND / RENEW_DIVISOR, MINIMUM_RENEW_MILLIS);
+
+        return System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(renewMillis);
     }
 
     private static @NotNull String describeLease(@NotNull PortMapping mapping) {
         return mapping.isPermanent() ? "permanent" : mapping.getLeaseSeconds() + " s";
+    }
+
+    private static @NotNull String describeExternal(@NotNull PortMapping mapping) {
+        return mapping.getExternalAddress().getAddress().getHostAddress() + ":" + mapping.getExternalAddress().getPort();
     }
 
 
@@ -140,9 +200,16 @@ public final class PortMapper implements Closeable {
     private final @NotNull PortMappingConfiguration configuration;
     private final @NotNull Thread thread;
 
+    private final @NotNull List<@NotNull HeldMapping> held;
+    private final @NotNull List<@NotNull HeldMapping> unused;
+    private @Nullable HeldMapping kept;
     private volatile @Nullable PortMapping mapping;
     private volatile @NotNull PortMappingState state;
     private volatile @Nullable String problem;
+
+    private @Nullable InetAddress observedAddress;
+    private volatile boolean chosen;
+    private boolean established;
     private boolean closed;
 
     private PortMapper(int internalPort, @NotNull PortMappingConfiguration configuration) {
@@ -150,10 +217,17 @@ public final class PortMapper implements Closeable {
         this.configuration = configuration;
         this.thread        = Thread.ofPlatform().name(THREAD_NAME).daemon().unstarted(this::run);
 
+        this.held    = new ArrayList<>();
+        this.unused  = new ArrayList<>();
+        this.kept    = null;
         this.mapping = null;
         this.state   = PortMappingState.STARTING;
         this.problem = null;
-        this.closed  = false;
+
+        this.observedAddress = null;
+        this.chosen          = false;
+        this.established     = false;
+        this.closed          = false;
     }
 
     /**
@@ -164,9 +238,9 @@ public final class PortMapper implements Closeable {
     }
 
     /**
-     * Returns the mapping the router holds. May be called from any thread.
+     * Returns the mapping kept for the public address a node observed. May be called from any thread.
      *
-     * @return the mapping, or {@code null} while the mapper asks, when no protocol mapped, when the mapping was skipped or lost, and after the close
+     * @return the mapping, or {@code null} until a node observed its external address, when no router mapped, when the mappings were skipped or lost, and after the close
      */
     public @Nullable PortMapping getMapping() {
         return this.mapping;
@@ -180,7 +254,7 @@ public final class PortMapper implements Closeable {
     }
 
     /**
-     * @return why no protocol mapped, with the problem of each protocol, or why the mapping was lost; {@code null} otherwise
+     * @return why no router mapped, with the problem of each protocol, or why the kept mapping was lost; {@code null} otherwise
      */
     public @Nullable String getProblem() {
         return this.problem;
@@ -188,30 +262,92 @@ public final class PortMapper implements Closeable {
 
 
     /**
-     * Compares the mapping with the address a node observed for the mapped socket: a public observed address that differs from the mapped
-     * external address means another NAT outside the router, so the mapping is skipped and released. Addresses that are not public are
-     * ignored, and so is the call while no mapping is held. May be called from any thread.
+     * Hands the mapper the public address a node observed for the mapped socket. The first address chooses the mapping to keep, at once or
+     * once the routers answered: the one whose external address equals it, the others are released. A later address that differs from the
+     * kept mapping's external address skips and releases that mapping too. Addresses that are not public are ignored. May be called from any
+     * thread.
      *
      * @param observed the observed address
      */
     public void checkObservedAddress(@NotNull InetAddress observed) {
         PortMapping current = this.mapping;
 
-        if (current == null || !isPublicAddress(observed) || current.getExternalAddress().getAddress().equals(observed)) {
+        if (!isPublicAddress(observed) || this.chosen && (current == null || current.getExternalAddress().getAddress().equals(observed))) {
             return;
         }
 
         synchronized (this) {
-            if (this.mapping != current) {
+            if (this.closed) {
                 return;
             }
 
+            if (!this.chosen) {
+                this.observedAddress = observed;
+
+                if (this.established && !this.held.isEmpty()) {
+                    this.choose(observed);
+                }
+
+                return;
+            }
+
+            HeldMapping skipped = this.kept;
+
+            if (skipped == null || skipped.getExternalAddress().equals(observed)) {
+                return;
+            }
+
+            this.logSkipped(skipped, observed);
+            this.held.remove(skipped);
+            this.unused.add(skipped);
+            this.kept    = null;
             this.mapping = null;
             this.state   = PortMappingState.SKIPPED;
-            LOGGER.info("BEACON.LINK: port mapping skipped: mapped address {0} differs from observed {1} (another NAT outside)",
-                        current.getExternalAddress().getAddress().getHostAddress(), observed.getHostAddress());
             this.notifyAll();
         }
+    }
+
+    /**
+     * Keeps the held mapping whose external address equals the observed address, the preferred protocol first, and moves the others to the
+     * release. Called with the mapper's lock held.
+     */
+    private void choose(@NotNull InetAddress observed) {
+        HeldMapping matching = this.held.stream()
+                                        .filter(candidate -> candidate.getExternalAddress().equals(observed))
+                                        .min(Comparator.comparing(candidate -> candidate.mapping.getProtocol()))
+                                        .orElse(null);
+
+        for (HeldMapping candidate : List.copyOf(this.held)) {
+            if (candidate == matching) {
+                continue;
+            }
+
+            if (!candidate.getExternalAddress().equals(observed)) {
+                this.logSkipped(candidate, observed);
+            }
+
+            this.held.remove(candidate);
+            this.unused.add(candidate);
+        }
+
+        this.chosen = true;
+        this.kept   = matching;
+
+        if (matching == null) {
+            this.state = PortMappingState.SKIPPED;
+        } else {
+            this.mapping = matching.mapping;
+            this.state   = PortMappingState.MAPPED;
+            LOGGER.info("BEACON.LINK: port mapping by {0} at {1} kept: {2} matches observed", matching.mapping.getProtocol().getName(),
+                        matching.client.getGateway(), describeExternal(matching.mapping));
+        }
+
+        this.notifyAll();
+    }
+
+    private void logSkipped(@NotNull HeldMapping skipped, @NotNull InetAddress observed) {
+        LOGGER.info("BEACON.LINK: port mapping at {0} skipped: mapped address {1} differs from observed {2} (another NAT outside, or not on the route)",
+                    skipped.client.getGateway(), skipped.getExternalAddress().getHostAddress(), observed.getHostAddress());
     }
 
     private synchronized boolean isClosed() {
@@ -219,26 +355,36 @@ public final class PortMapper implements Closeable {
     }
 
     private void run() {
-        Set<InetAddress> gateways = ConcurrentHashMap.newKeySet();
-        List<InetAddress> configured = this.configuration.getGateways();
-
-        gateways.addAll(configured != null ? configured : findSubnetGateways());
-
-        List<MappingClient> clients = List.of(new PcpClient(this.configuration, gateways),
-                                              new NatPmpClient(this.configuration, gateways),
-                                              new UpnpClient(this.configuration, gateways));
+        List<MappingClient> clients = new ArrayList<>();
 
         try {
-            PortMapping established = this.establish(clients);
+            List<HeldMapping> created = this.establish(clients);
 
-            if (established != null) {
-                this.keep(findOwner(clients, established), established);
+            synchronized (this) {
+                if (this.closed) {
+                    this.unused.addAll(created);
+                } else {
+                    this.held.addAll(created);
+                    this.established = true;
+
+                    if (!created.isEmpty() && this.observedAddress != null) {
+                        this.choose(this.observedAddress);
+                    }
+                }
             }
+
+            this.keep();
         } catch (RuntimeException exception) {
-            this.mapping = null;
-            this.state   = PortMappingState.NOT_AVAILABLE;
-            this.problem = exception.toString();
-            LOGGER.info("BEACON.LINK: port mapping failed: {0}", this.problem);
+            synchronized (this) {
+                if (!this.closed) {
+                    this.kept    = null;
+                    this.mapping = null;
+                    this.state   = PortMappingState.NOT_AVAILABLE;
+                    this.problem = exception.toString();
+                }
+            }
+
+            LOGGER.info("BEACON.LINK: port mapping failed: {0}", exception.toString());
         } finally {
             for (MappingClient client : clients) {
                 client.close();
@@ -247,167 +393,254 @@ public final class PortMapper implements Closeable {
     }
 
     /**
-     * Looks for a router with every protocol at once and maps the port with the first protocol, in the preferred order, whose router answered
-     * and granted a public external address.
+     * Looks for routers with every protocol at once and maps the port at each router that answered, with the first protocol in the preferred
+     * order that grants a public external address.
      *
-     * @return the created mapping, or {@code null} if none was created or the mapper was closed first
+     * @param clients receives every client created, for the caller to close
+     * @return the created mappings, in the preferred order of their protocols
      */
-    private @Nullable PortMapping establish(@NotNull List<@NotNull MappingClient> clients) {
+    private @NotNull List<@NotNull HeldMapping> establish(@NotNull List<@NotNull MappingClient> clients) {
+        List<GatewayRoute> gateways = new ArrayList<>();
+        List<InetSocketAddress> configured = this.configuration.getGateways();
+        Map<MappingProtocol, Set<String>> problems = new EnumMap<>(MappingProtocol.class);
+        List<MappingClient> found = new ArrayList<>();
+        List<HeldMapping> created = new ArrayList<>();
+        boolean skipped = false;
+
+        if (configured == null) {
+            gateways.addAll(findSubnetGateways());
+        } else {
+            for (InetSocketAddress gateway : configured) {
+                gateways.add(new GatewayRoute(null, gateway));
+            }
+        }
+
+        for (MappingProtocol protocol : MappingProtocol.values()) {
+            problems.put(protocol, new LinkedHashSet<>());
+        }
+
         ExecutorService searches = Executors.newVirtualThreadPerTaskExecutor();
 
         try {
-            List<Future<Boolean>> found = new ArrayList<>();
-            List<String> problems = new ArrayList<>();
+            Future<List<UpnpClient>> search = searches.submit(() -> UpnpClient.search(this.configuration));
+            List<Future<Boolean>> answers = new ArrayList<>();
+
+            for (GatewayRoute gateway : gateways) {
+                clients.add(new PcpClient(this.configuration, gateway));
+                clients.add(new NatPmpClient(this.configuration, gateway));
+            }
 
             for (MappingClient client : clients) {
-                found.add(searches.submit(client::find));
+                answers.add(searches.submit(client::find));
+            }
+
+            List<UpnpClient> devices = this.awaitAnswer(search, List.of());
+
+            for (UpnpClient device : devices) {
+                clients.add(device);
+                answers.add(searches.submit(device::find));
             }
 
             for (int index = 0; index < clients.size(); index++) {
                 MappingClient client = clients.get(index);
 
-                if (!this.awaitFound(found.get(index)) || this.isClosed()) {
-                    problems.add(client.getProtocol().getName() + ": " + client.getProblem());
-
-                    continue;
+                if (this.awaitAnswer(answers.get(index), false)) {
+                    found.add(client);
+                } else {
+                    problems.get(client.getProtocol()).add(client.getProblem());
                 }
-
-                InetAddress external = client.getExternalAddress();
-
-                if (external != null && !isPublicAddress(external)) {
-                    this.skipNotPublic(external);
-
-                    return null;
-                }
-
-                PortMapping created = client.map(this.internalPort, this.configuration.getLeaseSeconds());
-
-                if (created == null) {
-                    problems.add(client.getProtocol().getName() + ": " + client.getProblem());
-
-                    continue;
-                }
-
-                if (!isPublicAddress(created.getExternalAddress().getAddress())) {
-                    this.skipNotPublic(created.getExternalAddress().getAddress());
-                    client.release(created);
-                    LOGGER.info("BEACON.LINK: port mapping released");
-
-                    return null;
-                }
-
-                synchronized (this) {
-                    if (!this.closed) {
-                        this.mapping = created;
-                        this.state   = PortMappingState.MAPPED;
-                        LOGGER.info("BEACON.LINK: port mapping by {0} at {1}: {2}, lease {3}", created.getProtocol().getName(),
-                                    created.getGateway().getHostAddress(), created, describeLease(created));
-
-                        return created;
-                    }
-                }
-
-                client.release(created);
-                LOGGER.info("BEACON.LINK: port mapping released");
-
-                return null;
             }
 
-            if (!this.isClosed()) {
-                this.problem = String.join(", ", problems);
-                this.state   = PortMappingState.NOT_AVAILABLE;
-                LOGGER.info("BEACON.LINK: port mapping not available ({0})", this.problem);
+            if (gateways.isEmpty()) {
+                problems.get(MappingProtocol.PCP).add("no gateway");
+                problems.get(MappingProtocol.NAT_PMP).add("no gateway");
             }
 
-            return null;
+            if (devices.isEmpty()) {
+                problems.get(MappingProtocol.UPNP).add("no device");
+            }
         } finally {
             searches.shutdownNow();
         }
+
+        for (List<MappingClient> router : groupRouters(found)) {
+            if (this.isClosed()) {
+                break;
+            }
+
+            for (MappingClient client : router) {
+                InetAddress external = client.getExternalAddress();
+
+                if (external != null && !isPublicAddress(external)) {
+                    this.logNotPublic(client, external);
+                    skipped = true;
+
+                    break;
+                }
+
+                PortMapping granted = client.map(this.internalPort, this.configuration.getLeaseSeconds());
+
+                if (granted == null) {
+                    problems.get(client.getProtocol()).add(client.getProblem());
+
+                    continue;
+                }
+
+                if (!isPublicAddress(granted.getExternalAddress().getAddress())) {
+                    this.logNotPublic(client, granted.getExternalAddress().getAddress());
+                    client.release(granted);
+                    LOGGER.info("BEACON.LINK: port mapping by {0} at {1} released", client.getProtocol().getName(), client.getGateway());
+                    skipped = true;
+
+                    break;
+                }
+
+                LOGGER.info("BEACON.LINK: port mapping by {0} at {1}: {2}, lease {3}", granted.getProtocol().getName(), client.getGateway(), granted,
+                            describeLease(granted));
+                created.add(new HeldMapping(client, granted));
+
+                break;
+            }
+        }
+
+        synchronized (this) {
+            if (this.closed || !created.isEmpty()) {
+                return created;
+            }
+
+            if (skipped) {
+                this.state = PortMappingState.SKIPPED;
+            } else {
+                StringJoiner described = new StringJoiner(", ");
+
+                for (Map.Entry<MappingProtocol, Set<String>> entry : problems.entrySet()) {
+                    described.add(entry.getKey().getName() + ": " + (entry.getValue().isEmpty() ? "no answer" : String.join("/", entry.getValue())));
+                }
+
+                this.problem = described.toString();
+                this.state   = PortMappingState.NOT_AVAILABLE;
+                LOGGER.info("BEACON.LINK: port mapping not available ({0})", this.problem);
+            }
+        }
+
+        return created;
     }
 
-    private boolean awaitFound(@NotNull Future<@NotNull Boolean> search) {
+    private <T> @NotNull T awaitAnswer(@NotNull Future<@NotNull T> answer, @NotNull T missing) {
         try {
-            return search.get();
+            return answer.get();
         } catch (ExecutionException exception) {
-            return false;
+            return missing;
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
 
-            return false;
+            return missing;
         }
     }
 
-    private void skipNotPublic(@NotNull InetAddress external) {
-        synchronized (this) {
-            if (!this.closed) {
-                this.state = PortMappingState.SKIPPED;
-            }
-        }
-
-        LOGGER.info("BEACON.LINK: port mapping skipped: mapped address {0} is not public (another NAT outside)", external.getHostAddress());
+    private void logNotPublic(@NotNull MappingClient client, @NotNull InetAddress external) {
+        LOGGER.info("BEACON.LINK: port mapping at {0} skipped: mapped address {1} is not public (another NAT outside)", client.getGateway(),
+                    external.getHostAddress());
     }
 
     /**
-     * Renews the mapping after half of each granted lease until it is skipped or the mapper is closed, then releases it.
+     * Renews each held mapping after half its granted lease and releases the mappings that are no longer used, until no mapping is held or
+     * the mapper is closed, which releases every held mapping.
      */
-    private void keep(@NotNull MappingClient owner, @NotNull PortMapping established) {
-        PortMapping current = established;
-
-        while (current != null) {
-            long renewMillis = Math.max(current.getLeaseSeconds() * MILLIS_PER_SECOND / RENEW_DIVISOR, MINIMUM_RENEW_MILLIS);
-            long renewNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(renewMillis);
-            boolean due;
+    private void keep() {
+        while (true) {
+            List<HeldMapping> releases;
+            HeldMapping due = null;
+            boolean finished;
 
             synchronized (this) {
-                while (this.mapping == current && (current.isPermanent() || System.nanoTime() < renewNanos)) {
+                while (this.unused.isEmpty() && !this.closed && !this.held.isEmpty()) {
+                    HeldMapping next = this.held.stream()
+                                                .filter(candidate -> !candidate.mapping.isPermanent())
+                                                .min(Comparator.comparingLong(candidate -> candidate.renewNanos))
+                                                .orElse(null);
+                    long nowNanos = System.nanoTime();
+
+                    if (next != null && nowNanos >= next.renewNanos) {
+                        due = next;
+
+                        break;
+                    }
+
                     try {
-                        this.wait(current.isPermanent() ? 0L : Math.max(1L, TimeUnit.NANOSECONDS.toMillis(renewNanos - System.nanoTime())));
+                        this.wait(next == null ? 0L : Math.max(1L, TimeUnit.NANOSECONDS.toMillis(next.renewNanos - nowNanos)));
                     } catch (InterruptedException exception) {
                         Thread.currentThread().interrupt();
+                        this.closed  = true;
+                        this.kept    = null;
                         this.mapping = null;
+                        this.state   = PortMappingState.CLOSED;
                     }
                 }
 
-                due = this.mapping == current;
+                if (this.closed) {
+                    this.unused.addAll(this.held);
+                    this.held.clear();
+                    due = null;
+                }
+
+                releases = List.copyOf(this.unused);
+                finished = this.held.isEmpty();
+
+                this.unused.clear();
             }
 
-            if (!due) {
-                owner.release(current);
-                LOGGER.info("BEACON.LINK: port mapping released");
+            for (HeldMapping released : releases) {
+                released.client.release(released.mapping);
+                LOGGER.info("BEACON.LINK: port mapping by {0} at {1} released", released.mapping.getProtocol().getName(),
+                            released.client.getGateway());
+            }
 
+            if (due != null) {
+                this.renew(due);
+            } else if (finished) {
                 return;
             }
+        }
+    }
 
-            PortMapping renewed = owner.renew(current);
-            boolean kept;
+    /**
+     * Renews a held mapping; a mapping the router no longer renews is dropped, and the mapper has no mapping when it was the kept one.
+     */
+    private void renew(@NotNull HeldMapping due) {
+        PortMapping renewed = due.client.renew(due.mapping);
+        String protocol = due.mapping.getProtocol().getName();
 
-            synchronized (this) {
-                kept = this.mapping == current;
+        synchronized (this) {
+            if (renewed != null) {
+                due.mapping    = renewed;
+                due.renewNanos = computeRenewNanos(renewed);
 
-                if (kept) {
+                if (this.kept == due) {
                     this.mapping = renewed;
                 }
-
-                if (kept && renewed == null) {
-                    this.state   = PortMappingState.NOT_AVAILABLE;
-                    this.problem = owner.getProblem();
-                }
+            } else if (this.held.remove(due) && (this.kept == due || !this.chosen && this.held.isEmpty())) {
+                this.kept    = null;
+                this.mapping = null;
+                this.state   = PortMappingState.NOT_AVAILABLE;
+                this.problem = due.client.getProblem();
+            } else {
+                // A mapping the router dropped needs no release.
+                this.unused.remove(due);
             }
+        }
 
-            if (kept && renewed == null) {
-                LOGGER.info("BEACON.LINK: port mapping lost: {0}", owner.getProblem());
-            } else if (kept) {
-                LOGGER.info("BEACON.LINK: port mapping renewed");
-            }
-
-            current = renewed;
+        if (renewed == null) {
+            LOGGER.info("BEACON.LINK: port mapping by {0} at {1} lost: {2}", protocol, due.client.getGateway(), due.client.getProblem());
+        } else {
+            LOGGER.info("BEACON.LINK: port mapping by {0} at {1} renewed", protocol, due.client.getGateway());
         }
     }
 
 
     /**
-     * Stops the mapper: the mapping is no longer offered, and the mapper's thread releases it. Waits up to {@value #CLOSE_WAIT_MILLIS} ms for
-     * the release; a mapper still asking the router releases a mapping it gets afterwards. Closing a closed mapper does nothing.
+     * Stops the mapper: no mapping is offered any more, and the mapper's thread releases the mappings. Waits up to {@value #CLOSE_WAIT_MILLIS}
+     * ms for the release; a mapper still asking the routers releases the mappings it gets afterwards. Closing a closed mapper does nothing.
      */
     @Override
     public void close() {
@@ -417,6 +650,7 @@ public final class PortMapper implements Closeable {
             }
 
             this.closed  = true;
+            this.kept    = null;
             this.mapping = null;
             this.state   = PortMappingState.CLOSED;
             this.notifyAll();

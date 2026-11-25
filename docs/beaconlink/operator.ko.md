@@ -16,18 +16,20 @@
 
 **역할**(`node.json`): 자동(기본값, "다른 플레이어 연결 돕기" 켬)은 모든 IPv4 인터페이스의 UDP 포트(기본값 7455. 사용 중이면 로그에 남긴 빈 포트)에서 수신하고, 자체 시험을 통과하면 전체 피어, 아니면 리프입니다. 끔: 빈 포트의 리프 전용이며, 네트워크에 참가하고 `peers.json`을 최신으로 유지합니다.
 
-**포트 매핑**(`node.json`의 `portMapping`, "공유기 포트 자동 열기(UPnP)", 기본값 켬): 런처는 공유기에 노드 포트(자동 역할일 때만)와 각 게임 세션의 포트를 열어 달라고 PCP, NAT-PMP, UPnP-IGD로 동시에 요청합니다. 임대는 1시간이고 절반이 지나면 갱신하며 닫을 때 해제합니다. 공유기 목록에서 매핑 이름은 `SC4J Beacon.Link`입니다. 매핑된 주소가 사설 주소이거나 100.64.0.0/10 안에 있거나 피어가 관찰한 주소와 다르면 바깥에 NAT가 또 있으므로 쓰지 않습니다. 설정을 끄거나 공유기가 이 프로토콜을 지원하지 않으면 직접 포트 포워딩해야 전체 피어가 됩니다. 헤드리스 노드는 매핑하지 않습니다.
+**포트 매핑**(`node.json`의 `portMapping`, "공유기 포트 자동 열기(UPnP)", 기본값 켬): 런처는 공유기에 노드 포트(자동 역할일 때만)와 각 게임 세션의 포트를 열어 달라고 PCP, NAT-PMP, UPnP-IGD로 동시에 요청합니다. 모든 로컬 네트워크에서 답한 공유기마다, 그 공유기가 지원하는 첫 프로토콜로 매핑합니다. 임대는 1시간이고 절반이 지나면 갱신하며 닫을 때 해제합니다. 공유기 목록에서 매핑 이름은 `SC4J Beacon.Link`입니다. 노드가 공인 주소를 관찰하면, 외부 주소가 그 주소와 같은 매핑 하나만 남기고(PCP, NAT-PMP, UPnP 순) 나머지는 바로 해제합니다. 그 공유기는 바깥에 NAT가 또 있거나 트래픽이 나가는 경로가 아닙니다. 매핑된 주소가 사설 주소이거나 100.64.0.0/10 안에 있으면 쓰지 않습니다. 설정을 끄거나 공유기가 이 프로토콜을 지원하지 않으면 직접 포트 포워딩해야 전체 피어가 됩니다. 헤드리스 노드는 매핑하지 않습니다.
 
 **다른 플레이어를 위해 서비스하기**:
 
 1. 런처, 설정, Beacon.Link: "다른 플레이어 연결 돕기" 켬, UDP 포트(기본값 7455), "적용".
 2. 공유기: 포트 매핑이 켜져 있고 공유기가 포트를 열면(로그 줄 `port mapping by ...`) 할 일이 없습니다. 아니면 UDP(TCP 아님) 7455를 이 PC로 포워딩하고, PC에 고정 LAN 주소를 줍니다(DHCP 예약).
-3. Windows Defender 방화벽: 런처의 Java 런타임에 들어오는 UDP 7455를 허용합니다(처음 수신할 때 Windows가 묻습니다).
+3. Windows Defender 방화벽: 런처는 자기 실행 파일의 수신 규칙을 읽습니다. 허용 규칙이 없거나 차단 규칙이 있으면(처음 실행할 때 Windows 창에서 취소하면 차단 규칙이 생김) 알림의 "허용"을 누릅니다. Windows가 승인을 묻고, 모든 프로필에 `SC4J (<프로그램>)` 이름의 수신 UDP와 TCP 허용 규칙을 넣고 그 프로그램의 차단 규칙을 지웁니다.
 4. 런처를 켜 둡니다. 게임은 열려 있지 않아도 됩니다.
 
 **패널**은 네트워크 상태("연결됨", "응답하는 피어 없음", "피어 없음"), "외부 접속 가능", "외부 접속 확인 안 됨" 또는 "외부 접속 안 됨 (UDP 7455)", 로컬과 외부 IP 주소, 피어 수를 보여 줍니다. "외부 접속 가능"에는 통과한 자체 시험이나 모르는 상대의 hello가 필요하며, 맨 처음 시드는 다른 피어가 연결할 때까지 "확인 안 됨"입니다. "다른 런처에서 실행 중"은 설치본의 다른 런처가 노드를 가지고 있다는 뜻입니다.
 
-**포트 매핑 로그 줄**(런처와 게임 로그): `port mapping by <protocol> at <router>: <external address> -> :<port>/UDP, lease <time>`, `port mapping not available (PCP: ..., NAT-PMP: ..., UPnP: ...)`, `port mapping skipped: ...`(공유기 바깥에 NAT가 또 있음), `port mapping renewed`, `released` 또는 `lost`.
+**포트 매핑 로그 줄**(런처와 게임 로그): `port mapping by <protocol> at <router>: <external address> -> :<port>/UDP, lease <time>`, `port mapping not available (PCP: ..., NAT-PMP: ..., UPnP: ...)`, `port mapping by <protocol> at <router> kept: <external address> matches observed`, `port mapping at <router> skipped: mapped address <a> differs from observed <b> (another NAT outside, or not on the route)` 또는 `... is not public (another NAT outside)`, `port mapping by <protocol> at <router> renewed`, `released` 또는 `lost: ...`. `network connectivity DIRECT` 줄 끝에는 `inbound needs the firewall to allow SC4J`가 붙습니다.
+
+**방화벽 로그 줄**(런처와 게임 로그, Windows): `firewall allows <program>`, `firewall has no inbound rule for <program>` 또는 `firewall blocks <program>`. `<program>`은 프로세스의 실행 파일입니다(런처는 `SC4J.exe`, 게임은 Java 런타임).
 
 **외부 접속 안 됨**: 포트 매핑 로그 줄, 포워딩, 방화벽 규칙을 확인합니다. 외부 IP가 100.64.0.0/10 안에 있거나 공유기의 WAN 주소와 다르면 통신사 NAT 뒤이므로 이 PC는 전체 피어가 될 수 없습니다. 유동 IP라면 동적 DNS 이름을 시드 주소로 씁니다.
 

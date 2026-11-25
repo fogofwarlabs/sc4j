@@ -12,6 +12,7 @@ import org.fogofwarlabs.sc4j.launcher.nodes.NodeListEditor;
 import org.fogofwarlabs.sc4j.launcher.nodes.NodePingResult;
 import org.fogofwarlabs.sc4j.manifest.settings.*;
 import org.fogofwarlabs.sc4j.manifest.text.LocalizedText;
+import org.fogofwarlabs.sc4j.manifest.validation.ProblemCode;
 import org.fogofwarlabs.sc4j.manifest.validation.ValidationProblem;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -185,7 +186,9 @@ public final class LauncherTexts {
         }
 
         String expectation = switch (definition) {
-            case DirectorySetting directory -> String.join(LIST_SEPARATOR, directory.getContainedPaths());
+            case DirectorySetting directory -> String.join(LIST_SEPARATOR, problem.getCode() == ProblemCode.VALUE_CONTAINS_ANY
+                                                                           ? directory.getAnyContainedPaths()
+                                                                           : directory.getContainedPaths());
             case FileSetting file -> String.join(LIST_SEPARATOR, file.getExtensions());
             case ChoiceSetting choice -> String.join(LIST_SEPARATOR, choice.getOptions());
             case IntegerSetting integer -> describeRange(integer.getMinimum(), integer.getMaximum());

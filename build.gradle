@@ -19,6 +19,8 @@ if (operatingSystem.contains("WINDOWS")) {
     platformOperatingSystem = "windows"
 } else if (operatingSystem.contains("LINUX")) {
     platformOperatingSystem = "linux"
+} else if (operatingSystem.contains("MAC")) {
+    platformOperatingSystem = "macos"
 } else {
     throw new GradleException("Not supported operating system.")
 }
@@ -37,6 +39,11 @@ ext {
 
     LWJGL_VERSION = '3.3.6'
     LWJGL_NATIVES = "natives-" + OS + (ARCH == "arm64" ? "-arm64" : "")
+    // The platform classifier of the JavaCPP native libraries, which name macOS "macosx".
+    JAVACPP_PLATFORM = (OS == "macos" ? "macosx" : OS) + "-" + ARCH
+    // The platform of the user package built here, in its file name and launcher/package-platform.txt: windows-x64, linux-x64, linux-arm64,
+    // macos-x64 or macos-arm64. The launcher updates only from a package of its own platform.
+    PACKAGE_PLATFORM = OS + "-" + (ARCH == "x86_64" ? "x64" : "arm64")
 }
 
 allprojects {
@@ -156,10 +163,12 @@ def registerApiTasks = { module, apiTool, String sourceSetName ->
         inputs.files(classes)
         inputs.files(apiFile)
         outputs.file(report)
-        argumentProviders.add({
-            ['check', '--api-file', apiFile.absolutePath] + classArguments() +
-            ['--update-task', module.path + ':' + listing.dump, '--report', report.get().asFile.absolutePath]
-        } as CommandLineArgumentProvider)
+        argumentProviders.add(
+            {
+                ['check', '--api-file', apiFile.absolutePath] + classArguments() +
+                ['--update-task', module.path + ':' + listing.dump, '--report', report.get().asFile.absolutePath]
+            } as CommandLineArgumentProvider
+        )
     }
     module.tasks.named('check') {
         dependsOn apiCheck
@@ -227,7 +236,7 @@ def createJavaRuntime = tasks.register('createJavaRuntime', Exec) {
     def imageDirectory = javaRuntimeImage.get().asFile
     executable = new File(javaRuntimeHome, 'bin/' + (platformOperatingSystem == 'windows' ? 'jlink.exe' : 'jlink')).absolutePath
     args '--add-modules', javaRuntimeModules.join(','), '--include-locales=' + javaRuntimeLocales.join(','), '--strip-debug',
-        '--no-header-files', '--no-man-pages', '--compress=zip-6', '--output', imageDirectory.absolutePath
+         '--no-header-files', '--no-man-pages', '--compress=zip-6', '--output', imageDirectory.absolutePath
     // jlink writes only into a folder that does not exist.
     doFirst {
         imageDirectory.deleteDir()
@@ -285,17 +294,36 @@ def checkJavaRuntimeModules = tasks.register('checkJavaRuntimeModules') {
     }
 }
 
-// The programs of an install: launcher/ (the launcher distribution with the shipped seed list), runtime/ (the runtime distribution with its
-// native libraries), LICENSE, NOTICE, licenses/ and the start files SC4J.bat and SC4J. The development install and the user package copy it
-// with the jars of the mods below and their list.
+// The file launcher/package-platform.txt of an install: the platform its programs and native libraries are built for (PACKAGE_PLATFORM).
+def packagePlatformFile = tasks.register('writePackagePlatform') {
+    description = 'Writes the platform of the install built here, build/package-platform/package-platform.txt.'
+    group = 'distribution'
+    def platformFile = layout.buildDirectory.file('package-platform/package-platform.txt')
+    inputs.property('platform', PACKAGE_PLATFORM)
+    outputs.file(platformFile)
+    doLast {
+        platformFile.get().asFile.setText(PACKAGE_PLATFORM + '\n', 'UTF-8')
+    }
+}
+
+// The programs of an install: launcher/ (the launcher distribution with the shipped seed list and its platform file), runtime/ (the runtime
+// distribution with its native libraries), LICENSE, NOTICE, licenses/ and the start files SC4J.bat and SC4J, on macOS also SC4J.command,
+// which Finder opens with a double click. The development install and the user package copy it with the jars of the mods below and their
+// list.
 // The launcher, the runtime and the mods are evaluated after this project, so the copies name their tasks only when Gradle configures them.
 def installContents = copySpec {
     from({ project(':sc4j-launcher').tasks.named('installDist') }) { into 'launcher' }
     from({ project(':sc4j-runtime').tasks.named('installDist') }) { into 'runtime' }
+    from(packagePlatformFile) { into 'launcher' }
     from(licenseFiles)
     from(licenseTexts) { into 'licenses' }
     from(project(':sc4j-launcher').file('src/package'))
+    if (platformOperatingSystem == 'macos') {
+        from(project(':sc4j-launcher').file('src/package-macos'))
+    }
 }
+// The start files and the start scripts of an install, executable on Unix.
+def executableInstallFiles = ['**/bin/*', 'SC4J', 'SC4J.command']
 def installModProjects = [':mods:demo']
 def installModJars = { installModProjects.collect { path -> project(path).tasks.named('jar') } }
 // The list launcher/package-mods.txt of the mod jars above, one file name per line: a launcher update replaces, adds and removes only these.
@@ -327,6 +355,12 @@ def devInstall = tasks.register('devInstall', Sync) {
     with installContents
     from(installModJars) { into 'mods' }
     from(packageModList) { into 'launcher' }
+    // The start files and the start scripts, as in the user package.
+    filesMatching(executableInstallFiles) { details ->
+        details.permissions {
+            unix('rwxr-xr-x')
+        }
+    }
     doLast {
         checkDistributionLicenses(developmentInstall.get().asFile)
     }
@@ -353,17 +387,21 @@ tasks.register('runDevInstall', JavaExec) {
     classpath = files({ fileTree(new File(runtimeDirectory.get(), 'lib')) { include '*.jar' } })
     mainClass = 'org.fogofwarlabs.sc4j.runtime.RuntimeMain'
     args '--install', developmentInstall.get().asFile.absolutePath, '--mod', modJar.absolutePath
+    // GLFW runs on the process's first thread on macOS, where AWT (image decoding) stays headless so that it does not claim that thread.
+    if (platformOperatingSystem == 'macos') {
+        jvmArgs '-XstartOnFirstThread', '-Djava.awt.headless=true'
+    }
     doFirst {
         def nativeDirectory = new File(runtimeDirectory.get(), 'lib/natives').absolutePath
         jvmArgs '--enable-native-access=ALL-UNNAMED',
-            '-Dorg.lwjgl.librarypath=' + nativeDirectory,
-            '-Djava.library.path=' + nativeDirectory,
-            '-Dorg.lwjgl.system.SharedLibraryExtractPath=' + new File(runtimeDirectory.get(), '.cache/natives').absolutePath,
-            '-Dorg.bytedeco.javacpp.cachedir=' + new File(runtimeDirectory.get(), '.cache/javacpp').absolutePath,
-            '-Dorg.bytedeco.javacpp.platform.linkpath=' + nativeDirectory,
-            '-Dorg.bytedeco.javacpp.platform.preloadpath=' + nativeDirectory,
-            '-Dorg.bytedeco.javacpp.pathsFirst=true',
-            '-Dorg.bytedeco.javacpp.cacheLibraries=false'
+                '-Dorg.lwjgl.librarypath=' + nativeDirectory,
+                '-Djava.library.path=' + nativeDirectory,
+                '-Dorg.lwjgl.system.SharedLibraryExtractPath=' + new File(runtimeDirectory.get(), '.cache/natives').absolutePath,
+                '-Dorg.bytedeco.javacpp.cachedir=' + new File(runtimeDirectory.get(), '.cache/javacpp').absolutePath,
+                '-Dorg.bytedeco.javacpp.platform.linkpath=' + nativeDirectory,
+                '-Dorg.bytedeco.javacpp.platform.preloadpath=' + nativeDirectory,
+                '-Dorg.bytedeco.javacpp.pathsFirst=true',
+                '-Dorg.bytedeco.javacpp.cacheLibraries=false'
     }
 }
 
@@ -515,13 +553,15 @@ def createWindowsProgram = tasks.register('createWindowsProgram', Exec) {
     outputs.dir(imageDirectory)
     executable = new File(javaRuntimeHome, 'bin/jpackage.exe').absolutePath
     // jpackage takes a version of numbers only.
-    argumentProviders.add({
-        ['--type', 'app-image', '--name', windowsProgramName, '--dest', imageDirectory.parentFile.absolutePath,
-         '--input', inputDirectory.absolutePath, '--main-jar', launcherJar().name, '--main-class', launcherMainClass.get(),
-         '--runtime-image', javaRuntimeImage.get().asFile.absolutePath, '--icon', windowsIcon.get().asFile.absolutePath,
-         '--app-version', version.toString().replaceFirst(/-.*/, ''), '--vendor', 'Fog of War Labs', '--description', 'SC4J',
-         '--add-launcher', windowsConsoleProgramName + '=' + consoleLauncherFile.absolutePath]
-    } as CommandLineArgumentProvider)
+    argumentProviders.add(
+        {
+            ['--type', 'app-image', '--name', windowsProgramName, '--dest', imageDirectory.parentFile.absolutePath,
+             '--input', inputDirectory.absolutePath, '--main-jar', launcherJar().name, '--main-class', launcherMainClass.get(),
+             '--runtime-image', javaRuntimeImage.get().asFile.absolutePath, '--icon', windowsIcon.get().asFile.absolutePath,
+             '--app-version', version.toString().replaceFirst(/-.*/, ''), '--vendor', 'Fog of War Labs', '--description', 'SC4J',
+             '--add-launcher', windowsConsoleProgramName + '=' + consoleLauncherFile.absolutePath]
+        } as CommandLineArgumentProvider
+    )
     // jpackage writes only into a folder that does not exist.
     doFirst {
         deleteFiles(imageDirectory, inputDirectory)
@@ -547,13 +587,39 @@ def createWindowsProgram = tasks.register('createWindowsProgram', Exec) {
     }
 }
 
-// The user package build/distributions/SC4J-<version>.zip: one folder SC4J-<version> with the programs of an install and the jars of the
-// mods above in mods/ and the Java runtime that the start scripts and SC4J.exe use (java/); on Windows also SC4J.exe and SC4J-cli.exe with
-// app/. It holds no userdata/ and no cache file: a fresh install makes them at its first start. It holds the empty JVM temporary folder of
-// the launcher (launcher/.cache/tmp), which the JVM of SC4J.exe expects at its start.
+// The user package build/distributions/SC4J-<version>-<platform>.zip (PACKAGE_PLATFORM, the platform of this build): one folder
+// SC4J-<version> with the programs of an install and the jars of the mods above in mods/ and the Java runtime that the start scripts and
+// SC4J.exe use (java/); on Windows also SC4J.exe and SC4J-cli.exe with app/. It holds no userdata/ and no cache file: a fresh install makes
+// them at its first start. It holds the empty JVM temporary folder of the launcher (launcher/.cache/tmp), which the JVM of SC4J.exe expects
+// at its start. On macOS a Mach-O file without a valid signature gets an ad-hoc one.
 // The package is staged in build/user-package first, where the licence check runs, and zipped without file times in a fixed order, so that
 // the same sources give the same zip.
 def userPackageName = 'SC4J-' + version
+def userPackageFileName = userPackageName + '-' + PACKAGE_PLATFORM + '.zip'
+// macOS runs a program or a native library only when its signature verifies: a Mach-O file of the package without a valid signature gets an
+// ad-hoc one, a signed file keeps its own.
+def machOMagics = [0xfeedfaceL, 0xfeedfacfL, 0xcefaedfeL, 0xcffaedfeL, 0xcafebabeL, 0xbebafecaL] as Set
+def signUnsignedMachOFiles = { File directory ->
+    directory.eachFileRecurse(groovy.io.FileType.FILES) { file ->
+        if (file.length() < Integer.BYTES || file.name.endsWith('.class') || java.nio.file.Files.isSymbolicLink(file.toPath())) {
+            return
+        }
+        long magic = file.withDataInputStream { input -> Integer.toUnsignedLong(input.readInt()) }
+        if (!machOMagics.contains(magic)) {
+            return
+        }
+        def verification = execOperations.exec { spec ->
+            spec.commandLine 'codesign', '--verify', file.absolutePath
+            spec.ignoreExitValue = true
+            spec.errorOutput = OutputStream.nullOutputStream()
+        }
+        if (verification.exitValue != 0) {
+            execOperations.exec { spec ->
+                spec.commandLine 'codesign', '--force', '--sign', '-', file.absolutePath
+            }
+        }
+    }
+}
 def launcherTemporaryOption = '-Djava.io.tmpdir=APP_HOME_PLACEHOLDER/'
 def launcherTemporaryFolder = providers.provider {
     def option = project(':sc4j-launcher').tasks.named('startScripts').get().defaultJvmOpts.find { option ->
@@ -583,19 +649,22 @@ def stageUserPackage = tasks.register('stageUserPackage', Sync) {
             throw new GradleException('Cannot create the folder ' + temporaryFolder + '.')
         }
         checkDistributionLicenses(destinationDir)
+        if (platformOperatingSystem == 'macos') {
+            signUnsignedMachOFiles(destinationDir)
+        }
     }
 }
 tasks.register('distribution', Zip) {
-    description = 'Builds the user package build/distributions/' + userPackageName + '.zip from the staged package.'
+    description = 'Builds the user package build/distributions/' + userPackageFileName + ' from the staged package.'
     group = 'distribution'
-    archiveFileName = userPackageName + '.zip'
+    archiveFileName = userPackageFileName
     destinationDirectory = layout.buildDirectory.dir('distributions')
     preserveFileTimestamps = false
     reproducibleFileOrder = true
     from(stageUserPackage) {
         into userPackageName
         // The start file, the start scripts and the programs of the Java runtime, with the helpers its process start runs.
-        filesMatching(['**/bin/*', 'SC4J', 'java/lib/jspawnhelper', 'java/lib/jexec']) { details ->
+        filesMatching(executableInstallFiles + ['java/lib/jspawnhelper', 'java/lib/jexec']) { details ->
             details.permissions {
                 unix('rwxr-xr-x')
             }

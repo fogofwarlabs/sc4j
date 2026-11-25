@@ -19,6 +19,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
+import org.fogofwarlabs.sc4j.beaconlink.client.firewall.FirewallState;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.Account;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.AccountBackup;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.AccountStore;
@@ -104,9 +105,12 @@ import java.util.function.Function;
  * a whisper is unread ({@link Conversations#hasUnread()}), and a line or whisper that arrives in a conversation the user is not looking at
  * plays the chat sound unless the launcher settings mute it ({@link ChatAlerts}). The first time in a run that the session finds the network
  * restricted ({@link LinkConnectivity#RESTRICTED}), a warning notice shows above every screen until the user closes it or the session finds
- * direct connections working ({@link LinkConnectivity#DIRECT}, {@link LinkConnectivity#OPEN}). Log out, from that menu, closes the session
- * and returns to the login step. Closing the window asks first: Minimize, the default, minimizes the window and keeps the session and its
- * chat running; Quit closes the session and the launcher; Cancel keeps the window. A running game keeps running after a log out or a quit.
+ * direct connections working ({@link LinkConnectivity#DIRECT}, {@link LinkConnectivity#OPEN}). While the firewall has no rule for the
+ * launcher or blocks it ({@link FirewallState#NO_RULE}, {@link FirewallState#BLOCKED}), a warning notice offers Allow, which asks the user's
+ * approval to allow the launcher ({@link LauncherSessionView#requestFirewallAllow()}), and Close, which hides it for the run. Log out, from
+ * that menu, closes the session and returns to the login step. Closing the window asks first: Minimize, the default, minimizes the window and
+ * keeps the session and its chat running; Quit closes the session and the launcher; Cancel keeps the window. A running game keeps running
+ * after a log out or a quit.
  * <p>
  * While the runtime runs, the window is minimized; it comes back when the runtime ends and shows the run's report. Closing
  * the launcher does not stop a running runtime.
@@ -322,6 +326,8 @@ public final class LauncherWindow {
     private @Nullable ChatAlerts chatAlerts;
     private boolean networkWarned;
     private boolean networkWarningShown;
+    private @NotNull FirewallState shownFirewall;
+    private boolean firewallDismissed;
 
     private @Nullable LauncherRelease launcherUpdate;
     private @Nullable ReleaseVersion offeredVersion;
@@ -400,6 +406,8 @@ public final class LauncherWindow {
         this.chatAlerts          = null;
         this.networkWarned       = false;
         this.networkWarningShown = false;
+        this.shownFirewall       = FirewallState.CHECKING;
+        this.firewallDismissed   = false;
 
         this.launcherUpdate   = null;
         this.offeredVersion   = null;
@@ -670,12 +678,13 @@ public final class LauncherWindow {
     }
 
     /**
-     * Shows the session's new views: in the account menu, on the Chat screen, in the dot of the Chat entry and in the network warning, and
-     * plays the chat sound for what arrived where the user is not looking ({@link ChatAlerts}).
+     * Shows the session's new views: in the account menu, on the Chat screen, in the dot of the Chat entry and in the network and firewall
+     * warnings, and plays the chat sound for what arrived where the user is not looking ({@link ChatAlerts}).
      */
     private void onSessionChanged() {
         LauncherSessionView opened = this.session;
         LinkConnectivity connectivity = opened == null ? LinkConnectivity.UNKNOWN : opened.getSelf().getConnectivity();
+        FirewallState firewall = opened == null ? FirewallState.CHECKING : opened.getSelf().getFirewall();
         AccountMenu shownMenu = this.accountMenu;
         ChatScreen shownChat = this.chatScreen;
         ChatAlerts alerts = this.chatAlerts;
@@ -702,6 +711,11 @@ public final class LauncherWindow {
             this.updateNotices();
         } else if ((connectivity == LinkConnectivity.DIRECT || connectivity == LinkConnectivity.OPEN) && this.networkWarningShown) {
             this.networkWarningShown = false;
+            this.updateNotices();
+        }
+
+        if (firewall != this.shownFirewall) {
+            this.shownFirewall = firewall;
             this.updateNotices();
         }
     }
@@ -731,6 +745,7 @@ public final class LauncherWindow {
         this.conversations       = null;
         this.chatAlerts          = null;
         this.networkWarningShown = false;
+        this.shownFirewall       = FirewallState.CHECKING;
         this.session             = null;
         this.account             = null;
 
@@ -1249,8 +1264,8 @@ public final class LauncherWindow {
 
     /**
      * Shows the launcher's notices: a settings file problem, why the last update failed and, once logged in, a newer launcher version that
-     * the player did not skip with its Update button, the network warning with its Close button and, on the Mods screen, a mods folder
-     * problem.
+     * the player did not skip with its Update button, the network warning with its Close button, the firewall warning with its Allow and
+     * Close buttons and, on the Mods screen, a mods folder problem.
      */
     private void updateNotices() {
         List<Node> shown = new ArrayList<>();
@@ -1280,6 +1295,24 @@ public final class LauncherWindow {
                 this.updateNotices();
             });
             shown.add(ComponentUtils.createNotice(Tone.WARNING, this.texts.get("notice.network"), close));
+        }
+
+        if ((this.shownFirewall == FirewallState.NO_RULE || this.shownFirewall == FirewallState.BLOCKED) && loggedIn && !this.firewallDismissed) {
+            Button allow = ComponentUtils.createSmallButton(this.texts.get("notice.firewall.allow"), ButtonRole.PRIMARY);
+            Button close = ComponentUtils.createSmallButton(this.texts.get("notice.firewall.close"), ButtonRole.SECONDARY);
+
+            allow.setOnAction(event -> {
+                LauncherSessionView opened = this.session;
+
+                if (opened != null) {
+                    opened.requestFirewallAllow();
+                }
+            });
+            close.setOnAction(event -> {
+                this.firewallDismissed = true;
+                this.updateNotices();
+            });
+            shown.add(ComponentUtils.createNotice(Tone.WARNING, this.texts.get("notice.firewall"), allow, close));
         }
 
         if (this.catalogProblem != null && loggedIn && this.section == LauncherShell.Section.MODS) {

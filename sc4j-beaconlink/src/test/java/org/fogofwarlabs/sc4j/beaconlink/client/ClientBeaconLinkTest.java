@@ -205,7 +205,7 @@ final class ClientBeaconLinkTest {
         listed.getPeer().addSeed(seed.getLocalAddress());
         this.scenario.advanceUntil(() -> listed.getPeer().getLiveNodes().size() == 1, FEDERATION_MILLIS, "the nodes federate");
 
-        BeaconLinkClient first = (BeaconLinkClient) link.open();
+        BeaconLinkClient first = link.open();
 
         this.awaitPolled(first, () -> isKnown(first.getKnownNodes(), seed), "the session learns the federated node");
         first.close();
@@ -215,7 +215,7 @@ final class ClientBeaconLinkTest {
         Assertions.assertTrue(learned.containsAll(List.of(toEndpoint(listed), toEndpoint(seed))), "learned " + learned);
         Assertions.assertFalse(Files.exists(folder.resolve("learned-nodes.json")), "the session keeps no file of its own");
 
-        try (BeaconLinkClient second = (BeaconLinkClient) link.open()) {
+        try (BeaconLinkClient second = link.open()) {
             Assertions.assertEquals(account.getKey(), first.getKey(), "the session plays with the account's key");
             Assertions.assertEquals(first.getKey(), second.getKey());
             Assertions.assertEquals(List.of("127.0.0.1:" + listed.getLocalAddress().getPort(), "127.0.0.1:" + seed.getLocalAddress().getPort()),
@@ -253,7 +253,7 @@ final class ClientBeaconLinkTest {
         earlier.recordSuccess(silent, this.scenario.getClock().getEpochMillis());
         earlier.merge(this.scenario.getClock().getEpochMillis());
 
-        BeaconLinkClient session = (BeaconLinkClient) link.open();
+        BeaconLinkClient session = link.open();
 
         this.advancePolled(session, () -> isKnown(session.getKnownNodes(), seed) &&
                                           session.getNodes().stream().skip(1).allMatch(node -> node.getState() == LinkNodeState.NOT_ANSWERING),
@@ -267,7 +267,7 @@ final class ClientBeaconLinkTest {
 
         String seedAddress = "127.0.0.1:" + seed.getLocalAddress().getPort();
 
-        try (BeaconLinkClient later = (BeaconLinkClient) link.open()) {
+        try (BeaconLinkClient later = link.open()) {
             Assertions.assertTrue(later.getNodes().size() < 1 + LEARNED_CAPACITY, "the silent nodes tried three times are dropped");
 
             this.awaitPolled(later, () -> later.getNodes().stream().anyMatch(node -> node.getAddress().equals(seedAddress) &&
@@ -290,7 +290,7 @@ final class ClientBeaconLinkTest {
         PeerBootstrap launcher = new PeerBootstrap(launcherPeer.getPeer(), KnownNodes.open(List.of(ClientScenario.listed(launcherSeed)), peersFile),
                                                    PeerBootstrap.DEFAULT_CONNECT_TIMEOUT_MILLIS);
 
-        BeaconLinkClient game = (BeaconLinkClient) link.open();
+        BeaconLinkClient game = link.open();
 
         launcher.start(this.scenario.getClock().getEpochMillis());
         this.advancePolled(game, () -> {
@@ -318,7 +318,7 @@ final class ClientBeaconLinkTest {
         Path folder = directory.resolve("userdata").resolve("beaconlink");
         ClientBeaconLink link = this.createLeafLink(folder, List.of(ClientScenario.listed(listed)));
 
-        try (BeaconLinkClient session = (BeaconLinkClient) link.open()) {
+        try (BeaconLinkClient session = link.open()) {
             NodeSession node = session.getNodeSessions().getFirst();
 
             this.awaitPolled(session, () -> node.getNodeListCount() == 1, "the session registers at its one node and gets its node list");
@@ -342,8 +342,8 @@ final class ClientBeaconLinkTest {
         ClientBeaconLink otherRun = this.createLeafLink(folder, List.of());
         MeshPeer firstPeer;
 
-        try (BeaconLinkClient first = (BeaconLinkClient) link.open();
-             BeaconLinkClient second = (BeaconLinkClient) link.open()) {
+        try (BeaconLinkClient first = link.open();
+             BeaconLinkClient second = link.open()) {
             firstPeer = first.getPeer();
 
             Assertions.assertNotNull(firstPeer);
@@ -352,8 +352,8 @@ final class ClientBeaconLinkTest {
             Assertions.assertEquals(Reachability.NOT_REACHABLE, firstPeer.getReachability(), "the runtime's peer is a leaf");
         }
 
-        try (BeaconLinkClient third = (BeaconLinkClient) link.open();
-             BeaconLinkClient other = (BeaconLinkClient) otherRun.open()) {
+        try (BeaconLinkClient third = link.open();
+             BeaconLinkClient other = otherRun.open()) {
             MeshPeer thirdPeer = third.getPeer();
             MeshPeer otherPeer = other.getPeer();
 
@@ -383,8 +383,8 @@ final class ClientBeaconLinkTest {
 
         try (ClientBeaconLink firstRun = this.createLink(folder, firstAccount, seeds);
              ClientBeaconLink secondRun = this.createLink(folder, secondAccount, seeds)) {
-            BeaconLinkClient first = (BeaconLinkClient) firstRun.open();
-            BeaconLinkClient second = (BeaconLinkClient) secondRun.open();
+            BeaconLinkClient first = firstRun.open();
+            BeaconLinkClient second = secondRun.open();
 
             this.scenario.addPollAction(first::poll);
             this.scenario.addPollAction(second::poll);
@@ -462,9 +462,9 @@ final class ClientBeaconLinkTest {
         try (ClientBeaconLink launcherRun = this.createLink(folder, alice, seeds);
              ClientBeaconLink gameRun = this.createLink(folder, alice, seeds);
              ClientBeaconLink bobRun = this.createLink(otherFolder, bob, seeds)) {
-            BeaconLinkClient launcher = (BeaconLinkClient) launcherRun.open();
-            BeaconLinkClient game = (BeaconLinkClient) gameRun.open();
-            BeaconLinkClient other = (BeaconLinkClient) bobRun.open();
+            BeaconLinkClient launcher = launcherRun.open();
+            BeaconLinkClient game = gameRun.open();
+            BeaconLinkClient other = bobRun.open();
 
             this.scenario.addPollAction(launcher::poll);
             this.scenario.addPollAction(game::poll);
@@ -519,8 +519,8 @@ final class ClientBeaconLinkTest {
 
         try (ClientBeaconLink firstRun = this.createLink(firstFolder, firstAccount, seeds);
              ClientBeaconLink secondRun = this.createLink(secondFolder, secondAccount, seeds)) {
-            BeaconLinkClient first = (BeaconLinkClient) firstRun.open();
-            BeaconLinkClient second = (BeaconLinkClient) secondRun.open();
+            BeaconLinkClient first = firstRun.open();
+            BeaconLinkClient second = secondRun.open();
 
             this.scenario.addPollAction(first::poll);
             this.scenario.addPollAction(second::poll);
@@ -545,8 +545,8 @@ final class ClientBeaconLinkTest {
 
         try (ClientBeaconLink firstRun = this.createLink(firstFolder, null, seeds);
              ClientBeaconLink secondRun = this.createLink(secondFolder, null, seeds)) {
-            BeaconLinkClient first = (BeaconLinkClient) firstRun.open();
-            BeaconLinkClient second = (BeaconLinkClient) secondRun.open();
+            BeaconLinkClient first = firstRun.open();
+            BeaconLinkClient second = secondRun.open();
             ClientScenario.PollAction firstPoll = first::poll;
 
             this.scenario.addPollAction(firstPoll);
@@ -582,8 +582,8 @@ final class ClientBeaconLinkTest {
 
         try (ClientBeaconLink firstRun = this.createLink(firstFolder, raynor, seeds);
              ClientBeaconLink secondRun = this.createLink(secondFolder, kerrigan, seeds)) {
-            BeaconLinkClient first = (BeaconLinkClient) firstRun.open();
-            BeaconLinkClient second = (BeaconLinkClient) secondRun.open();
+            BeaconLinkClient first = firstRun.open();
+            BeaconLinkClient second = secondRun.open();
 
             this.scenario.addPollAction(first::poll);
             this.scenario.addPollAction(second::poll);
@@ -623,7 +623,7 @@ final class ClientBeaconLinkTest {
         Path folder = directory.resolve("userdata").resolve("beaconlink");
 
         try (ClientBeaconLink guest = this.createLink(folder, null, this.openCommunityNode())) {
-            BeaconLinkClient session = (BeaconLinkClient) guest.open();
+            BeaconLinkClient session = guest.open();
 
             this.scenario.addPollAction(session::poll);
             this.scenario.await(() -> isEveryNodeRegistered(session), "the guest registers");

@@ -7,6 +7,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.Region;
+import org.fogofwarlabs.sc4j.beaconlink.client.firewall.FirewallState;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.Account;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
@@ -225,7 +226,7 @@ final class AccountMenuTest {
     void account_menu_shows_friends_whispers_status_and_sign_out_of_a_connected_session(@TempDir @NotNull Path directory) throws Exception {
         LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         RecordingLauncherSession session = createSession(new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 2, null,
-                                                                      LinkConnectivity.UNKNOWN));
+                                                                      LinkConnectivity.UNKNOWN, FirewallState.NOT_NEEDED));
         RecordingActions actions = new RecordingActions();
 
         LauncherFxScenario.run(() -> {
@@ -381,7 +382,7 @@ final class AccountMenuTest {
     void account_menu_shows_why_the_session_is_offline(@TempDir @NotNull Path directory) throws Exception {
         LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         RecordingLauncherSession session = createSession(new SelfView(SessionState.OFFLINE, SelfStatus.ONLINE, "", 0, SessionFailure.SIGNED_OUT,
-                                                                      LinkConnectivity.UNKNOWN));
+                                                                      LinkConnectivity.UNKNOWN, FirewallState.NOT_NEEDED));
 
         LauncherFxScenario.run(() -> {
             LauncherShell shell = createShell(texts, directory, TAGGED_NAME, session, new RecordingActions());

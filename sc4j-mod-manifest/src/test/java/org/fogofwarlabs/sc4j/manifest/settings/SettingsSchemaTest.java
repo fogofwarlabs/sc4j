@@ -106,6 +106,8 @@ final class SettingsSchemaTest {
                                       .hasProblem(ProblemCode.SETTING_INVALID));
         Assertions.assertTrue(readInvalid("[{\"key\": \"a\", \"type\": \"directory\", \"check\": {\"contains\": [\"../x\"]}, \"label\": {\"en\": \"A\"}}]")
                                       .hasProblem(ProblemCode.SETTING_INVALID));
+        Assertions.assertTrue(readInvalid("[{\"key\": \"a\", \"type\": \"directory\", \"check\": {\"containsAny\": [\"../x\"]}, \"label\": {\"en\": \"A\"}}]")
+                                      .hasProblem(ProblemCode.SETTING_INVALID));
         Assertions.assertTrue(readInvalid("[{\"key\": \"1a\", \"type\": \"boolean\", \"label\": {\"en\": \"A\"}}]")
                                       .hasProblem(ProblemCode.FIELD_VALUE));
         Assertions.assertTrue(readInvalid("[{\"key\": \"a\", \"type\": \"boolean\"}]").hasProblem(ProblemCode.FIELD_MISSING));

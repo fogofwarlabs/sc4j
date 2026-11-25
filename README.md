@@ -52,7 +52,7 @@ This repository holds the engine, the runtime, the launcher, Beacon.Link and the
 
 ## Build and run
 
-JDK 25 is required; the Gradle wrapper fetches Gradle. Commands run in PowerShell from the repository root (`./gradlew` on Linux).
+JDK 25 is required; the Gradle wrapper fetches Gradle. Commands run in PowerShell from the repository root (`./gradlew` on Linux and macOS).
 
 | Command | Result |
 |---|---|
@@ -60,14 +60,20 @@ JDK 25 is required; the Gradle wrapper fetches Gradle. Commands run in PowerShel
 | `.\gradlew.bat devInstall` | development install `build/dev-install/` (launcher, runtime, `mods/demo.jar`) |
 | `.\gradlew.bat runDevLauncher` | opens the launcher of the development install |
 | `.\gradlew.bat runDevInstall -Psc4j.mod=<id>` | runs `mods/<id>.jar` of the development install (default `demo`) |
-| `.\gradlew.bat distribution` | user package `build/distributions/SC4J-<version>.zip` |
+| `.\gradlew.bat distribution` | user package of the build's platform `build/distributions/SC4J-<version>-<platform>.zip` |
 | `.\gradlew.bat :sc4j-beaconlink-node:installDist` | headless Beacon.Link node in `sc4j-beaconlink-node/build/install/` |
 
 The launcher lists every jar in `build/dev-install/mods/`. A mod of another repository installs there with its `installMod -Psc4j.install=<this repository>\build\dev-install`; `devInstall` keeps it.
 
-The user package holds the launcher, the runtime, the demo and a Java runtime and starts with `SC4J.exe` on Windows (or `SC4J.bat`) and `SC4J` on Linux; `userdata/` is created at the first start.
+## Install
 
-The launcher updates itself from the GitHub releases of SC4J and installs a mod from the latest release of a GitHub repository (`owner/name`, typed or chosen from the catalog of [`fogofwarlabs/sc4j-mods`](https://github.com/fogofwarlabs/sc4j-mods)). An update also replaces the mod jars the package ships (listed in `launcher/package-mods.txt`); `userdata/` and the other jars of `mods/` stay, and a shipped jar the player deleted is not added again.
+Each GitHub release has one user package per platform, `SC4J-<version>-<platform>.zip` with `<platform>` one of `windows-x64`, `linux-x64`, `linux-arm64` and `macos-arm64` (Apple silicon). It holds the launcher, the runtime, the demo and a Java runtime for that platform; `userdata/` is created at the first start. The game window needs OpenGL 3.3.
+
+- **Windows**: unpack the zip and start `SC4J.exe` (or `SC4J.bat`).
+- **Linux**: unpack the zip with `unzip`, which keeps the program modes, and start `./SC4J`. The launcher needs GTK 3.
+- **macOS**: unpack the zip. The package is not signed by a developer, so remove the quarantine of the download first: `xattr -dr com.apple.quarantine <folder>`. Then open `SC4J.command` in Finder or start `./SC4J` in Terminal.
+
+The launcher updates itself from the GitHub releases of SC4J, with the package of its own platform only, and installs a mod from the latest release of a GitHub repository (`owner/name`, typed or chosen from the catalog of [`fogofwarlabs/sc4j-mods`](https://github.com/fogofwarlabs/sc4j-mods)). An update also replaces the mod jars the package ships (listed in `launcher/package-mods.txt`); `userdata/` and the other jars of `mods/` stay, and a shipped jar the player deleted is not added again.
 
 ## Documentation
 

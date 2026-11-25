@@ -93,6 +93,10 @@ public enum ProblemCode {
      */
     VALUE_CONTAINS("value.contains"),
     /**
+     * A {@code directory} value holds none of the paths that {@code check.containsAny} lists.
+     */
+    VALUE_CONTAINS_ANY("value.containsAny"),
+    /**
      * A {@code file} value names no file.
      */
     VALUE_FILE("value.file"),

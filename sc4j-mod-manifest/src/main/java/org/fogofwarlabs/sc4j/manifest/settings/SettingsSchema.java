@@ -19,8 +19,8 @@ import java.util.regex.PatternSyntaxException;
  * them, and validates saved values against them.
  * <p>
  * Each entry has the common fields {@code key}, {@code type}, {@code label}, {@code description}, {@code required},
- * {@code default} and {@code message}, and the fields of its type: {@code check.contains}, {@code detect.uninstallEntries},
- * {@code detect.programFolders} and {@code shared} ({@code directory}), {@code extensions} ({@code file}), {@code options} and
+ * {@code default} and {@code message}, and the fields of its type: {@code check.contains}, {@code check.containsAny},
+ * {@code detect.uninstallEntries}, {@code detect.programFolders} and {@code shared} ({@code directory}), {@code extensions} ({@code file}), {@code options} and
  * {@code systemDefault} ({@code choice}), {@code min} and {@code max} ({@code integer}) and {@code pattern} ({@code string}).
  * No two settings of one mod have the same {@code shared} name.
  */
@@ -44,6 +44,7 @@ public final class SettingsSchema {
     private static final @NotNull String MESSAGE_FIELD = "message";
     private static final @NotNull String CHECK_FIELD = "check";
     private static final @NotNull String CONTAINS_FIELD = "contains";
+    private static final @NotNull String CONTAINS_ANY_FIELD = "containsAny";
     private static final @NotNull String DETECT_FIELD = "detect";
     private static final @NotNull String UNINSTALL_ENTRIES_FIELD = "uninstallEntries";
     private static final @NotNull String PROGRAM_FOLDERS_FIELD = "programFolders";
@@ -184,8 +185,8 @@ public final class SettingsSchema {
     }
 
     /**
-     * Reads the type fields of a {@code directory} setting ({@code check.contains}, {@code detect} and {@code shared}) and creates the
-     * setting. Every problem is reported.
+     * Reads the type fields of a {@code directory} setting ({@code check.contains}, {@code check.containsAny}, {@code detect} and
+     * {@code shared}) and creates the setting. Every problem is reported.
      *
      * @param entry        the setting's JSON object
      * @param key          the setting key
@@ -203,6 +204,7 @@ public final class SettingsSchema {
         JsonFieldReader check = entry.readOptionalObject(CHECK_FIELD);
         JsonFieldReader detect = entry.readOptionalObject(DETECT_FIELD);
         List<String> containedPaths = check == null ? List.of() : readList(check, CONTAINS_FIELD);
+        List<String> anyContainedPaths = check == null ? List.of() : readList(check, CONTAINS_ANY_FIELD);
         List<String> uninstallEntries = detect == null ? List.of() : readList(detect, UNINSTALL_ENTRIES_FIELD);
         List<String> programFolders = detect == null ? List.of() : readList(detect, PROGRAM_FOLDERS_FIELD);
         String sharedName = entry.readOptionalString(SHARED_FIELD);
@@ -212,6 +214,14 @@ public final class SettingsSchema {
             if (!isRelativeInside(containedPath)) {
                 problems.add(ProblemCode.SETTING_INVALID, entry.getPath(CHECK_FIELD) + "." + CONTAINS_FIELD,
                              "{0} is not a relative path inside the directory.", containedPath);
+                valid = false;
+            }
+        }
+
+        for (String anyContainedPath : anyContainedPaths) {
+            if (!isRelativeInside(anyContainedPath)) {
+                problems.add(ProblemCode.SETTING_INVALID, entry.getPath(CHECK_FIELD) + "." + CONTAINS_ANY_FIELD,
+                             "{0} is not a relative path inside the directory.", anyContainedPath);
                 valid = false;
             }
         }
@@ -243,7 +253,7 @@ public final class SettingsSchema {
         }
 
         return new DirectorySetting(key, label, description, required, defaultValue, message,
-                                    containedPaths, uninstallEntries, programFolders, sharedName);
+                                    containedPaths, anyContainedPaths, uninstallEntries, programFolders, sharedName);
     }
 
     private static @Nullable ChoiceSetting readChoiceSetting(@NotNull JsonFieldReader entry, @NotNull String key, @NotNull LocalizedText label,

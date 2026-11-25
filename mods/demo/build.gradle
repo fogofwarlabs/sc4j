@@ -64,9 +64,11 @@ def exportDemoArt = tasks.register('exportDemoArt', JavaExec) {
     inputs.dir(packDefinitions)
     def output = generatedAssets.map { directory -> directory.dir('art/demo/pack') }
     outputs.dir(output)
-    argumentProviders.add({
-        [packDefinitions.absolutePath, file('src/assets/svg').absolutePath, output.get().asFile.absolutePath]
-    } as CommandLineArgumentProvider)
+    argumentProviders.add(
+        {
+            [packDefinitions.absolutePath, file('src/assets/svg').absolutePath, output.get().asFile.absolutePath]
+        } as CommandLineArgumentProvider
+    )
     doFirst {
         project.delete(output)
     }
@@ -149,10 +151,12 @@ def determinismCheck = tasks.register('determinismCheck', JavaExec) {
     inputs.files(runtimeClasspath)
     inputs.file(modJar.flatMap { jar -> jar.archiveFile })
     outputs.dir(workFolder)
-    argumentProviders.add({
-        [runtimeClasspath.asPath, modJar.get().archiveFile.get().asFile.absolutePath, workFolder.get().asFile.absolutePath, '20261108',
-         'Ashen Ford']
-    } as CommandLineArgumentProvider)
+    argumentProviders.add(
+        {
+            [runtimeClasspath.asPath, modJar.get().archiveFile.get().asFile.absolutePath, workFolder.get().asFile.absolutePath, '20261108',
+             'Ashen Ford']
+        } as CommandLineArgumentProvider
+    )
 }
 
 tasks.named('check') {

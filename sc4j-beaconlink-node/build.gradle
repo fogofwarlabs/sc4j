@@ -33,14 +33,14 @@ tasks.named('startScripts') {
         }
         def unixText = unixScript.text
         unixText = replace(unixText, 'mkdir -p "$APP_HOME/.cache/tmp"',
-            'SC4J_BEACONLINK_NODE_CACHE=${SC4J_BEACONLINK_NODE_CACHE:-$APP_HOME/.cache}\nmkdir -p "$APP_HOME/.cache/tmp"')
+                           'SC4J_BEACONLINK_NODE_CACHE=${SC4J_BEACONLINK_NODE_CACHE:-$APP_HOME/.cache}\nmkdir -p "$APP_HOME/.cache/tmp"')
         unixText = replace(unixText, '"$APP_HOME/.cache/tmp"', '"$SC4J_BEACONLINK_NODE_CACHE/tmp"')
         unixText = replace(unixText, '\'"$APP_HOME"\'/.cache/tmp', '\'"$SC4J_BEACONLINK_NODE_CACHE"\'/tmp')
         unixScript.text = unixText
         def windowsText = windowsScript.text
         windowsText = replace(windowsText, 'if not exist "%APP_HOME%\\.cache\\tmp\\" mkdir',
-            'if not defined SC4J_BEACONLINK_NODE_CACHE set SC4J_BEACONLINK_NODE_CACHE=%APP_HOME%\\.cache\r\n' +
-            'if not exist "%APP_HOME%\\.cache\\tmp\\" mkdir')
+                              'if not defined SC4J_BEACONLINK_NODE_CACHE set SC4J_BEACONLINK_NODE_CACHE=%APP_HOME%\\.cache\r\n' +
+                              'if not exist "%APP_HOME%\\.cache\\tmp\\" mkdir')
         windowsText = replace(windowsText, '%APP_HOME%\\.cache\\tmp', '%SC4J_BEACONLINK_NODE_CACHE%\\tmp')
         windowsText = replace(windowsText, '%APP_HOME%/.cache/tmp', '%SC4J_BEACONLINK_NODE_CACHE%/tmp')
         windowsScript.text = windowsText

@@ -6,14 +6,19 @@ import org.jetbrains.annotations.Nullable;
 import java.net.InetAddress;
 
 /**
- * Asks a router for a UDP port mapping in one protocol: finds a router that speaks it, then maps, renews and releases. Every call blocks for
- * at most a few answer times; a failure is kept as a short problem text for the log.
+ * Asks one router for a UDP port mapping in one protocol: checks that the router speaks it, then maps, renews and releases. Every call blocks
+ * for at most a few answer times; a failure is kept as a short problem text for the log.
  */
 interface MappingClient {
     /**
      * @return the protocol of this client
      */
     @NotNull MappingProtocol getProtocol();
+
+    /**
+     * @return the router this client asks and the local address its requests go out from
+     */
+    @NotNull GatewayRoute getGateway();
 
     /**
      * @return why the protocol gave no mapping, such as {@code no answer}
@@ -26,9 +31,9 @@ interface MappingClient {
     @Nullable InetAddress getExternalAddress();
 
     /**
-     * Looks for a router that speaks the protocol.
+     * Checks that the router speaks the protocol.
      *
-     * @return {@code true} if a router answered, {@code false} otherwise
+     * @return {@code true} if the router answered, {@code false} otherwise
      */
     boolean find();
 

@@ -14,6 +14,7 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
+import org.fogofwarlabs.sc4j.beaconlink.client.firewall.FirewallState;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.Account;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.AccountStore;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.identity.IdentityKeyPair;
@@ -36,6 +37,7 @@ import org.fogofwarlabs.sc4j.launcher.ui.session.Conversations;
 import org.fogofwarlabs.sc4j.launcher.ui.session.RecordingLauncherSession;
 import org.fogofwarlabs.sc4j.launcher.update.LauncherRelease;
 import org.fogofwarlabs.sc4j.launcher.update.LauncherUpdater;
+import org.fogofwarlabs.sc4j.launcher.update.PackagePlatform;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.fogofwarlabs.sc4j.manifest.test.TestJarUtils;
 import org.jetbrains.annotations.NotNull;
@@ -239,7 +241,11 @@ final class LauncherWindowTest {
     }
 
     private static @NotNull SelfView createConnectedSelf(@NotNull LinkConnectivity connectivity) {
-        return new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null, connectivity);
+        return createConnectedSelf(connectivity, FirewallState.NOT_NEEDED);
+    }
+
+    private static @NotNull SelfView createConnectedSelf(@NotNull LinkConnectivity connectivity, @NotNull FirewallState firewall) {
+        return new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null, connectivity, firewall);
     }
 
     private static @NotNull RecordingLauncherSession createConnectedSession() {
@@ -320,7 +326,7 @@ final class LauncherWindowTest {
     @Test
     void is_update_offered_should_open_the_dialog_once_for_a_newer_version_that_is_not_skipped(@TempDir @NotNull Path directory) throws Exception {
         try (ReleaseServerScenario server = ReleaseServerScenario.start()) {
-            LauncherUpdater updater = new LauncherUpdater(InstallLayout.of(directory), new ReleaseClient(server.getApi()));
+            LauncherUpdater updater = new LauncherUpdater(InstallLayout.of(directory), new ReleaseClient(server.getApi()), PackagePlatform.LINUX_X64);
             ReleaseRepository repository = ReleaseRepository.parse(UPDATE_REPOSITORY);
             ReleaseVersion olderSkipped = ReleaseVersion.parse("1.1.5");
             LauncherRelease newer;
@@ -328,7 +334,7 @@ final class LauncherWindowTest {
 
             Assertions.assertNotNull(repository);
             Assertions.assertNotNull(olderSkipped);
-            server.addCheckedRelease(UPDATE_REPOSITORY, "v1.2.0", Map.of("SC4J-1.2.0.zip", new byte[]{1}));
+            server.addCheckedRelease(UPDATE_REPOSITORY, "v1.2.0", Map.of("SC4J-1.2.0-linux-x64.zip", new byte[]{1}));
             newer = updater.findUpdate(repository, ReleaseVersion.parse("1.1.0"));
             Assertions.assertNotNull(newer);
             skipped = LauncherSettings.DEFAULT.withSkippedVersion(newer.getVersion());
@@ -702,6 +708,58 @@ final class LauncherWindowTest {
 
             session.setSelf(createConnectedSelf(LinkConnectivity.DIRECT));
             session.setSelf(createConnectedSelf(LinkConnectivity.RESTRICTED));
+
+            Assertions.assertNull(findNotice(stage, warning), "the warning does not come again in this run");
+
+            return null;
+        });
+    }
+
+    @Test
+    void firewall_warning_asks_to_allow_the_launcher_while_the_firewall_blocks_it(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
+        String warning = texts.get("notice.firewall");
+        InstallLayout install = InstallLayout.of(directory);
+        AccountStore store = AccountStore.of(install.getBeaconLinkDirectory());
+        RecordingLauncherSession session = createConnectedSession();
+
+        store.create(raynorKey, raynorStamp, PlayerStamp.DEFAULT_DIFFICULTY, RAYNOR_USE_MILLIS);
+        new LauncherSettingsFile(install.getLauncherSettingsFile()).write(LauncherSettings.DEFAULT.withLanguage(UiLanguage.ENGLISH));
+        LauncherFxScenario.run(() -> {
+            Stage stage = new Stage();
+            LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
+            }, folder -> {
+            }, new LauncherNodeRunner(install), account -> session, NO_SOUND);
+
+            window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
+            LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
+            session.setSelf(createConnectedSelf(LinkConnectivity.UNKNOWN, FirewallState.ALLOWED));
+
+            Assertions.assertNull(findNotice(stage, warning), "an allowed launcher shows no warning");
+
+            session.setSelf(createConnectedSelf(LinkConnectivity.UNKNOWN, FirewallState.BLOCKED));
+            Node notice = findNotice(stage, warning);
+
+            Assertions.assertNotNull(notice, "a blocked launcher shows the warning");
+
+            LauncherFxScenario.findButton(notice, texts.get("notice.firewall.allow")).fire();
+
+            Assertions.assertTrue(session.getCommands().contains("allow firewall"), "Allow asks the session to allow the launcher");
+
+            session.setSelf(createConnectedSelf(LinkConnectivity.UNKNOWN, FirewallState.CHECKING));
+
+            Assertions.assertNull(findNotice(stage, warning), "the warning hides while the request runs");
+
+            session.setSelf(createConnectedSelf(LinkConnectivity.UNKNOWN, FirewallState.NO_RULE));
+            notice = findNotice(stage, warning);
+
+            Assertions.assertNotNull(notice, "a launcher without a rule shows the warning again");
+
+            LauncherFxScenario.findButton(notice, texts.get("notice.firewall.close")).fire();
+
+            Assertions.assertNull(findNotice(stage, warning), "Close hides the warning");
+
+            session.setSelf(createConnectedSelf(LinkConnectivity.UNKNOWN, FirewallState.BLOCKED));
 
             Assertions.assertNull(findNotice(stage, warning), "the warning does not come again in this run");
 

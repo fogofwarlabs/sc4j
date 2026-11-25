@@ -35,12 +35,13 @@ public interface InstallationRecords {
     };
 
     /**
-     * Returns the records of the running computer: the Windows uninstall entries and program folders on Windows, none elsewhere.
+     * Returns the records of the running computer: the Windows uninstall entries and program folders on Windows; the application folders
+     * (macOS) and the program folders of the Wine, Proton and similar prefixes at their default places elsewhere.
      *
      * @return the records of the running computer
      */
     static @NotNull InstallationRecords system() {
-        return WindowsInstallationRecords.isRunning() ? new WindowsInstallationRecords() : NONE;
+        return WindowsInstallationRecords.isRunning() ? new WindowsInstallationRecords() : UnixInstallationRecords.ofSystem();
     }
 
     /**

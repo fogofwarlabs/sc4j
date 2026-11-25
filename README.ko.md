@@ -52,7 +52,7 @@ SC4J(Simulation Core for Java)는 실시간 전략 게임 엔진입니다. 게�
 
 ## 빌드와 실행
 
-JDK 25가 필요하며, Gradle은 Gradle 래퍼가 내려받습니다. 명령은 저장소 루트의 PowerShell에서 실행합니다(Linux에서는 `./gradlew`).
+JDK 25가 필요하며, Gradle은 Gradle 래퍼가 내려받습니다. 명령은 저장소 루트의 PowerShell에서 실행합니다(Linux와 macOS에서는 `./gradlew`).
 
 | 명령 | 결과 |
 |---|---|
@@ -60,14 +60,20 @@ JDK 25가 필요하며, Gradle은 Gradle 래퍼가 내려받습니다. 명령은
 | `.\gradlew.bat devInstall` | 개발용 설치본 `build/dev-install/`(런처, 런타임, `mods/demo.jar`) |
 | `.\gradlew.bat runDevLauncher` | 개발용 설치본의 런처 열기 |
 | `.\gradlew.bat runDevInstall -Psc4j.mod=<id>` | 개발용 설치본의 `mods/<id>.jar` 실행(기본값 `demo`) |
-| `.\gradlew.bat distribution` | 사용자 패키지 `build/distributions/SC4J-<version>.zip` |
+| `.\gradlew.bat distribution` | 빌드한 플랫폼의 사용자 패키지 `build/distributions/SC4J-<version>-<platform>.zip` |
 | `.\gradlew.bat :sc4j-beaconlink-node:installDist` | 헤드리스 Beacon.Link 노드를 `sc4j-beaconlink-node/build/install/`에 빌드 |
 
 런처는 `build/dev-install/mods/`의 모든 jar를 보여 줍니다. 다른 저장소의 모드는 그 저장소의 `installMod -Psc4j.install=<이 저장소>\build\dev-install`로 이곳에 설치되며, `devInstall`은 그 jar를 지우지 않습니다.
 
-사용자 패키지에는 런처, 런타임, 데모, Java 런타임이 있으며 Windows에서는 `SC4J.exe`(또는 `SC4J.bat`), Linux에서는 `SC4J`로 시작합니다. `userdata/`는 처음 시작할 때 만들어집니다.
+## 설치
 
-런처는 SC4J의 GitHub 릴리즈로 스스로 업데이트하고, GitHub 저장소(`owner/name`, 직접 입력하거나 [`fogofwarlabs/sc4j-mods`](https://github.com/fogofwarlabs/sc4j-mods) 목록에서 선택)의 최신 릴리즈에서 모드를 설치합니다. 업데이트는 패키지에 포함된 모드 jar(`launcher/package-mods.txt`에 기록)도 바꾸며, `userdata/`와 `mods/`의 다른 jar는 그대로 남고 플레이어가 지운 포함 jar는 다시 추가하지 않습니다.
+GitHub 릴리즈마다 플랫폼별 사용자 패키지 `SC4J-<version>-<platform>.zip`이 있습니다. `<platform>`은 `windows-x64`, `linux-x64`, `linux-arm64`, `macos-arm64`(Apple Silicon) 중 하나입니다. 패키지에는 런처, 런타임, 데모와 그 플랫폼용 Java 런타임이 있으며, `userdata/`는 처음 시작할 때 만들어집니다. 게임 창에는 OpenGL 3.3이 필요합니다.
+
+- **Windows**: zip을 풀고 `SC4J.exe`(또는 `SC4J.bat`)를 실행합니다.
+- **Linux**: 프로그램 권한을 유지하는 `unzip`으로 풀고 `./SC4J`를 실행합니다. 런처에는 GTK 3이 필요합니다.
+- **macOS**: zip을 풉니다. 패키지는 개발자 서명이 없으므로 먼저 내려받은 파일의 격리 속성을 지웁니다: `xattr -dr com.apple.quarantine <folder>`. 그다음 Finder에서 `SC4J.command`를 열거나 터미널에서 `./SC4J`를 실행합니다.
+
+런처는 SC4J의 GitHub 릴리즈에서 자기 플랫폼의 패키지로만 스스로 업데이트하고, GitHub 저장소(`owner/name`, 직접 입력하거나 [`fogofwarlabs/sc4j-mods`](https://github.com/fogofwarlabs/sc4j-mods) 목록에서 선택)의 최신 릴리즈에서 모드를 설치합니다. 업데이트는 패키지에 포함된 모드 jar(`launcher/package-mods.txt`에 기록)도 바꾸며, `userdata/`와 `mods/`의 다른 jar는 그대로 남고 플레이어가 지운 포함 jar는 다시 추가하지 않습니다.
 
 ## 문서
 

@@ -2,8 +2,10 @@ package org.fogofwarlabs.sc4j.launcher.session;
 
 import org.fogofwarlabs.sc4j.base.log.LogLevel;
 import org.fogofwarlabs.sc4j.base.log.Logger;
+import org.fogofwarlabs.sc4j.beaconlink.client.BeaconLinkClient;
 import org.fogofwarlabs.sc4j.beaconlink.client.ClientBeaconLink;
 import org.fogofwarlabs.sc4j.beaconlink.client.ClientSetup;
+import org.fogofwarlabs.sc4j.beaconlink.client.firewall.FirewallState;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.Account;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.AccountLock;
 import org.fogofwarlabs.sc4j.beaconlink.peer.bootstrap.KnownNodes;
@@ -239,7 +241,7 @@ public final class LauncherSession implements LauncherSessionView {
     private final @NotNull Map<@NotNull FriendCode, @NotNull String> names;
     private final @NotNull List<@NotNull WhisperEntry> whispers;
     private final @NotNull List<@NotNull ChatEntryView> chatEntries;
-    private @Nullable BeaconLinkSession connection;
+    private @Nullable BeaconLinkClient connection;
     private @Nullable CommunitySession community;
     private @Nullable ChannelChat chat;
     private @Nullable Locale chatLocale;
@@ -282,7 +284,7 @@ public final class LauncherSession implements LauncherSessionView {
         this.connectNanos      = 0L;
         this.status            = SelfStatus.ONLINE;
         this.awayText          = "";
-        this.lastSelf          = new SelfView(SessionState.CONNECTING, SelfStatus.ONLINE, "", 0, null, LinkConnectivity.UNKNOWN);
+        this.lastSelf          = new SelfView(SessionState.CONNECTING, SelfStatus.ONLINE, "", 0, null, LinkConnectivity.UNKNOWN, FirewallState.CHECKING);
         this.lastFriends       = List.of();
         this.lastWhispers      = List.of();
         this.lastChannels      = List.of();
@@ -525,6 +527,21 @@ public final class LauncherSession implements LauncherSessionView {
         });
     }
 
+    /**
+     * Asks the user to allow connections that other computers start to the launcher, through the operating system's approval. Does nothing
+     * unless the firewall has no rule for the launcher or blocks it ({@link SelfView#getFirewall()}).
+     */
+    @Override
+    public void requestFirewallAllow() {
+        this.commands.add(() -> {
+            BeaconLinkClient opened = this.connection;
+
+            if (opened != null) {
+                opened.requestFirewallAllow();
+            }
+        });
+    }
+
     private void runOnCommunity(@NotNull Consumer<@NotNull CommunitySession> command) {
         this.commands.add(() -> {
             CommunitySession opened = this.community;
@@ -637,7 +654,7 @@ public final class LauncherSession implements LauncherSessionView {
         this.connectNanos = System.nanoTime();
 
         try {
-            BeaconLinkSession opened = this.link.open();
+            BeaconLinkClient opened = this.link.open();
             CommunitySession openedCommunity = opened.getCommunity();
 
             openedCommunity.addListener(new WhisperRecorder());
@@ -775,25 +792,26 @@ public final class LauncherSession implements LauncherSessionView {
     }
 
     private @NotNull SelfView createSelf() {
-        BeaconLinkSession opened = this.connection;
+        BeaconLinkClient opened = this.connection;
         CommunitySession openedCommunity = this.community;
+        FirewallState firewall = opened == null ? this.lastSelf.getFirewall() : opened.getFirewallState();
 
         if (opened == null || openedCommunity == null) {
-            return new SelfView(SessionState.OFFLINE, this.status, this.awayText, 0, SessionFailure.NOT_STARTED, LinkConnectivity.UNKNOWN);
+            return new SelfView(SessionState.OFFLINE, this.status, this.awayText, 0, SessionFailure.NOT_STARTED, LinkConnectivity.UNKNOWN, firewall);
         }
 
         LinkFailure failure = opened.getFailure();
 
         if (failure != null) {
-            return new SelfView(SessionState.OFFLINE, this.status, this.awayText, 0, toSessionFailure(failure), LinkConnectivity.UNKNOWN);
+            return new SelfView(SessionState.OFFLINE, this.status, this.awayText, 0, toSessionFailure(failure), LinkConnectivity.UNKNOWN, firewall);
         }
 
         if (opened.getObservedAddress() == null) {
-            return new SelfView(SessionState.CONNECTING, this.status, this.awayText, 0, null, opened.getConnectivity());
+            return new SelfView(SessionState.CONNECTING, this.status, this.awayText, 0, null, opened.getConnectivity(), firewall);
         }
 
         return new SelfView(SessionState.CONNECTED, this.status, this.awayText, openedCommunity.getSelf().getDeviceCount(), null,
-                            opened.getConnectivity());
+                            opened.getConnectivity(), firewall);
     }
 
     private @NotNull List<@NotNull FriendView> createFriends() {

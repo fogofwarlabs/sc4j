@@ -206,8 +206,8 @@ The mod plugin writes `version` and `engine` into the manifest of the jar. A sou
 
 **Directory settings** have a folder picker and three optional fields:
 
-- `check.contains`: relative paths the folder must hold; else `message` is shown.
-- `detect`: uninstall entry names (`uninstallEntries`) and folder names below the program folders (`programFolders`); while the setting is empty, the launcher and the runtime look there read-only and save the first folder that passes `check`.
+- `check.contains`: relative paths the folder must hold all of; `check.containsAny`: relative paths it must hold at least one of (for example the program of each platform's build). Else `message` is shown.
+- `detect`: uninstall entry names (`uninstallEntries`) and folder names below the program folders (`programFolders`); while the setting is empty, the launcher and the runtime look there read-only and save the first folder that passes `check`. The program folders are those of Windows; on macOS `/Applications` and `~/Applications`; on Linux and macOS also `drive_c/Program Files (x86)` and `drive_c/Program Files` of the Wine prefixes at their default places (`WINEPREFIX`, `~/.wine`, Steam Proton `steamapps/compatdata/<app>/pfx`, Lutris `~/Games/<game>`, Bottles, CrossOver). Uninstall entries are read on Windows only.
 - `shared`: a name under which mods share one value, saved in `userdata/shared-settings.json`.
 
 The mod reads it with `ModContext.getSettings().getDirectory(key)`.
@@ -429,7 +429,7 @@ Demo: `DemoLobby`, [`BeaconLinkScene`](../mods/demo/src/main/java/org/fogofwarla
 - **Install**: put the jar into `<install>/mods/`. The launcher shows `READY`, `WARNING` (settings to fix) or `ERROR` (broken jar or manifest, unsupported engine version, missing image, duplicate id).
 - **Runtime**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--no-port-mapping] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]` (`--help`). Exit codes: 0 normal, 1 run failure, 2 command line or settings error, 3 mod load or validation failure. Log: `<install>/userdata/logs/<id>/sc4j.log`.
 - **Launcher**: starts the runtime with the mod's settings, storage and log folders.
-- **Mod tools**: `SC4J.bat tool <mod id> <tool id> [arguments]` (Linux `SC4J`, Windows console `SC4J-cli.exe`) runs the tool's `main` with the install's Java runtime and the class path the runtime gives the mod (the runtime's libraries and the mod jar), in the caller's current folder, with the JVM options of the runtime and the install folder in the system property `sc4j.install` (`InstallLayout.INSTALL_PROPERTY`); the arguments are passed on and the tool's exit status is returned. `tool` lists the tools of the installed mods, `tool <mod id>` those of one mod.
+- **Mod tools**: `SC4J.bat tool <mod id> <tool id> [arguments]` (Linux and macOS `SC4J`, Windows console `SC4J-cli.exe`) runs the tool's `main` with the install's Java runtime and the class path the runtime gives the mod (the runtime's libraries and the mod jar), in the caller's current folder, with the JVM options of the runtime and the install folder in the system property `sc4j.install` (`InstallLayout.INSTALL_PROPERTY`); the arguments are passed on and the tool's exit status is returned. `tool` lists the tools of the installed mods, `tool <mod id>` those of one mod.
 
 ## 16. API and versions
 

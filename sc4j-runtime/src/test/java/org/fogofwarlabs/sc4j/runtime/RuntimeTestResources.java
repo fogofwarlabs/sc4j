@@ -11,7 +11,7 @@ import java.nio.file.Path;
 public final class RuntimeTestResources {
     /**
      * The system property, set by the build for the task {@code distributionTest}, that names the built user package
-     * {@code SC4J-<version>.zip}.
+     * {@code SC4J-<version>-<platform>.zip}.
      */
     public static final @NotNull String DISTRIBUTION_PROPERTY = "sc4j.distribution";
 

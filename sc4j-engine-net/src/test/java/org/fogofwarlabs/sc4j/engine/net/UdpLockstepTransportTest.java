@@ -22,9 +22,11 @@ import java.util.List;
  * first one leaves the remaining participants with the same turns and departures; a peer whose departure notice reaches only one participant
  * is reported as left by every participant; a drop whose missing turns only a participant that left held is lowered, so the session plays
  * on; a long turn is reassembled from its datagrams; foreign datagrams are ignored.
+ * <p>
+ * Every round of the test clock first takes in the datagrams sent in the round before, so that the timeouts see the same delivery however fast
+ * the system delivers.
  */
 final class UdpLockstepTransportTest {
-    private static final @NotNull InetSocketAddress LOOPBACK = new InetSocketAddress("127.0.0.1", 0);
     private static final int SESSION_ID = 0x2026_1106;
     private static final int FRAME_COUNT = 1500;
     private static final int PATROL_FRAME = 40;
@@ -60,11 +62,13 @@ final class UdpLockstepTransportTest {
 
     private final @NotNull LockstepGameScenario scenario;
     private final @NotNull ManualNetworkClock clock;
+    private final @NotNull SteppedUdpNetwork network;
     private final @NotNull List<@NotNull DatagramEndpoint> endpoints;
 
     UdpLockstepTransportTest() {
         this.scenario  = new LockstepGameScenario();
         this.clock     = new ManualNetworkClock();
+        this.network   = new SteppedUdpNetwork();
         this.endpoints = new ArrayList<>();
     }
 
@@ -336,6 +340,7 @@ final class UdpLockstepTransportTest {
         List<PeerTurn> turns = null;
 
         for (int poll = 0; poll < POLL_LIMIT && turns == null; poll++) {
+            this.network.deliver();
             this.clock.advance(ROUND_MILLIS);
             transports.get(0).poll();
             turns = transports.get(1).receiveTurns();
@@ -396,6 +401,7 @@ final class UdpLockstepTransportTest {
     }
 
     private void advance(@NotNull List<@NotNull UdpLockstepTransport> transports) {
+        this.network.deliver();
         this.clock.advance(ROUND_MILLIS);
 
         for (UdpLockstepTransport transport : transports) {
@@ -474,7 +480,7 @@ final class UdpLockstepTransportTest {
     }
 
     private @NotNull DatagramEndpoint openEndpoint(boolean lossy, int dropPercent, int duplicatePercent, int holdPercent) throws IOException {
-        DatagramEndpoint endpoint = UdpDatagramEndpoint.open(LOOPBACK);
+        DatagramEndpoint endpoint = this.network.open();
 
         if (lossy) {
             endpoint = new LossyDatagramEndpoint(endpoint, LINK_SEED + this.endpoints.size(), dropPercent, duplicatePercent, holdPercent);

@@ -14,10 +14,13 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  test:
-    name: test
-    # The client module ships FFmpeg natives for windows-x86_64 only.
-    runs-on: windows-latest
+  tests:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     defaults:
       run:
@@ -41,16 +44,39 @@ jobs:
         with:
           cache-provider: basic
 
+      # The runners have no GPU, so the OpenGL checks are off. The launcher tests lay out JavaFX scenes, which need a display: on Linux a
+      # virtual one (Xvfb).
       - name: Test the engine
-        run: ./gradlew test -Psc4j.render.smoke=false
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            xvfb-run --auto-servernum ./gradlew test -Psc4j.render.smoke=false
+          else
+            ./gradlew test -Psc4j.render.smoke=false
+          fi
 
       - name: Upload the reports
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: reports
+          name: reports-${{ matrix.os }}
           path: |
             **/build/reports/
             **/build/test-results/
           if-no-files-found: ignore
           retention-days: 14
+
+  # The required status check: it passes only when the tests passed on every system.
+  test:
+    name: test
+    needs: tests
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the tests of every system
+        env:
+          RESULT: ${{ needs.tests.result }}
+        run: |
+          if [ "$RESULT" != success ]; then
+            echo "::error::The tests did not pass on every system ($RESULT)."
+            exit 1
+          fi

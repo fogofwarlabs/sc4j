@@ -7,7 +7,6 @@ import org.fogofwarlabs.sc4j.beaconlink.client.ClientBeaconLink;
 import org.fogofwarlabs.sc4j.beaconlink.client.ClientConfiguration;
 import org.fogofwarlabs.sc4j.beaconlink.client.ClientSetup;
 import org.fogofwarlabs.sc4j.beaconlink.client.mapping.MappingProtocol;
-import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMapping;
 import org.fogofwarlabs.sc4j.beaconlink.peer.MeshPeer;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.Account;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.AccountStore;
@@ -25,6 +24,8 @@ import org.fogofwarlabs.sc4j.beaconlink.protocol.message.Envelope;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.message.NodeEndpoint;
 import org.fogofwarlabs.sc4j.beaconlink.test.client.ClientScenario;
 import org.fogofwarlabs.sc4j.beaconlink.test.mapping.GatewayScenario;
+import org.fogofwarlabs.sc4j.engine.net.DatagramEndpoint;
+import org.fogofwarlabs.sc4j.engine.net.UdpDatagramEndpoint;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.*;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
@@ -163,19 +164,56 @@ final class LauncherNodeTest {
     }
 
     /**
-     * Supplies a protocol time that a test advances in steps: a step moves the time only after every running node of the test polled since
-     * the last step, and polls the test's sessions before and after, so that the time never runs ahead of the nodes and a loaded machine
-     * slows the test down instead of letting protocol timeouts fire before the nodes ran. Waits count protocol time, never real time.
+     * Supplies a protocol time that a test advances in steps, so that the time never runs ahead of the nodes or of the system's delivery and a
+     * loaded machine slows the test down instead of letting protocol timeouts fire before the datagrams were handled. A step moves the time
+     * and runs {@value #ROUNDS_PER_STEP} rounds: a round polls the test's sessions, waits until the datagrams sent so far have arrived, waits
+     * until every running node of the test ran a whole poll after that and waits for the arrivals once more. So a node's message to a session,
+     * the session's answer and the node's handling of it fall into one step, however late the system delivers the datagrams. Waits count
+     * protocol time, never real time.
+     * <p>
+     * The arrivals are awaited with a mark that the clock sends itself through 127.0.0.1: the system delivers loopback datagrams in the order
+     * they were sent, so the mark arrives after every datagram sent before it. A mark that does not arrive within {@value #MARK_RESEND_MILLIS}
+     * ms is sent again.
      */
-    private static final class SteppedClock implements ProtocolClock {
+    private static final class SteppedClock implements ProtocolClock, Closeable {
+        private static final int ROUNDS_PER_STEP = 2;
+        private static final long MARK_RESEND_MILLIS = 1_000L;
+        private static final long POLL_CHECK_MILLIS = 1L;
+        /**
+         * The number of a node's polls ending after a point in time among which one ran wholly after that point.
+         */
+        private static final int POLLS_FOR_A_WHOLE_POLL = 2;
+
+        private static void pollAll(@NotNull List<@NotNull BeaconLinkClient> sessions) throws IOException {
+            for (BeaconLinkClient session : sessions) {
+                if (!session.isClosed()) {
+                    session.poll();
+                }
+            }
+        }
+
+
         private final @NotNull AtomicLong epochMillis;
         private final @NotNull List<@NotNull LauncherNode> nodes;
 
-        private SteppedClock() {
+        private final @NotNull DatagramEndpoint markEndpoint;
+        private final @NotNull InetSocketAddress markAddress;
+        private final @NotNull ByteBuffer markBuffer;
+        private long markNumber;
+
+        private SteppedClock() throws IOException {
             this.epochMillis = new AtomicLong(System.currentTimeMillis());
             this.nodes       = new ArrayList<>();
+
+            this.markEndpoint = UdpDatagramEndpoint.open(new InetSocketAddress(LOOPBACK, 0));
+            this.markAddress  = this.markEndpoint.getLocalAddress();
+            this.markBuffer   = ByteBuffer.allocate(Long.BYTES);
+            this.markNumber   = 0L;
         }
 
+        /**
+         * @return the current time in milliseconds since the epoch
+         */
         @Override
         public long getEpochMillis() {
             return this.epochMillis.get();
@@ -214,31 +252,83 @@ final class LauncherNodeTest {
         }
 
         private void step(@NotNull List<@NotNull BeaconLinkClient> sessions) throws IOException, InterruptedException {
-            List<LauncherNodeStatus> before = new ArrayList<>(this.nodes.size());
-
-            for (LauncherNode node : this.nodes) {
-                before.add(node.getStatus());
-            }
-
             this.epochMillis.addAndGet(STEP_MILLIS);
-            pollAll(sessions);
 
-            for (int index = 0; index < this.nodes.size(); index++) {
-                // A new status is published after every poll of the node's thread: the node ran since the time moved.
-                while (this.nodes.get(index).getStatus() == before.get(index)) {
-                    Thread.sleep(CHECK_MILLIS);
-                }
+            for (int round = 0; round < ROUNDS_PER_STEP; round++) {
+                pollAll(sessions);
+                this.awaitArrivals();
+                this.awaitWholePolls();
+                this.awaitArrivals();
             }
-
-            pollAll(sessions);
         }
 
-        private static void pollAll(@NotNull List<@NotNull BeaconLinkClient> sessions) throws IOException {
-            for (BeaconLinkClient session : sessions) {
-                if (!session.isClosed()) {
-                    session.poll();
+        /**
+         * Waits until every datagram sent so far has arrived at its receiver's socket.
+         */
+        private void awaitArrivals() throws IOException {
+            this.markNumber++;
+            this.sendMark();
+
+            long sentNanos = System.nanoTime();
+
+            while (true) {
+                InetSocketAddress source = this.markEndpoint.receive(this.markBuffer.clear());
+
+                // An earlier mark sent again arrives late; only the current one counts.
+                if (source != null && this.markBuffer.flip().getLong() == this.markNumber) {
+                    return;
+                }
+
+                if (source == null && System.nanoTime() - sentNanos >= TimeUnit.MILLISECONDS.toNanos(MARK_RESEND_MILLIS)) {
+                    this.sendMark();
+                    sentNanos = System.nanoTime();
+                }
+
+                Thread.yield();
+            }
+        }
+
+        private void sendMark() throws IOException {
+            this.markEndpoint.send(this.markBuffer.clear().putLong(this.markNumber).flip(), this.markAddress);
+        }
+
+        /**
+         * Waits until every running node ran a whole poll that started after the call: the node's thread publishes a new status after every
+         * poll.
+         */
+        private void awaitWholePolls() throws InterruptedException {
+            List<LauncherNodeStatus> seen = new ArrayList<>(this.nodes.size());
+            int[] endedPolls = new int[this.nodes.size()];
+            int waitingNodes = this.nodes.size();
+
+            for (LauncherNode node : this.nodes) {
+                seen.add(node.getStatus());
+            }
+
+            while (waitingNodes > 0) {
+                Thread.sleep(POLL_CHECK_MILLIS);
+
+                for (int index = 0; index < this.nodes.size(); index++) {
+                    LauncherNodeStatus status = this.nodes.get(index).getStatus();
+
+                    if (endedPolls[index] < POLLS_FOR_A_WHOLE_POLL && status != seen.get(index)) {
+                        seen.set(index, status);
+                        endedPolls[index]++;
+
+                        if (endedPolls[index] == POLLS_FOR_A_WHOLE_POLL) {
+                            waitingNodes--;
+                        }
+                    }
                 }
             }
+        }
+
+        /**
+         * Closes the endpoint of the marks.
+         */
+        @Override
+        public void close() throws IOException {
+            this.markEndpoint.close();
         }
     }
 
@@ -518,13 +608,8 @@ final class LauncherNodeTest {
             try (LauncherNode node = LauncherNode.start(InstallLayout.of(directory.resolve("automatic")), automatic, LOOPBACK, createConfiguration(),
                                                         ProtocolClock.SYSTEM, gateway.createConfiguration().build())) {
                 Assertions.assertNotNull(node);
-                await(() -> node.getPortMapping() != null, "the node maps its port");
-
-                PortMapping mapping = node.getPortMapping();
-
-                Assertions.assertNotNull(mapping);
-                Assertions.assertEquals(node.getLocalAddress().getPort(), mapping.getInternalPort());
-                Assertions.assertEquals(new InetSocketAddress(MAPPED_ADDRESS, automatic.getPort()), mapping.getExternalAddress());
+                await(() -> !gateway.getRequestedLifetimes(MappingProtocol.PCP).isEmpty(), "the router maps the node's port");
+                Assertions.assertNull(node.getPortMapping(), "the loopback address the peers observe chooses no mapping");
             }
 
             await(() -> gateway.getRequestedLifetimes(MappingProtocol.PCP).size() > 1, "the router receives the release");
@@ -611,13 +696,12 @@ final class LauncherNodeTest {
         InstallLayout helperInstall = InstallLayout.of(directory.resolve("helper"));
         Path aliceFolder = InstallLayout.of(directory.resolve("alice")).getBeaconLinkDirectory();
         Path bobFolder = InstallLayout.of(directory.resolve("bob")).getBeaconLinkDirectory();
-        SteppedClock clock = new SteppedClock();
-        LauncherNode seed = clock.track(start(InstallLayout.of(directory.resolve("seed")), new NodeSettings(NodeRole.AUTOMATIC, findFreePort()),
-                                              createSharedHostConfiguration(), clock));
-        String seedAddress = "127.0.0.1:" + seed.getLocalAddress().getPort();
-        List<ConfiguredNode> seeds = List.of(ConfiguredNode.parse(seedAddress, null));
+        try (SteppedClock clock = new SteppedClock();
+             LauncherNode seed = clock.track(start(InstallLayout.of(directory.resolve("seed")), new NodeSettings(NodeRole.AUTOMATIC, findFreePort()),
+                                                   createSharedHostConfiguration(), clock))) {
+            String seedAddress = "127.0.0.1:" + seed.getLocalAddress().getPort();
+            List<ConfiguredNode> seeds = List.of(ConfiguredNode.parse(seedAddress, null));
 
-        try {
             for (Path nodesFile : List.of(firstNodeInstall.getNodesFile(), secondNodeInstall.getNodesFile(), helperInstall.getNodesFile())) {
                 writeSeeds(nodesFile, seed.getLocalAddress());
             }
@@ -648,8 +732,8 @@ final class LauncherNodeTest {
                     // The first sessions meet through the seed; their peers learn the launcher nodes, which the sessions record at their end.
                     try (ClientBeaconLink aliceRun = createLink(aliceFolder, alice, seeds, clock);
                          ClientBeaconLink bobRun = createLink(bobFolder, bob, seeds, clock)) {
-                        BeaconLinkClient aliceSession = (BeaconLinkClient) aliceRun.open();
-                        BeaconLinkClient bobSession = (BeaconLinkClient) bobRun.open();
+                        BeaconLinkClient aliceSession = aliceRun.open();
+                        BeaconLinkClient bobSession = bobRun.open();
                         List<BeaconLinkClient> sessions = List.of(aliceSession, bobSession);
 
                         clock.advanceUntil(sessions, () -> isRegisteredAt(aliceSession, seedAddress) && isRegisteredAt(bobSession, seedAddress),
@@ -669,8 +753,8 @@ final class LauncherNodeTest {
                     // The seed is down: the second sessions start from the peers files and meet through the launcher nodes.
                     try (ClientBeaconLink aliceRun = createLink(aliceFolder, alice, seeds, clock);
                          ClientBeaconLink bobRun = createLink(bobFolder, bob, seeds, clock)) {
-                        BeaconLinkClient aliceSession = (BeaconLinkClient) aliceRun.open();
-                        BeaconLinkClient bobSession = (BeaconLinkClient) bobRun.open();
+                        BeaconLinkClient aliceSession = aliceRun.open();
+                        BeaconLinkClient bobSession = bobRun.open();
                         List<BeaconLinkClient> sessions = List.of(aliceSession, bobSession);
 
                         clock.advanceUntil(sessions, () -> isRegistered(aliceSession) && isRegistered(bobSession),
@@ -691,8 +775,6 @@ final class LauncherNodeTest {
                     }
                 }
             }
-        } finally {
-            seed.close();
         }
     }
 }

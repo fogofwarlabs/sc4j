@@ -137,6 +137,12 @@ public interface LauncherSessionView {
     void signOutOtherDevices();
 
     /**
+     * Asks the user to allow connections that other computers start to the launcher, through the operating system's approval. Does nothing
+     * unless the firewall has no rule for the launcher or blocks it ({@link SelfView#getFirewall()}).
+     */
+    void requestFirewallAllow();
+
+    /**
      * Ends the session: other players stop seeing the account in this launcher. The views do not change after it and the listener is no longer
      * called. Games of the account keep running.
      */

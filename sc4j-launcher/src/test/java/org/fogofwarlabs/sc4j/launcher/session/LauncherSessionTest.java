@@ -173,8 +173,9 @@ final class LauncherSessionTest {
             LauncherSessionScenario.await(() -> isShown(bob, aliceCode, FriendState.AWAY, 1) &&
                                                 AWAY_TEXT.equals(requireFriend(bob, aliceCode).getAwayText()),
                                           "Bob sees Alice away with her text");
+            // Alice's launcher publishes its own views after it sent her status, so Bob may see the status first.
+            LauncherSessionScenario.await(() -> alice.getSelf().getStatus() == SelfStatus.AWAY, "Alice's launcher shows her away");
 
-            Assertions.assertEquals(SelfStatus.AWAY, alice.getSelf().getStatus());
             Assertions.assertEquals(AWAY_TEXT, alice.getSelf().getAwayText());
 
             alice.setStatus(SelfStatus.ONLINE, "");
@@ -200,6 +201,10 @@ final class LauncherSessionTest {
             alice.whisper(bobCode, "Still there?");
             LauncherSessionScenario.await(() -> hasWhisper(alice, bobCode, "Still there?", WhisperState.DELIVERED),
                                           "the whisper reaches Bob's launcher");
+            // The node relays the whisper to Bob before it answers Alice, so her status set after the answer reaches Bob after the whisper:
+            // once Bob sees it, his launcher has taken the whisper while it ignores her.
+            alice.setStatus(SelfStatus.AWAY, AWAY_TEXT);
+            LauncherSessionScenario.await(() -> isShown(bob, aliceCode, FriendState.AWAY, 1), "Bob's launcher takes the ignored whisper");
             bob.setIgnored(aliceCode, false);
             LauncherSessionScenario.await(() -> !requireFriend(bob, aliceCode).isIgnored(), "Bob stops ignoring Alice");
             alice.whisper(bobCode, "Back again");
@@ -232,7 +237,7 @@ final class LauncherSessionTest {
             });
 
             try (ClientBeaconLink gameRun = launchers.createAliceGame()) {
-                BeaconLinkClient game = (BeaconLinkClient) gameRun.open();
+                BeaconLinkClient game = gameRun.open();
 
                 game.getCommunity().setStatus(PlayerStatus.IN_GAME);
                 LauncherSessionScenario.await(List.of(game), () -> isShown(bob, aliceCode, FriendState.IN_GAME, 2),
@@ -262,7 +267,7 @@ final class LauncherSessionTest {
             launchers.befriendAlice();
 
             try (ClientBeaconLink gameRun = launchers.createAliceGame()) {
-                BeaconLinkClient game = (BeaconLinkClient) gameRun.open();
+                BeaconLinkClient game = gameRun.open();
 
                 game.getCommunity();
                 LauncherSessionScenario.await(List.of(game), () -> isRegistered(game) && alice.getSelf().getDeviceCount() == 2,

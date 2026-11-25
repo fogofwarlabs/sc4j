@@ -192,6 +192,9 @@ def nativeClassifiers = {
     if (operatingSystem.contains('linux')) {
         return ['org.lwjgl': arm ? 'natives-linux-arm64' : 'natives-linux', 'org.bytedeco': arm ? 'linux-arm64' : 'linux-x86_64']
     }
+    if (operatingSystem.contains('mac')) {
+        return ['org.lwjgl': arm ? 'natives-macos-arm64' : 'natives-macos', 'org.bytedeco': arm ? 'macosx-arm64' : 'macosx-x86_64']
+    }
     throw new GradleException('The engine runtime has no native libraries for ' + System.getProperty('os.name') + '.')
 }
 def runtimeNatives = files({
@@ -211,7 +214,7 @@ def nativeFolder = runFolder.get().dir('natives').asFile.absolutePath
 def prepareRun = tasks.register('prepareRun', Sync) {
     description = 'Stages the native libraries of the engine runtime for run.'
     from({ runtimeNatives.collect { archive -> zipTree(archive) } }) {
-        include '**/*.dll', '**/*.so', '**/*.so.*'
+        include '**/*.dll', '**/*.so', '**/*.so.*', '**/*.dylib'
         exclude 'META-INF/**'
         eachFile { details -> details.path = details.name }
         includeEmptyDirs = false
@@ -231,6 +234,10 @@ tasks.register('run', JavaExec) {
     def install = mod.install.orElse(runFolder)
     def cacheFolder = runFolder.get().dir('.cache').asFile.absolutePath
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+    // GLFW runs on the process's first thread on macOS, where AWT (image decoding) stays headless so that it does not claim that thread.
+    if (System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('mac')) {
+        jvmArgs '-XstartOnFirstThread', '-Djava.awt.headless=true'
+    }
     systemProperty 'org.lwjgl.librarypath', nativeFolder
     systemProperty 'java.library.path', nativeFolder
     systemProperty 'org.lwjgl.system.SharedLibraryExtractPath', cacheFolder + '/natives'

@@ -12,22 +12,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: release
-    # The client module ships FFmpeg natives for windows-x86_64 only.
-    runs-on: windows-latest
-    timeout-minutes: 120
-    defaults:
-      run:
-        shell: bash
+  version:
+    name: version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
-      - name: Keep line endings
-        run: git config --global core.autocrlf false
-
       - name: Check out
         uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
       - name: Read the version
         id: version
@@ -69,6 +62,34 @@ jobs:
             exit 1
           fi
 
+  # One user package per platform, built and tested on a runner of that platform, with its checksum file.
+  packages:
+    name: package (${{ matrix.platform }})
+    needs: version
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - platform: windows-x64
+            runner: windows-latest
+          - platform: linux-x64
+            runner: ubuntu-latest
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform: macos-arm64
+            runner: macos-latest
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Keep line endings
+        run: git config --global core.autocrlf false
+
+      - name: Check out
+        uses: actions/checkout@v7
+
       - name: Set up the JDK
         uses: actions/setup-java@v6
         with:
@@ -80,19 +101,95 @@ jobs:
         with:
           cache-provider: basic
 
-      - name: Test
-        run: ./gradlew test -Psc4j.render.smoke=false
-
-      - name: Build the user package
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        # The checksum file has the sha256sum format: the hash, two spaces and the file name.
+      # The runners have no GPU, so the OpenGL checks are off; Linux runs the JavaFX tests on a virtual display (Xvfb).
+      - name: Test and build the user package
         run: |
-          ./gradlew distribution
+          if [ "$RUNNER_OS" = Linux ]; then
+            xvfb-run --auto-servernum ./gradlew test distributionTest -Psc4j.render.smoke=false
+          else
+            ./gradlew test distributionTest -Psc4j.render.smoke=false
+          fi
+
+      # The checksum file has the sha256sum format: the hash, two spaces and the file name.
+      - name: Write the checksum file
+        env:
+          PACKAGE: SC4J-${{ needs.version.outputs.version }}-${{ matrix.platform }}.zip
+        run: |
           cd build/distributions
-          package="SC4J-$VERSION.zip"
-          hash=$(sha256sum "$package" | cut -d ' ' -f 1)
-          printf '%s  %s\n' "$hash" "$package" > "$package.sha256"
+          if [ ! -f "$PACKAGE" ]; then
+            echo "::error::The runner built no $PACKAGE."
+            exit 1
+          fi
+          if command -v sha256sum > /dev/null; then
+            hash=$(sha256sum "$PACKAGE" | cut -d ' ' -f 1)
+          else
+            hash=$(shasum -a 256 "$PACKAGE" | cut -d ' ' -f 1)
+          fi
+          printf '%s  %s\n' "$hash" "$PACKAGE" > "$PACKAGE.sha256"
+
+      - name: Upload the user package
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-${{ matrix.platform }}
+          path: |
+            build/distributions/SC4J-${{ needs.version.outputs.version }}-${{ matrix.platform }}.zip
+            build/distributions/SC4J-${{ needs.version.outputs.version }}-${{ matrix.platform }}.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload the reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports-${{ matrix.platform }}
+          path: |
+            **/build/reports/
+            **/build/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Maven Central once, then the tag and the GitHub release with every package and its checksum file.
+  release:
+    name: release
+    needs: [version, packages]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up the JDK
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      - name: Download the user packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: package-*
+          path: packages
+          merge-multiple: true
+
+      - name: Check the user packages
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          for platform in windows-x64 linux-x64 linux-arm64 macos-arm64; do
+            package="packages/SC4J-$VERSION-$platform.zip"
+            if [ ! -f "$package" ] || [ ! -f "$package.sha256" ]; then
+              echo "::error::The release lacks $package or its checksum file."
+              exit 1
+            fi
+          done
+          (cd packages && sha256sum --check --strict -- *.sha256)
 
       - name: Publish and release
         env:
@@ -111,8 +208,8 @@ jobs:
       - name: Tag and create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.version.outputs.tag }}
-          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ needs.version.outputs.tag }}
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
           # The notes list the commits since the previous release tag, without the version changes and the release merges.
           previous=$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_SHA^" 2>/dev/null || true)
@@ -126,16 +223,5 @@ jobs:
             fi
           } > release-notes.md
 
-          package="build/distributions/SC4J-$VERSION.zip"
-          gh release create "$TAG" "$package" "$package.sha256" --target "$GITHUB_SHA" --title "$TAG" --notes-file release-notes.md
-
-      - name: Upload the reports
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: reports
-          path: |
-            **/build/reports/
-            **/build/test-results/
-          if-no-files-found: ignore
-          retention-days: 14
+          gh release create "$TAG" packages/SC4J-"$VERSION"-*.zip packages/SC4J-"$VERSION"-*.zip.sha256 --target "$GITHUB_SHA" --title "$TAG" \
+            --notes-file release-notes.md

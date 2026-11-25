@@ -25,6 +25,10 @@ dependencies {
 application {
     applicationName = 'sc4j-runtime'
     mainClass = 'org.fogofwarlabs.sc4j.runtime.RuntimeMain'
+    // GLFW runs on the process's first thread on macOS, where AWT (image decoding) stays headless so that it does not claim that thread.
+    if (OS == 'macos') {
+        applicationDefaultJvmArgs = ['-XstartOnFirstThread', '-Djava.awt.headless=true']
+    }
 }
 
 // The start scripts put every jar of lib/ on the class path. bin/sc4j-runtime.launch holds their Java arguments, one per line, with
@@ -39,8 +43,8 @@ tasks.named('startScripts') {
     }
 }
 
-// The test of the user package (@RequiresDistribution, tag distribution) unpacks build/distributions/SC4J-<version>.zip, which the root
-// project's distribution task builds, and starts its runtime: it runs only in its own task, never in test or check.
+// The test of the user package (@RequiresDistribution, tag distribution) unpacks build/distributions/SC4J-<version>-<platform>.zip, which the
+// root project's distribution task builds, and starts its runtime: it runs only in its own task, never in test or check.
 tasks.named('test') {
     options {
         excludeTags 'distribution'
@@ -58,8 +62,10 @@ tasks.register('distributionTest', Test) {
     }
     dependsOn distribution
     inputs.files(distribution)
-    jvmArgumentProviders.add({
-        ['-Dsc4j.distribution=' + distribution.get().archiveFile.get().asFile.absolutePath]
-    } as CommandLineArgumentProvider)
+    jvmArgumentProviders.add(
+        {
+            ['-Dsc4j.distribution=' + distribution.get().archiveFile.get().asFile.absolutePath]
+        } as CommandLineArgumentProvider
+    )
     shouldRunAfter tasks.named('test')
 }

@@ -25,6 +25,10 @@ public enum ReleaseProblem {
      */
     ASSET_MISSING,
     /**
+     * The release has no package for the platform the reader runs on.
+     */
+    PLATFORM_MISSING,
+    /**
      * A file is larger than the reader reads.
      */
     TOO_LARGE,

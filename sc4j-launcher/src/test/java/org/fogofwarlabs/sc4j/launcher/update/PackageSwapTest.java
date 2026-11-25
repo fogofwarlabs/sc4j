@@ -71,12 +71,12 @@ final class PackageSwapTest {
     }
 
     @Test
-    void apply_should_remove_the_windows_programs_when_the_package_has_none(@TempDir @NotNull Path directory) throws IOException {
+    void apply_should_remove_the_platform_items_when_the_package_has_none(@TempDir @NotNull Path directory) throws IOException {
         Path installRoot = directory.resolve("install");
         Path packageRoot = directory.resolve("package");
         Map<String, String> files = UserPackageScenario.createProgramFiles(NEW);
 
-        files.keySet().removeIf(PackageSwapTest::isWindowsProgram);
+        files.keySet().removeIf(PackageSwapTest::isPlatformItem);
         writeInstall(installRoot);
         UserPackageScenario.writeFiles(packageRoot, files);
 
@@ -86,7 +86,7 @@ final class PackageSwapTest {
             Assertions.assertEquals(NEW, Files.readString(installRoot.resolve(file), StandardCharsets.UTF_8), file);
         }
 
-        for (String item : PackageSwap.WINDOWS_ITEMS) {
+        for (String item : PackageSwap.PLATFORM_ITEMS) {
             Assertions.assertFalse(Files.exists(installRoot.resolve(item)), item);
         }
 
@@ -187,8 +187,8 @@ final class PackageSwapTest {
         Assertions.assertThrows(IOException.class, () -> PackageSwap.readPackageMods(directory));
     }
 
-    private static boolean isWindowsProgram(@NotNull String file) {
-        return PackageSwap.WINDOWS_ITEMS.stream().anyMatch(item -> file.equals(item) || file.startsWith(item + "/"));
+    private static boolean isPlatformItem(@NotNull String file) {
+        return PackageSwap.PLATFORM_ITEMS.stream().anyMatch(item -> file.equals(item) || file.startsWith(item + "/"));
     }
 
     private static void writeInstall(@NotNull Path installRoot) throws IOException {

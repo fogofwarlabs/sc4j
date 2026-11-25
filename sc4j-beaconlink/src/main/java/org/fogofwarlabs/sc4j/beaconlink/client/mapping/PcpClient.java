@@ -8,14 +8,11 @@ import java.io.IOException;
 import java.net.*;
 import java.nio.ByteBuffer;
 import java.security.SecureRandom;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
 
 /**
- * Maps a UDP port with the Port Control Protocol, version 2 (RFC 6887): an {@code ANNOUNCE} request finds the server among the gateways, a
- * {@code MAP} request with a random nonce maps, the same request with the mapping's external port renews and one with lifetime {@code 0}
+ * Maps a UDP port with the Port Control Protocol, version 2 (RFC 6887), at one router: an {@code ANNOUNCE} request checks that the router
+ * speaks it, a {@code MAP} request with a random nonce maps, the same request with the mapping's external port renews and one with lifetime {@code 0}
  * deletes. An answer is told from a NAT-PMP answer by its first byte, the version: a server that answers version {@code 0}, or reports
  * {@code UNSUPP_VERSION} with another version than {@code 2}, gives no PCP mapping.
  */
@@ -61,24 +58,24 @@ final class PcpClient implements MappingClient {
 
 
     private final @NotNull PortMappingConfiguration configuration;
-    private final @NotNull Collection<@NotNull InetAddress> gateways;
+    private final @NotNull GatewayRoute gateway;
 
     private final byte @NotNull [] nonce;
-    private @Nullable InetSocketAddress server;
+    private boolean found;
     private @NotNull String problem;
 
     /**
      * Creates a {@link PcpClient} instance.
      *
-     * @param configuration the ports and times
-     * @param gateways      the gateway addresses, which may grow while the client looks for a server
+     * @param configuration the times
+     * @param gateway       the router and the local address the requests go out from
      */
-    PcpClient(@NotNull PortMappingConfiguration configuration, @NotNull Collection<@NotNull InetAddress> gateways) {
+    PcpClient(@NotNull PortMappingConfiguration configuration, @NotNull GatewayRoute gateway) {
         this.configuration = configuration;
-        this.gateways      = gateways;
+        this.gateway       = gateway;
 
         this.nonce   = new byte[NONCE_LENGTH];
-        this.server  = null;
+        this.found   = false;
         this.problem = "no answer";
 
         new SecureRandom().nextBytes(this.nonce);
@@ -90,6 +87,14 @@ final class PcpClient implements MappingClient {
     @Override
     public @NotNull MappingProtocol getProtocol() {
         return MappingProtocol.PCP;
+    }
+
+    /**
+     * @return the router this client asks and the local address its requests go out from
+     */
+    @Override
+    public @NotNull GatewayRoute getGateway() {
+        return this.gateway;
     }
 
     /**
@@ -109,18 +114,23 @@ final class PcpClient implements MappingClient {
     }
 
     /**
-     * Looks for a PCP server among the gateways with an {@code ANNOUNCE} request.
+     * Checks that the router speaks PCP with an {@code ANNOUNCE} request.
      *
-     * @return {@code true} if a server answered in version {@code 2}, {@code false} otherwise
+     * @return {@code true} if the router answered in version {@code 2}, {@code false} otherwise
      */
     @Override
     public boolean find() {
+        byte[] request = this.createRequest(OPCODE_ANNOUNCE, RELEASE_LIFETIME, ANY_PORT, ANY_PORT, null);
         DatagramPacket answer;
 
+        if (request == null) {
+            this.problem = "no route";
+
+            return false;
+        }
+
         try {
-            answer = GatewayDatagramUtils.exchange(this::listTargets,
-                                                   target -> this.createRequest(target, OPCODE_ANNOUNCE, RELEASE_LIFETIME, ANY_PORT, ANY_PORT, null),
-                                                   this.configuration.getAnswerMillis(),
+            answer = GatewayDatagramUtils.exchange(this.gateway, request, this.configuration.getAnswerMillis(),
                                                    packet -> packet.getLength() >= MINIMUM_ANSWER_LENGTH &&
                                                              (packet.getData()[0] == NAT_PMP_VERSION ||
                                                               (packet.getData()[1] & BYTE_MASK) == (RESPONSE_BIT | OPCODE_ANNOUNCE)));
@@ -149,27 +159,19 @@ final class PcpClient implements MappingClient {
             return false;
         }
 
-        this.server = (InetSocketAddress) answer.getSocketAddress();
+        this.found = true;
 
         return true;
     }
 
-    private @NotNull List<@NotNull InetSocketAddress> listTargets() {
-        List<InetSocketAddress> targets = new ArrayList<>();
-
-        for (InetAddress gateway : List.copyOf(this.gateways)) {
-            targets.add(new InetSocketAddress(gateway, this.configuration.getGatewayPort()));
-        }
-
-        return targets;
-    }
-
     /**
-     * Creates a request: the common header with the local address facing the target, and for {@code MAP} the mapping fields.
+     * Creates a request: the common header with the local address facing the router, and for {@code MAP} the mapping fields.
+     *
+     * @return the request, or {@code null} if no IPv4 route leads to the router
      */
-    private byte @Nullable [] createRequest(@NotNull InetSocketAddress target, int opcode, int lifetimeSeconds, int internalPort, int externalPort,
-                                            @Nullable InetAddress externalAddress) {
-        InetAddress local = GatewayDatagramUtils.findLocalAddress(target);
+    private byte @Nullable [] createRequest(int opcode, int lifetimeSeconds,
+                                            int internalPort, int externalPort, @Nullable InetAddress externalAddress) {
+        InetAddress local = GatewayDatagramUtils.findLocalAddress(this.gateway);
 
         if (!(local instanceof Inet4Address)) {
             return null;
@@ -227,7 +229,7 @@ final class PcpClient implements MappingClient {
     @Override
     public void release(@NotNull PortMapping mapping) {
         if (this.requestMapping(RELEASE_LIFETIME, mapping.getInternalPort(), ANY_PORT, null) == null) {
-            LOGGER.info("BEACON.LINK: port mapping release by PCP failed: {0}", this.problem);
+            LOGGER.info("BEACON.LINK: port mapping release by PCP at {0} failed: {1}", this.gateway, this.problem);
         }
     }
 
@@ -237,19 +239,16 @@ final class PcpClient implements MappingClient {
      * @return the granted mapping, or {@code null} if the server refused or did not answer
      */
     private @Nullable PortMapping requestMapping(int lifetimeSeconds, int internalPort, int externalPort, @Nullable InetAddress externalAddress) {
-        InetSocketAddress target = this.server;
+        byte[] request = this.found ? this.createRequest(OPCODE_MAP, lifetimeSeconds, internalPort, externalPort, externalAddress) : null;
 
-        if (target == null) {
+        if (request == null) {
             return null;
         }
 
         DatagramPacket answer;
 
         try {
-            answer = GatewayDatagramUtils.exchange(() -> List.of(target),
-                                                   gateway -> this.createRequest(gateway, OPCODE_MAP, lifetimeSeconds, internalPort, externalPort,
-                                                                                 externalAddress),
-                                                   this.configuration.getAnswerMillis(),
+            answer = GatewayDatagramUtils.exchange(this.gateway, request, this.configuration.getAnswerMillis(),
                                                    packet -> packet.getLength() >= HEADER_LENGTH + MAP_LENGTH && packet.getData()[0] == VERSION &&
                                                              (packet.getData()[1] & BYTE_MASK) == (RESPONSE_BIT | OPCODE_MAP) &&
                                                              Arrays.equals(packet.getData(), NONCE_OFFSET, NONCE_OFFSET + NONCE_LENGTH, this.nonce,
@@ -294,8 +293,8 @@ final class PcpClient implements MappingClient {
 
         int assignedPort = data.getShort(EXTERNAL_PORT_OFFSET) & PORT_MASK;
 
-        return new PortMapping(MappingProtocol.PCP, target.getAddress(), new InetSocketAddress(assigned, assignedPort), internalPort,
-                               data.getInt(LIFETIME_OFFSET));
+        return new PortMapping(MappingProtocol.PCP, this.gateway.getAddress().getAddress(), new InetSocketAddress(assigned, assignedPort),
+                               internalPort, data.getInt(LIFETIME_OFFSET));
     }
 
     /**

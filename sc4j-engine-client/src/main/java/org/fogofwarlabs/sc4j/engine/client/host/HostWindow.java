@@ -165,7 +165,8 @@ public interface HostWindow extends AutoCloseable {
     void setPointerClip(@Nullable PointerClip clip);
 
     /**
-     * Moves the pointer to a point of the content area. Nothing moves while the window does not have the input focus.
+     * Moves the pointer to a point of the content area. Nothing moves while the window does not have the input focus, or on a platform that
+     * does not let a program move the pointer.
      *
      * @param x the column in window coordinates
      * @param y the row in window coordinates
@@ -183,7 +184,7 @@ public interface HostWindow extends AutoCloseable {
      * Applies a gamma ramp to the monitor of the fullscreen window while the window is focused, and gives the monitor its original ramp back
      * otherwise: when the window is windowed or not focused, has moved to another monitor, or the ramp is {@code null}. A client calls it once
      * per frame; a monitor is written only when the target monitor or the ramp changes. Closing the window gives the monitor its original ramp
-     * back.
+     * back. On a platform that does not let a program set gamma ramps nothing is applied.
      *
      * @param ramp the {@link #GAMMA_RAMP_SIZE} red, then green, then blue values (unsigned 16-bit), or {@code null} for the original ramp
      * @throws IllegalArgumentException if the ramp does not hold {@link #GAMMA_RAMP_CHANNEL_COUNT} times {@link #GAMMA_RAMP_SIZE} values
@@ -209,7 +210,8 @@ public interface HostWindow extends AutoCloseable {
 
     /**
      * Centers the window, frame included, in the primary monitor's work area (the desktop without the task bar); a window larger
-     * than the work area is first made as large as the work area allows. Without a primary monitor nothing changes.
+     * than the work area is first made as large as the work area allows. Without a primary monitor nothing changes. On a platform that does
+     * not let a program place windows the window is only fitted and the platform places it.
      */
     void center();
 

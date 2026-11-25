@@ -7,8 +7,9 @@ plugins {
 // The engine client framework: runtime host, scenes, input, the renderer with its OpenGL defaults, text, HUD, dialogs, cursors, skins, the
 // world view and audio with its OpenAL default. Of the engine modules only this one uses LWJGL. No network and no mod API.
 tasks.withType(Test).configureEach {
-    // The OpenGL and GLFW checks of the client defaults open a hidden window; false turns them off.
-    systemProperty 'sc4j.render.smoke', providers.gradleProperty('sc4j.render.smoke').getOrElse('false')
+    // The OpenGL and GLFW checks of the client defaults open a hidden window; false turns them off. On macOS GLFW runs only on the process's
+    // first thread, which no test runs on, so they are off there.
+    systemProperty 'sc4j.render.smoke', OS == 'macos' ? 'false' : providers.gradleProperty('sc4j.render.smoke').getOrElse('false')
 }
 
 dependencies {
@@ -31,8 +32,8 @@ dependencies {
     // The video default (engine.client.video): FFmpeg 7.1 through the bytedeco JavaCPP presets, LGPL build.
     implementation 'org.bytedeco:javacpp:1.5.11'
     implementation 'org.bytedeco:ffmpeg:7.1-1.5.11'
-    nativeLibraries "org.bytedeco:javacpp:1.5.11:$OS-$ARCH"
-    nativeLibraries "org.bytedeco:ffmpeg:7.1-1.5.11:$OS-$ARCH"
+    nativeLibraries "org.bytedeco:javacpp:1.5.11:$JAVACPP_PLATFORM"
+    nativeLibraries "org.bytedeco:ffmpeg:7.1-1.5.11:$JAVACPP_PLATFORM"
 
     // The skirmish and lockstep games of the session, view and replay tests (the replay, save and snapshot tests record through a client
     // session, so they run here).

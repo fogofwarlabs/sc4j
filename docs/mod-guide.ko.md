@@ -206,8 +206,8 @@ jar 루트의 `sc4j-mod.json`([데모](../mods/demo/src/main/resources/sc4j-mod.
 
 **폴더 설정**에는 폴더 선택기와 선택 필드 세 개가 있습니다.
 
-- `check.contains`: 폴더에 있어야 하는 상대 경로. 없으면 `message`를 보여 줍니다.
-- `detect`: 제거 항목 이름(`uninstallEntries`)과 프로그램 폴더 아래 폴더 이름(`programFolders`). 설정이 비어 있는 동안 런처와 런타임이 그곳을 읽기만 하며 찾아보고, `check`를 통과한 첫 폴더를 저장합니다.
+- `check.contains`: 폴더에 모두 있어야 하는 상대 경로. `check.containsAny`: 폴더에 하나 이상 있어야 하는 상대 경로(예: 플랫폼별 빌드의 실행 파일). 없으면 `message`를 보여 줍니다.
+- `detect`: 제거 항목 이름(`uninstallEntries`)과 프로그램 폴더 아래 폴더 이름(`programFolders`). 설정이 비어 있는 동안 런처와 런타임이 그곳을 읽기만 하며 찾아보고, `check`를 통과한 첫 폴더를 저장합니다. 프로그램 폴더는 Windows의 프로그램 폴더, macOS의 `/Applications`와 `~/Applications`, 그리고 Linux와 macOS에서 기본 위치의 Wine 접두사(`WINEPREFIX`, `~/.wine`, Steam Proton `steamapps/compatdata/<app>/pfx`, Lutris `~/Games/<game>`, Bottles, CrossOver)의 `drive_c/Program Files (x86)`와 `drive_c/Program Files`입니다. 제거 항목은 Windows에서만 읽습니다.
 - `shared`: 여러 모드가 값 하나를 함께 쓰는 이름. `userdata/shared-settings.json`에 저장됩니다.
 
 모드는 `ModContext.getSettings().getDirectory(key)`로 읽습니다.
@@ -429,7 +429,7 @@ for (String file : List.of("maps/first-field.json")) {
 - **설치**: jar를 `<install>/mods/`에 넣습니다. 런처는 `READY`, `WARNING`(고칠 설정), `ERROR`(망가진 jar나 매니페스트, 지원하지 않는 엔진 버전, 없는 그림, 중복 id)로 보여 줍니다.
 - **런타임**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--no-port-mapping] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]`(`--help`). 종료 코드: 0 정상, 1 실행 실패, 2 명령줄이나 설정 오류, 3 모드 로드나 검증 실패. 로그: `<install>/userdata/logs/<id>/sc4j.log`.
 - **런처**: 모드의 설정, 저장 폴더, 로그 폴더로 런타임을 시작합니다.
-- **모드 도구**: `SC4J.bat tool <mod id> <tool id> [arguments]`(Linux는 `SC4J`, Windows 콘솔은 `SC4J-cli.exe`)는 설치본의 Java 런타임과 런타임이 모드에 주는 클래스 경로(런타임 라이브러리와 모드 jar)로 도구의 `main`을 실행합니다. 작업 폴더는 호출한 곳의 현재 폴더이고, 런타임의 JVM 옵션과 함께 설치 폴더를 시스템 속성 `sc4j.install`(`InstallLayout.INSTALL_PROPERTY`)로 넘기며, 인수를 그대로 넘기고 도구의 종료 코드를 돌려줍니다. `tool`은 설치된 모드의 도구를, `tool <mod id>`는 한 모드의 도구를 보여 줍니다.
+- **모드 도구**: `SC4J.bat tool <mod id> <tool id> [arguments]`(Linux와 macOS는 `SC4J`, Windows 콘솔은 `SC4J-cli.exe`)는 설치본의 Java 런타임과 런타임이 모드에 주는 클래스 경로(런타임 라이브러리와 모드 jar)로 도구의 `main`을 실행합니다. 작업 폴더는 호출한 곳의 현재 폴더이고, 런타임의 JVM 옵션과 함께 설치 폴더를 시스템 속성 `sc4j.install`(`InstallLayout.INSTALL_PROPERTY`)로 넘기며, 인수를 그대로 넘기고 도구의 종료 코드를 돌려줍니다. `tool`은 설치된 모드의 도구를, `tool <mod id>`는 한 모드의 도구를 보여 줍니다.
 
 ## 16. API와 버전
 

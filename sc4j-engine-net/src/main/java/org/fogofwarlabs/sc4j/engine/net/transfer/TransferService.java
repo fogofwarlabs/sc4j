@@ -64,9 +64,11 @@ public abstract class TransferService<A> implements Closeable {
      */
     private static final long LINGER_MILLIS = 5000L;
     /**
-     * The datagrams a peer's budget holds at most, as milliseconds of the peer's rate.
+     * The datagrams a peer's budget holds at most, as milliseconds of the peer's rate: one frame of a 60 Hz loop, so that what one update sends
+     * at {@link #DEFAULT_DATAGRAM_RATE} fits a UDP receive buffer of the Linux default size (208 KiB) beside the peer's other datagrams until
+     * the peer's next receive.
      */
-    private static final long BURST_MILLIS = 32L;
+    private static final long BURST_MILLIS = 16L;
     /**
      * The least number of datagrams a peer's budget holds at most.
      */

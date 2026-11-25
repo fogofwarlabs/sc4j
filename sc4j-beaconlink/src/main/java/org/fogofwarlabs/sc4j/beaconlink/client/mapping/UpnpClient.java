@@ -25,10 +25,11 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
- * Maps a UDP port with UPnP Internet Gateway Device versions 1 and 2: an SSDP search finds the device, its description names the control URL
+ * Maps a UDP port with UPnP Internet Gateway Device versions 1 and 2 at one device: an SSDP search finds the devices
+ * ({@link #search(PortMappingConfiguration)}), a device's description names the control URL
  * of its WAN connection service ({@code WANIPConnection} version 2 first, then version 1, then {@code WANPPPConnection}), and SOAP actions
  * read the external address ({@code GetExternalIPAddress}), map ({@code AddPortMapping}, {@code AddAnyPortMapping} on version 2), renew
  * (the same {@code AddPortMapping}) and delete ({@code DeletePortMapping}). The mapping's internal client is the local address facing the
@@ -39,7 +40,8 @@ import java.util.concurrent.TimeUnit;
  * Before mapping, the client removes leftover mappings of this computer: the device's mappings ({@code GetGenericPortMappingEntry}) of the
  * UDP protocol to the local address with the configured description whose internal port no socket of this computer holds.
  * <p>
- * The device is trusted only at the address that answered the search: its description and control URLs must name that address.
+ * The device is trusted only at the address that answered the search: its description and control URLs must name that address. Its HTTP
+ * requests go out from the local address its search went out from.
  */
 final class UpnpClient implements MappingClient {
     private static final @NotNull Logger LOGGER = Logger.of(UpnpClient.class);
@@ -224,93 +226,84 @@ final class UpnpClient implements MappingClient {
         }
     }
 
-
-    private final @NotNull PortMappingConfiguration configuration;
-    private final @NotNull Collection<@NotNull InetAddress> gateways;
-    private final @NotNull HttpClient http;
-    private final @NotNull Random random;
-
-    private @Nullable InetAddress device;
-    private @Nullable URI controlUrl;
-    private @Nullable String serviceType;
-    private @Nullable InetAddress localAddress;
-    private @Nullable InetAddress externalAddress;
-    private @NotNull String problem;
-
     /**
-     * Creates a {@link UpnpClient} instance.
+     * Searches UPnP devices with SSDP. A search to a multicast address goes out from each IPv4 address of the local interfaces that are up,
+     * on a socket bound to that address, so that two devices at one address on two local networks are both found; a search to another
+     * address goes out from one socket. Each search waits the configured answer time and takes every device that answers with a location
+     * at its own address.
      *
-     * @param configuration the search address, times and description
-     * @param gateways      the gateway addresses, to which the client adds the address of a device that answers its search
+     * @param configuration the search address and the answer time
+     * @return a client for each device found, not yet checked with {@link #find()}
      */
-    UpnpClient(@NotNull PortMappingConfiguration configuration, @NotNull Collection<@NotNull InetAddress> gateways) {
-        this.configuration = configuration;
-        this.gateways      = gateways;
-        this.http          = HttpClient.newBuilder()
-                                       .version(HttpClient.Version.HTTP_1_1)
-                                       .connectTimeout(Duration.ofMillis(HTTP_TIMEOUT_MILLIS))
-                                       .followRedirects(HttpClient.Redirect.NEVER)
-                                       .proxy(HttpClient.Builder.NO_PROXY)
-                                       .build();
-        this.random        = new SecureRandom();
+    static @NotNull List<@NotNull UpnpClient> search(@NotNull PortMappingConfiguration configuration) {
+        List<Callable<List<UpnpClient>>> searches = new ArrayList<>();
+        List<UpnpClient> devices = new ArrayList<>();
 
-        this.device          = null;
-        this.controlUrl      = null;
-        this.serviceType     = null;
-        this.localAddress    = null;
-        this.externalAddress = null;
-        this.problem         = "no device";
+        if (configuration.getSearchAddress().getAddress().isMulticastAddress()) {
+            try {
+                for (NetworkInterface networkInterface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                    if (!networkInterface.isUp() || networkInterface.isLoopback() || !networkInterface.supportsMulticast()) {
+                        continue;
+                    }
+
+                    for (InetAddress address : Collections.list(networkInterface.getInetAddresses())) {
+                        if (address instanceof Inet4Address) {
+                            searches.add(() -> searchFrom(configuration, address, networkInterface));
+                        }
+                    }
+                }
+            } catch (SocketException exception) {
+                LOGGER.debug("BEACON.LINK: the interfaces for the SSDP search are not available: {0}", exception.getMessage());
+            }
+        }
+
+        if (searches.isEmpty()) {
+            searches.add(() -> searchFrom(configuration, null, null));
+        }
+
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (Future<List<UpnpClient>> found : executor.invokeAll(searches)) {
+                devices.addAll(found.get());
+            }
+        } catch (ExecutionException exception) {
+            LOGGER.debug("BEACON.LINK: the SSDP search failed: {0}", exception.getCause().toString());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+        }
+
+        return devices;
     }
 
     /**
-     * @return the protocol of this client
+     * Searches UPnP devices from one socket: the search for each device type, sent twice in the answer time, and every answer with a
+     * location at the answering address.
      */
-    @Override
-    public @NotNull MappingProtocol getProtocol() {
-        return MappingProtocol.UPNP;
-    }
+    private static @NotNull List<@NotNull UpnpClient> searchFrom(@NotNull PortMappingConfiguration configuration, @Nullable InetAddress localAddress,
+                                                                 @Nullable NetworkInterface networkInterface) {
+        List<UpnpClient> devices = new ArrayList<>();
 
-    /**
-     * @return why the protocol gave no mapping, such as {@code no device}
-     */
-    @Override
-    public @NotNull String getProblem() {
-        return this.problem;
-    }
-
-    /**
-     * @return the external address the device reported to {@link #find()}, or {@code null} before a device answered
-     */
-    @Override
-    public @Nullable InetAddress getExternalAddress() {
-        return this.externalAddress;
-    }
-
-    /**
-     * Searches the device with SSDP, reads its description and external address and removes the leftover mappings of this computer.
-     *
-     * @return {@code true} if a device with a WAN connection service and an external address answered, {@code false} otherwise
-     */
-    @Override
-    public boolean find() {
-        try (DatagramSocket socket = new DatagramSocket()) {
-            long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(this.configuration.getAnswerMillis());
-            long resendNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(this.configuration.getAnswerMillis() / SEARCH_SENDS);
+        try (DatagramSocket socket = new DatagramSocket(new InetSocketAddress(localAddress, 0))) {
+            long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(configuration.getAnswerMillis());
+            long resendNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(configuration.getAnswerMillis() / SEARCH_SENDS);
             Set<String> locations = new HashSet<>();
             byte[] buffer = new byte[MAXIMUM_SEARCH_ANSWER_LENGTH];
             int sends = 1;
 
-            this.sendSearch(socket);
+            if (networkInterface != null) {
+                socket.setOption(StandardSocketOptions.IP_MULTICAST_IF, networkInterface);
+            }
+
+            sendSearch(socket, configuration.getSearchAddress());
 
             while (true) {
                 long nowNanos = System.nanoTime();
 
                 if (nowNanos >= deadlineNanos) {
-                    return false;
+                    return devices;
                 }
 
                 if (sends < SEARCH_SENDS && nowNanos >= resendNanos) {
-                    this.sendSearch(socket);
+                    sendSearch(socket, configuration.getSearchAddress());
                     sends++;
                 }
 
@@ -327,18 +320,137 @@ final class UpnpClient implements MappingClient {
                 }
 
                 String location = readLocation(packet);
-                InetAddress source = packet.getAddress();
+                URI uri = location == null || !locations.add(location) ? null : parseLocation(location);
 
-                if (location != null && locations.add(location) && this.useDevice(location, source)) {
-                    this.removeLeftovers();
+                if (uri != null && isAt(uri, packet.getAddress())) {
+                    GatewayRoute device = new GatewayRoute(localAddress, new InetSocketAddress(packet.getAddress(), Math.max(uri.getPort(), 0)));
 
-                    return true;
+                    devices.add(new UpnpClient(configuration, device, uri));
                 }
             }
         } catch (IOException exception) {
-            this.problem = "failed: " + exception.getMessage();
+            LOGGER.debug("BEACON.LINK: no SSDP search from {0}: {1}", localAddress, exception.getMessage());
 
-            return false;
+            return devices;
+        }
+    }
+
+    /**
+     * Sends the search for each device type.
+     */
+    private static void sendSearch(@NotNull DatagramSocket socket, @NotNull InetSocketAddress target) throws IOException {
+        for (String searchTarget : SEARCH_TARGETS) {
+            byte[] request = ("M-SEARCH * HTTP/1.1\r\n" +
+                              "HOST: " + target.getAddress().getHostAddress() + ":" + target.getPort() + "\r\n" +
+                              "MAN: \"ssdp:discover\"\r\n" +
+                              "MX: " + SEARCH_WAIT_SECONDS + "\r\n" +
+                              "ST: " + searchTarget + "\r\n" +
+                              "\r\n").getBytes(StandardCharsets.ISO_8859_1);
+
+            socket.send(new DatagramPacket(request, request.length, target));
+        }
+    }
+
+    private static @Nullable URI parseLocation(@NotNull String location) {
+        try {
+            return new URI(location);
+        } catch (URISyntaxException exception) {
+            return null;
+        }
+    }
+
+
+    private final @NotNull PortMappingConfiguration configuration;
+    private final @NotNull GatewayRoute gateway;
+    private final @NotNull URI location;
+    private final @NotNull HttpClient http;
+    private final @NotNull Random random;
+
+    private @Nullable URI controlUrl;
+    private @Nullable String serviceType;
+    private @Nullable InetAddress localAddress;
+    private @Nullable InetAddress externalAddress;
+    private @NotNull String problem;
+
+    /**
+     * Creates a {@link UpnpClient} instance.
+     *
+     * @param configuration the times and the description
+     * @param gateway       the device's address, the port of its description and the local address its search went out from
+     * @param location      the URL of the device's description
+     */
+    private UpnpClient(@NotNull PortMappingConfiguration configuration, @NotNull GatewayRoute gateway, @NotNull URI location) {
+        HttpClient.Builder http = HttpClient.newBuilder()
+                                            .version(HttpClient.Version.HTTP_1_1)
+                                            .connectTimeout(Duration.ofMillis(HTTP_TIMEOUT_MILLIS))
+                                            .followRedirects(HttpClient.Redirect.NEVER)
+                                            .proxy(HttpClient.Builder.NO_PROXY);
+        InetAddress searchAddress = gateway.getLocalAddress();
+
+        if (searchAddress != null) {
+            http.localAddress(searchAddress);
+        }
+
+        this.configuration = configuration;
+        this.gateway       = gateway;
+        this.location      = location;
+        this.http          = http.build();
+        this.random        = new SecureRandom();
+
+        this.controlUrl      = null;
+        this.serviceType     = null;
+        this.localAddress    = null;
+        this.externalAddress = null;
+        this.problem         = "no WAN service";
+    }
+
+    /**
+     * @return the protocol of this client
+     */
+    @Override
+    public @NotNull MappingProtocol getProtocol() {
+        return MappingProtocol.UPNP;
+    }
+
+    /**
+     * @return the device this client asks and the local address its requests go out from
+     */
+    @Override
+    public @NotNull GatewayRoute getGateway() {
+        return this.gateway;
+    }
+
+    /**
+     * @return why the protocol gave no mapping, such as {@code no WAN service}
+     */
+    @Override
+    public @NotNull String getProblem() {
+        return this.problem;
+    }
+
+    /**
+     * @return the external address the device reported to {@link #find()}, or {@code null} before a device answered
+     */
+    @Override
+    public @Nullable InetAddress getExternalAddress() {
+        return this.externalAddress;
+    }
+
+    /**
+     * Reads the device's description and external address and removes the leftover mappings of this computer.
+     *
+     * @return {@code true} if the device has a WAN connection service with an external address, {@code false} otherwise
+     */
+    @Override
+    public boolean find() {
+        try {
+            if (!this.useDevice()) {
+                return false;
+            }
+
+            this.removeLeftovers();
+
+            return true;
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             this.problem = "interrupted";
@@ -348,66 +460,12 @@ final class UpnpClient implements MappingClient {
     }
 
     /**
-     * Sends the search for each device type: to a multicast address on every local IPv4 interface that is up, to another address once.
-     */
-    private void sendSearch(@NotNull DatagramSocket socket) throws IOException {
-        InetSocketAddress target = this.configuration.getSearchAddress();
-        List<NetworkInterface> interfaces = new ArrayList<>();
-
-        if (target.getAddress().isMulticastAddress()) {
-            for (NetworkInterface networkInterface : Collections.list(NetworkInterface.getNetworkInterfaces())) {
-                if (networkInterface.isUp() && !networkInterface.isLoopback() && networkInterface.supportsMulticast() &&
-                    networkInterface.inetAddresses().anyMatch(address -> address instanceof Inet4Address)) {
-                    interfaces.add(networkInterface);
-                }
-            }
-        }
-
-        for (String searchTarget : SEARCH_TARGETS) {
-            byte[] request = ("M-SEARCH * HTTP/1.1\r\n" +
-                              "HOST: " + target.getAddress().getHostAddress() + ":" + target.getPort() + "\r\n" +
-                              "MAN: \"ssdp:discover\"\r\n" +
-                              "MX: " + SEARCH_WAIT_SECONDS + "\r\n" +
-                              "ST: " + searchTarget + "\r\n" +
-                              "\r\n").getBytes(StandardCharsets.ISO_8859_1);
-
-            if (interfaces.isEmpty()) {
-                socket.send(new DatagramPacket(request, request.length, target));
-
-                continue;
-            }
-
-            for (NetworkInterface networkInterface : interfaces) {
-                try {
-                    socket.setOption(StandardSocketOptions.IP_MULTICAST_IF, networkInterface);
-                    socket.send(new DatagramPacket(request, request.length, target));
-                } catch (IOException exception) {
-                    LOGGER.debug("BEACON.LINK: no SSDP search on {0}: {1}", networkInterface.getName(), exception.getMessage());
-                }
-            }
-        }
-    }
-
-    /**
-     * Reads a device's description at the address that answered the search and chooses its WAN connection service with an external address.
+     * Reads the device's description and chooses its WAN connection service with an external address.
      *
      * @return {@code true} if the device has one, {@code false} otherwise
      */
-    private boolean useDevice(@NotNull String location, @NotNull InetAddress source) throws InterruptedException {
-        URI description;
-
-        try {
-            description = new URI(location);
-        } catch (URISyntaxException exception) {
-            return false;
-        }
-
-        if (!isAt(description, source)) {
-            return false;
-        }
-
-        this.gateways.add(source);
-
+    private boolean useDevice() throws InterruptedException {
+        URI description = this.location;
         Document document;
 
         try {
@@ -443,7 +501,7 @@ final class UpnpClient implements MappingClient {
                 String serviceType = service instanceof Element element ? readText(element, "serviceType") : null;
                 String control = serviceType != null && serviceType.equals(type) ? readText((Element) service, "controlURL") : null;
 
-                if (control != null && this.useService(baseUri, control, type, source)) {
+                if (control != null && this.useService(baseUri, control, type)) {
                     return true;
                 }
             }
@@ -455,8 +513,7 @@ final class UpnpClient implements MappingClient {
     /**
      * Takes a WAN connection service whose control URL is at the device's address and that reports an external IPv4 address.
      */
-    private boolean useService(@NotNull URI base, @NotNull String control, @NotNull String type,
-                               @NotNull InetAddress source) throws InterruptedException {
+    private boolean useService(@NotNull URI base, @NotNull String control, @NotNull String type) throws InterruptedException {
         URI resolved;
 
         try {
@@ -465,11 +522,11 @@ final class UpnpClient implements MappingClient {
             return false;
         }
 
-        if (!isAt(resolved, source)) {
+        if (!isAt(resolved, this.gateway.getAddress().getAddress())) {
             return false;
         }
 
-        InetAddress local = GatewayDatagramUtils.findLocalAddress(new InetSocketAddress(source, Math.max(resolved.getPort(), 0)));
+        InetAddress local = GatewayDatagramUtils.findLocalAddress(this.gateway);
 
         if (!(local instanceof Inet4Address)) {
             return false;
@@ -477,7 +534,6 @@ final class UpnpClient implements MappingClient {
 
         this.controlUrl   = resolved;
         this.serviceType  = type;
-        this.device       = source;
         this.localAddress = local;
 
         SoapAnswer answer = this.call("GetExternalIPAddress");
@@ -548,11 +604,10 @@ final class UpnpClient implements MappingClient {
      */
     @Override
     public @Nullable PortMapping map(int internalPort, int leaseSeconds) {
-        InetAddress gateway = this.device;
         InetAddress local = this.localAddress;
         InetAddress external = this.externalAddress;
 
-        if (gateway == null || local == null || external == null) {
+        if (local == null || external == null) {
             return null;
         }
 
@@ -566,7 +621,8 @@ final class UpnpClient implements MappingClient {
                 int granted = any ? parseNumber(answer.readValue("NewReservedPort")) : externalPort;
 
                 if (answer.isSuccess() && granted > 0) {
-                    return new PortMapping(MappingProtocol.UPNP, gateway, new InetSocketAddress(external, granted), internalPort, lease);
+                    return new PortMapping(MappingProtocol.UPNP, this.gateway.getAddress().getAddress(), new InetSocketAddress(external, granted),
+                                           internalPort, lease);
                 }
 
                 if (answer.errorCode == ERROR_ONLY_PERMANENT_LEASES && lease != PERMANENT_LEASE) {
@@ -638,11 +694,11 @@ final class UpnpClient implements MappingClient {
                                           "NewExternalPort", Integer.toString(mapping.getExternalAddress().getPort()), "NewProtocol", UDP_PROTOCOL);
 
             if (!answer.isSuccess()) {
-                LOGGER.info("BEACON.LINK: port mapping release by UPnP failed: {0}", answer.describe());
+                LOGGER.info("BEACON.LINK: port mapping release by UPnP at {0} failed: {1}", this.gateway, answer.describe());
             }
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            LOGGER.info("BEACON.LINK: port mapping release by UPnP interrupted");
+            LOGGER.info("BEACON.LINK: port mapping release by UPnP at {0} interrupted", this.gateway);
         }
     }
 

@@ -5,6 +5,8 @@ import org.fogofwarlabs.sc4j.base.exception.IgnoreException;
 import org.fogofwarlabs.sc4j.base.log.LogLevel;
 import org.fogofwarlabs.sc4j.base.log.Logger;
 import org.fogofwarlabs.sc4j.beaconlink.channel.*;
+import org.fogofwarlabs.sc4j.beaconlink.client.firewall.FirewallState;
+import org.fogofwarlabs.sc4j.beaconlink.client.firewall.InboundFirewall;
 import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMapper;
 import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMapping;
 import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMappingConfiguration;
@@ -42,8 +44,10 @@ import org.jetbrains.annotations.Nullable;
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.random.RandomGenerator;
 
 /**
@@ -103,12 +107,15 @@ import java.util.random.RandomGenerator;
  * estimated round trip time to their hosts and players ({@link LatencyEstimate}).
  * <p>
  * The session settles what it knows of its network's direct connections ({@link #getConnectivity()}) from its port mapping and the public
- * addresses its registered nodes observed.
+ * addresses its registered nodes observed. When the configuration names a firewall, the session checks on a thread of its own whether the
+ * firewall lets other computers start connections to the process's executable, logs it and exposes it ({@link #getFirewallState()}); the
+ * owner shows it and may ask the user to allow them ({@link #requestFirewallAllow()}).
  * <p>
  * The session is single-threaded: the owner calls {@link #poll()} from its loop.
  */
 public final class BeaconLinkClient implements BeaconLinkSession {
     private static final @NotNull Logger LOGGER = Logger.of(BeaconLinkClient.class);
+    private static final @NotNull String FIREWALL_THREAD_NAME = "sc4j-beaconlink-firewall";
     private static final int DATAGRAMS_PER_POLL = 256;
     private static final long REQUEST_NUMBER_MASK = 0xffffffffL;
     /**
@@ -267,6 +274,8 @@ public final class BeaconLinkClient implements BeaconLinkSession {
     private final @NotNull ReplayGuard<@NotNull IdentityKey> signalGuard;
     private final @NotNull CoordinateEstimator coordinates;
     private final @NotNull ConnectivityCheck connectivityCheck;
+    private final @Nullable Path firewallProgram;
+    private final @NotNull AtomicReference<@NotNull FirewallState> firewallState;
 
     private final @NotNull List<@NotNull NodeSession> nodes;
     private final @NotNull KnownNodes knownNodes;
@@ -338,6 +347,9 @@ public final class BeaconLinkClient implements BeaconLinkSession {
         this.signalGuard       = new ReplayGuard<>(REPLAY_WINDOW_MILLIS, SIGNAL_REPLAY_CAPACITY, SIGNAL_REPLAY_SENDER_CAPACITY);
         this.coordinates       = new CoordinateEstimator(random);
         this.connectivityCheck = new ConnectivityCheck();
+        this.firewallProgram   = configuration.getFirewall() == null ? null : InboundFirewall.findCurrentProgram();
+        this.firewallState     = new AtomicReference<>(configuration.getFirewall() == null ? FirewallState.NOT_NEEDED
+                                                                                           : this.firewallProgram == null ? FirewallState.UNKNOWN : FirewallState.CHECKING);
 
         this.nodes      = new ArrayList<>();
         this.knownNodes = knownNodes;
@@ -379,6 +391,13 @@ public final class BeaconLinkClient implements BeaconLinkSession {
 
         if (mapping != null && local != null && (!local.getAddress().isLoopbackAddress() || mapping.getGateways() != null)) {
             this.portMapper = PortMapper.start(local.getPort(), mapping);
+        }
+
+        InboundFirewall firewall = configuration.getFirewall();
+        Path program = this.firewallProgram;
+
+        if (firewall != null && program != null) {
+            Thread.ofVirtual().name(FIREWALL_THREAD_NAME).start(() -> this.checkFirewall(firewall, program));
         }
     }
 
@@ -500,6 +519,13 @@ public final class BeaconLinkClient implements BeaconLinkSession {
      */
     public int getDroppedCount() {
         return this.droppedCount;
+    }
+
+    /**
+     * @return what the firewall does with connections that other computers start to this process's executable; {@link FirewallState#CHECKING} while the rules are read or an allow request runs; may be called from any thread
+     */
+    public @NotNull FirewallState getFirewallState() {
+        return this.firewallState.get();
     }
 
     /**
@@ -659,7 +685,7 @@ public final class BeaconLinkClient implements BeaconLinkSession {
     }
 
     /**
-     * @return the external address the router maps to the session's socket, or {@code null} while the session holds no port mapping
+     * @return the external address of the session's port mapping kept for the observed address, or {@code null} while none is kept
      */
     @Nullable InetSocketAddress getMappedAddress() {
         PortMapping mapping = this.portMapper == null ? null : this.portMapper.getMapping();
@@ -980,6 +1006,45 @@ public final class BeaconLinkClient implements BeaconLinkSession {
         for (NodeSession node : this.nodes) {
             node.markSignedOut();
         }
+    }
+
+    /**
+     * Asks the user, on a thread of its own, to allow connections that other computers start to this process's executable
+     * ({@link InboundFirewall#requestAllow}), then checks the firewall again. Does nothing unless the firewall has no rule for the executable or
+     * blocks it. May be called from any thread.
+     */
+    public void requestFirewallAllow() {
+        InboundFirewall firewall = this.configuration.getFirewall();
+        Path program = this.firewallProgram;
+        FirewallState current = this.firewallState.get();
+
+        if (firewall == null || program == null || current != FirewallState.NO_RULE && current != FirewallState.BLOCKED ||
+            !this.firewallState.compareAndSet(current, FirewallState.CHECKING)) {
+            return;
+        }
+
+        LOGGER.info("BEACON.LINK: firewall allow requested for {0}", program);
+        Thread.ofVirtual().name(FIREWALL_THREAD_NAME).start(() -> {
+            firewall.requestAllow(List.of(program));
+            this.checkFirewall(firewall, program);
+        });
+    }
+
+    /**
+     * Checks what the firewall does with connections that other computers start to the executable, and logs it.
+     */
+    private void checkFirewall(@NotNull InboundFirewall firewall, @NotNull Path program) {
+        FirewallState state = firewall.check(program);
+
+        switch (state) {
+            case ALLOWED -> LOGGER.info("BEACON.LINK: firewall allows {0}", program);
+            case NO_RULE -> LOGGER.info("BEACON.LINK: firewall has no inbound rule for {0}", program);
+            case BLOCKED -> LOGGER.info("BEACON.LINK: firewall blocks {0}", program);
+            case UNKNOWN -> LOGGER.info("BEACON.LINK: firewall rules for {0} not read", program);
+            default -> LOGGER.debug("BEACON.LINK: firewall needs no check for {0}", program);
+        }
+
+        this.firewallState.set(state);
     }
 
     /**
@@ -1783,13 +1848,10 @@ public final class BeaconLinkClient implements BeaconLinkSession {
     }
 
     /**
-     * Hands the port mapper the first public address a registered node observed, so that a mapping behind another NAT is skipped.
+     * Hands the port mapper the first public address a registered node observed, so that it keeps the mapping of the router on the route and
+     * skips a mapping behind another NAT.
      */
     private void checkMappedAddress(@NotNull PortMapper mapper) {
-        if (mapper.getMapping() == null) {
-            return;
-        }
-
         for (NodeSession node : this.nodes) {
             InetSocketAddress observed = node.getObservedAddress();
 

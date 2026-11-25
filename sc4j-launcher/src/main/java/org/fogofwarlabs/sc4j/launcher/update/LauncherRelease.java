@@ -24,8 +24,8 @@ public final class LauncherRelease {
      * @param version      the release version
      * @param publishedAt  the time the release was published, or {@code null} when it is not known
      * @param notes        the release notes in GitHub's Markdown, empty when the release has none
-     * @param packageFile  the user package {@code SC4J-<version>.zip}
-     * @param checksumFile the package's checksum file {@code SC4J-<version>.zip.sha256}
+     * @param packageFile  the user package {@code SC4J-<version>-<platform>.zip}
+     * @param checksumFile the package's checksum file {@code SC4J-<version>-<platform>.zip.sha256}
      */
     public LauncherRelease(@NotNull ReleaseVersion version, @Nullable Instant publishedAt, @NotNull String notes, @NotNull ReleaseAsset packageFile,
                            @NotNull ReleaseAsset checksumFile) {
@@ -58,14 +58,14 @@ public final class LauncherRelease {
     }
 
     /**
-     * @return the user package {@code SC4J-<version>.zip}
+     * @return the user package {@code SC4J-<version>-<platform>.zip}
      */
     public @NotNull ReleaseAsset getPackageFile() {
         return this.packageFile;
     }
 
     /**
-     * @return the package's checksum file {@code SC4J-<version>.zip.sha256}
+     * @return the package's checksum file {@code SC4J-<version>-<platform>.zip.sha256}
      */
     public @NotNull ReleaseAsset getChecksumFile() {
         return this.checksumFile;

@@ -1,5 +1,6 @@
 package org.fogofwarlabs.sc4j.launcher.session;
 
+import org.fogofwarlabs.sc4j.beaconlink.client.firewall.FirewallState;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -8,8 +9,8 @@ import java.util.Objects;
 
 /**
  * Holds the logged-in account's own state as the session last saw it: the session state, the status the user chose, the away text, the
- * number of the account's devices online, why the session has no connection and what the session knows of the network's direct
- * connections. A view never changes; the session publishes a new one.
+ * number of the account's devices online, why the session has no connection, what the session knows of the network's direct connections and
+ * what the firewall does with connections other computers start to the launcher. A view never changes; the session publishes a new one.
  */
 public final class SelfView {
     private final @NotNull SessionState state;
@@ -18,6 +19,7 @@ public final class SelfView {
     private final int deviceCount;
     private final @Nullable SessionFailure failure;
     private final @NotNull LinkConnectivity connectivity;
+    private final @NotNull FirewallState firewall;
 
     /**
      * Creates a {@link SelfView} instance.
@@ -28,15 +30,17 @@ public final class SelfView {
      * @param deviceCount  the number of the account's devices the session sees online, this launcher included; {@code 0} while offline
      * @param failure      why the session has no connection, or {@code null} while it is connected or connecting
      * @param connectivity what the session knows of the network's direct connections
+     * @param firewall     what the firewall does with connections other computers start to the launcher
      */
     public SelfView(@NotNull SessionState state, @NotNull SelfStatus status, @NotNull String awayText, int deviceCount,
-                    @Nullable SessionFailure failure, @NotNull LinkConnectivity connectivity) {
+                    @Nullable SessionFailure failure, @NotNull LinkConnectivity connectivity, @NotNull FirewallState firewall) {
         this.state        = state;
         this.status       = status;
         this.awayText     = awayText;
         this.deviceCount  = deviceCount;
         this.failure      = failure;
         this.connectivity = connectivity;
+        this.firewall     = firewall;
     }
 
     /**
@@ -81,6 +85,13 @@ public final class SelfView {
         return this.connectivity;
     }
 
+    /**
+     * @return what the firewall does with connections other computers start to the launcher; {@link FirewallState#CHECKING} before the first check
+     */
+    public @NotNull FirewallState getFirewall() {
+        return this.firewall;
+    }
+
 
     /**
      * Indicates whether some other object is "equal to" this one: a view of the same state.
@@ -91,7 +102,8 @@ public final class SelfView {
     @Override
     public boolean equals(@Nullable Object other) {
         return other instanceof SelfView view && this.state == view.state && this.status == view.status && this.awayText.equals(view.awayText) &&
-               this.deviceCount == view.deviceCount && this.failure == view.failure && this.connectivity == view.connectivity;
+               this.deviceCount == view.deviceCount && this.failure == view.failure && this.connectivity == view.connectivity &&
+               this.firewall == view.firewall;
     }
 
     /**
@@ -101,6 +113,6 @@ public final class SelfView {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(this.state, this.status, this.awayText, this.deviceCount, this.failure, this.connectivity);
+        return Objects.hash(this.state, this.status, this.awayText, this.deviceCount, this.failure, this.connectivity, this.firewall);
     }
 }

@@ -148,7 +148,7 @@ public final class RecordingLauncherSession implements LauncherSessionView {
     public void setStatus(@NotNull SelfStatus status, @NotNull String awayText) {
         this.commands.add("status " + status + ":" + awayText);
         this.self = new SelfView(this.self.getState(), status, awayText, this.self.getDeviceCount(), this.self.getFailure(),
-                                 this.self.getConnectivity());
+                                 this.self.getConnectivity(), this.self.getFirewall());
         this.publish();
     }
 
@@ -195,6 +195,11 @@ public final class RecordingLauncherSession implements LauncherSessionView {
     @Override
     public void signOutOtherDevices() {
         this.commands.add("sign out");
+    }
+
+    @Override
+    public void requestFirewallAllow() {
+        this.commands.add("allow firewall");
     }
 
     @Override

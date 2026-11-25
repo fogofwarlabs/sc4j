@@ -21,14 +21,15 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 /**
- * Tests the launcher update up to the updater step: the latest release against the running version, the download and unpacking of the
- * user package, broken packages, the failure note of the updater and the cleanup of the update folder.
+ * Tests the launcher update up to the updater step: the latest release against the running version, the package of the updater's platform,
+ * the download and unpacking of the user package, broken packages and packages of another platform, the failure note of the updater and the
+ * cleanup of the update folder.
  */
 final class LauncherUpdaterTest {
     private static final @NotNull String REPOSITORY = "owner/sc4j";
     private static final @NotNull String TAG = "v1.2.0";
     private static final @NotNull String PACKAGE = "SC4J-1.2.0";
-    private static final @NotNull String PACKAGE_FILE = PACKAGE + ".zip";
+    private static final @NotNull String PACKAGE_FILE = PACKAGE + "-" + UserPackageScenario.PLATFORM.getId() + ".zip";
     private static final @NotNull String NEW = "new";
 
     @Test
@@ -41,7 +42,7 @@ final class LauncherUpdaterTest {
     @Test
     void find_update_should_offer_a_release_newer_than_the_running_version(@TempDir @NotNull Path directory) throws IOException {
         try (ReleaseServerScenario server = ReleaseServerScenario.start()) {
-            LauncherUpdater updater = new LauncherUpdater(InstallLayout.of(directory), new ReleaseClient(server.getApi()));
+            LauncherUpdater updater = createUpdater(directory, server);
             LauncherRelease release;
 
             server.addCheckedRelease(REPOSITORY, TAG, Map.of(PACKAGE_FILE, UserPackageScenario.createZip(PACKAGE, Map.of())));
@@ -58,9 +59,31 @@ final class LauncherUpdaterTest {
     }
 
     @Test
-    void find_update_should_tell_a_release_without_the_package(@TempDir @NotNull Path directory) throws IOException {
+    void find_update_should_tell_a_release_without_the_package_of_its_platform(@TempDir @NotNull Path directory) throws IOException {
+        String otherPackage = PACKAGE + "-" + PackagePlatform.WINDOWS_X64.getId() + ".zip";
+
         try (ReleaseServerScenario server = ReleaseServerScenario.start()) {
-            LauncherUpdater updater = new LauncherUpdater(InstallLayout.of(directory), new ReleaseClient(server.getApi()));
+            ReleaseClient client = new ReleaseClient(server.getApi());
+            LauncherUpdater updater = new LauncherUpdater(InstallLayout.of(directory), client, UserPackageScenario.PLATFORM);
+            LauncherUpdater unsupported = new LauncherUpdater(InstallLayout.of(directory), client, null);
+            ReleaseException missing;
+            ReleaseException noPlatform;
+
+            server.addCheckedRelease(REPOSITORY, TAG, Map.of(otherPackage, UserPackageScenario.createZip(PACKAGE, Map.of())));
+            missing    = Assertions.assertThrows(ReleaseException.class,
+                                                 () -> updater.findUpdate(requireRepository(), ReleaseVersion.parse("1.1.0")));
+            noPlatform = Assertions.assertThrows(ReleaseException.class,
+                                                 () -> unsupported.findUpdate(requireRepository(), ReleaseVersion.parse("1.1.0")));
+
+            Assertions.assertEquals(ReleaseProblem.PLATFORM_MISSING, missing.getProblem());
+            Assertions.assertEquals(ReleaseProblem.PLATFORM_MISSING, noPlatform.getProblem());
+        }
+    }
+
+    @Test
+    void find_update_should_tell_a_release_without_the_checksum_file(@TempDir @NotNull Path directory) throws IOException {
+        try (ReleaseServerScenario server = ReleaseServerScenario.start()) {
+            LauncherUpdater updater = createUpdater(directory, server);
             ReleaseException exception;
 
             server.addRelease(REPOSITORY, TAG, Map.of(PACKAGE_FILE, UserPackageScenario.createZip(PACKAGE, Map.of())));
@@ -73,10 +96,14 @@ final class LauncherUpdaterTest {
     @Test
     void download_and_unpack_should_give_the_checked_package(@TempDir @NotNull Path directory) throws IOException {
         InstallLayout install = InstallLayout.of(directory);
-        byte[] zip = UserPackageScenario.createZip(PACKAGE, UserPackageScenario.createProgramFiles(NEW));
+        Map<String, String> files = UserPackageScenario.createProgramFiles(NEW);
+        byte[] zip;
+
+        files.putAll(UserPackageScenario.createPlatformFile(UserPackageScenario.PLATFORM));
+        zip = UserPackageScenario.createZip(PACKAGE, files);
 
         try (ReleaseServerScenario server = ReleaseServerScenario.start()) {
-            LauncherUpdater updater = new LauncherUpdater(install, new ReleaseClient(server.getApi()));
+            LauncherUpdater updater = new LauncherUpdater(install, new ReleaseClient(server.getApi()), UserPackageScenario.PLATFORM);
             LauncherRelease release;
             Path packageFile;
             Path packageRoot;
@@ -101,9 +128,20 @@ final class LauncherUpdaterTest {
     void unpack_should_refuse_a_package_without_every_program(@TempDir @NotNull Path directory) throws IOException {
         Map<String, String> files = UserPackageScenario.createProgramFiles(NEW);
 
+        files.putAll(UserPackageScenario.createPlatformFile(UserPackageScenario.PLATFORM));
         files.remove("NOTICE");
 
         assertUnpackRefused(directory, UserPackageScenario.createZip(PACKAGE, files));
+    }
+
+    @Test
+    void unpack_should_refuse_a_package_of_another_platform_or_of_none(@TempDir @NotNull Path directory) throws IOException {
+        Map<String, String> otherPlatform = UserPackageScenario.createProgramFiles(NEW);
+
+        otherPlatform.putAll(UserPackageScenario.createPlatformFile(PackagePlatform.WINDOWS_X64));
+
+        assertUnpackRefused(directory.resolve("other"), UserPackageScenario.createZip(PACKAGE, otherPlatform));
+        assertUnpackRefused(directory.resolve("none"), UserPackageScenario.createZip(PACKAGE, UserPackageScenario.createProgramFiles(NEW)));
     }
 
     @Test
@@ -138,7 +176,7 @@ final class LauncherUpdaterTest {
 
     private static void assertUnpackRefused(@NotNull Path directory, byte @NotNull [] zip) throws IOException {
         try (ReleaseServerScenario server = ReleaseServerScenario.start()) {
-            LauncherUpdater updater = new LauncherUpdater(InstallLayout.of(directory), new ReleaseClient(server.getApi()));
+            LauncherUpdater updater = createUpdater(directory, server);
             LauncherRelease release;
             Path packageFile;
 
@@ -149,6 +187,10 @@ final class LauncherUpdaterTest {
 
             Assertions.assertThrows(InvalidPackageException.class, () -> updater.unpack(release, packageFile));
         }
+    }
+
+    private static @NotNull LauncherUpdater createUpdater(@NotNull Path directory, @NotNull ReleaseServerScenario server) {
+        return new LauncherUpdater(InstallLayout.of(directory), new ReleaseClient(server.getApi()), UserPackageScenario.PLATFORM);
     }
 
     private static @NotNull LauncherRelease requireUpdate(@NotNull LauncherUpdater updater) throws ReleaseException {

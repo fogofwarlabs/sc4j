@@ -22,7 +22,8 @@ import java.util.stream.Collectors;
  * {@link LinkConnectivity#DIRECT} when they share one port, {@link LinkConnectivity#RESTRICTED} when their ports differ. Nothing settles
  * while the mapper still asks the router.
  * <p>
- * The check keeps its last settled value while too few addresses are known, and logs the first settled value and every change.
+ * The check keeps its last settled value while too few addresses are known, and logs the first settled value and every change; a
+ * {@link LinkConnectivity#DIRECT} line adds that inbound connections also need the firewall to allow them.
  */
 final class ConnectivityCheck {
     private static final @NotNull Logger LOGGER = Logger.of(ConnectivityCheck.class);
@@ -83,7 +84,11 @@ final class ConnectivityCheck {
 
         String addresses = compared.stream().map(observed -> observed.getAddress().getHostAddress() + ":" + observed.getPort())
                                    .collect(Collectors.joining(", "));
-        String consequence = settled == LinkConnectivity.RESTRICTED ? ", the port differs per node: direct connections will likely fail" : "";
+        String consequence = switch (settled) {
+            case RESTRICTED -> ", the port differs per node: direct connections will likely fail";
+            case DIRECT -> ", inbound needs the firewall to allow SC4J";
+            default -> "";
+        };
 
         if (this.connectivity == LinkConnectivity.UNKNOWN) {
             LOGGER.info("BEACON.LINK: network connectivity {0} (observed {1}){2}", settled, addresses, consequence);

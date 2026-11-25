@@ -78,7 +78,8 @@ public final class GlfwClientHost implements ClientHost {
 
 
     /**
-     * Creates a hidden window with an OpenGL core profile context of the settings' version. Its context is not made current.
+     * Creates a hidden window with an OpenGL core profile context of the settings' version, forward compatible on macOS. Its context is not
+     * made current.
      *
      * @param settings the window settings
      * @return the created {@link HostWindow} instance, closed by the host
@@ -143,6 +144,12 @@ public final class GlfwClientHost implements ClientHost {
         GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MAJOR, settings.getContextMajorVersion());
         GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_VERSION_MINOR, settings.getContextMinorVersion());
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_PROFILE, GLFW.GLFW_OPENGL_CORE_PROFILE);
+
+        // macOS creates a core profile context only when it is forward compatible.
+        if (GLFW.glfwGetPlatform() == GLFW.GLFW_PLATFORM_COCOA) {
+            GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_FORWARD_COMPAT, GLFW.GLFW_TRUE);
+        }
+
         GLFW.glfwWindowHint(GLFW.GLFW_DECORATED, settings.isDecorated() ? GLFW.GLFW_TRUE : GLFW.GLFW_FALSE);
         GLFW.glfwWindowHint(GLFW.GLFW_SCALE_TO_MONITOR, settings.isScaledToMonitor() ? GLFW.GLFW_TRUE : GLFW.GLFW_FALSE);
 

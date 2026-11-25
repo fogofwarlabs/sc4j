@@ -3,6 +3,7 @@ package org.fogofwarlabs.sc4j.manifest.settings;
 import org.fogofwarlabs.sc4j.base.json.JsonReader;
 import org.fogofwarlabs.sc4j.manifest.test.FakeInstallationRecords;
 import org.fogofwarlabs.sc4j.manifest.validation.ProblemCode;
+import org.fogofwarlabs.sc4j.manifest.validation.ValidationProblem;
 import org.fogofwarlabs.sc4j.manifest.validation.ValidationResult;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
@@ -17,15 +18,17 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Tests the detection of a directory setting in the computer's installation records, with recorded uninstall entries and program folders
- * that the test lays out in a temporary folder.
+ * Tests the checks of a directory setting and its detection in the computer's installation records, with recorded uninstall entries and
+ * program folders that the test lays out in a temporary folder.
  */
 final class DirectorySettingTest {
     private static final @NotNull String SETTINGS = """
                                                     [{"key": "gameFolder", "type": "directory", "required": true, "label": {"en": "Example Game folder"},
                                                       "check": {"contains": ["game.info", "bin/game.exe"]},
                                                       "detect": {"uninstallEntries": ["Example Game"], "programFolders": ["Example Game"]}},
-                                                     {"key": "dataFolder", "type": "directory", "label": {"en": "Data folder"}, "check": {"contains": ["game.info"]}}]
+                                                     {"key": "dataFolder", "type": "directory", "label": {"en": "Data folder"}, "check": {"contains": ["game.info"]}},
+                                                     {"key": "anyFolder", "type": "directory", "label": {"en": "Any build folder"},
+                                                      "check": {"contains": ["game.info"], "containsAny": ["bin/game.exe", "Game.app"]}}]
                                                     """;
     private static final @NotNull String ENTRY_NAME = "Example Game";
 
@@ -90,5 +93,28 @@ final class DirectorySettingTest {
         Assertions.assertTrue(schema.validate(Map.of()).hasProblem(ProblemCode.VALUE_REQUIRED));
         Assertions.assertTrue(schema.validate(Map.of("gameFolder", directory.toString())).hasProblem(ProblemCode.VALUE_CONTAINS));
         Assertions.assertEquals("gameFolder", schema.validate(Map.of()).getProblems().getFirst().getSubject());
+    }
+
+    @Test
+    void validate_should_need_every_contained_path_and_one_of_the_alternatives(@TempDir @NotNull Path directory) throws IOException {
+        SettingsSchema schema = readSchema();
+        Path windowsBuild = createGameFolder(directory.resolve("windows"));
+        Path macBuild = Files.createDirectories(directory.resolve("mac").resolve("Game.app"));
+        Path neither = Files.createDirectories(directory.resolve("neither"));
+        Path noInfo = Files.createDirectories(directory.resolve("no-info").resolve("Game.app"));
+
+        Files.writeString(macBuild.resolveSibling("game.info"), "info");
+        Files.writeString(neither.resolve("game.info"), "info");
+
+        String game = windowsBuild.toString();
+        List<ProblemCode> missingAlternatives = schema.validate(Map.of("gameFolder", game, "anyFolder", neither.toString())).getProblems().stream()
+                                                      .map(ValidationProblem::getCode).toList();
+        List<ProblemCode> missingInfo = schema.validate(Map.of("gameFolder", game, "anyFolder", noInfo.getParent().toString())).getProblems()
+                                              .stream().map(ValidationProblem::getCode).toList();
+
+        Assertions.assertTrue(schema.validate(Map.of("gameFolder", game, "anyFolder", game)).isValid());
+        Assertions.assertTrue(schema.validate(Map.of("gameFolder", game, "anyFolder", macBuild.getParent().toString())).isValid());
+        Assertions.assertEquals(List.of(ProblemCode.VALUE_CONTAINS_ANY), missingAlternatives);
+        Assertions.assertEquals(List.of(ProblemCode.VALUE_CONTAINS), missingInfo);
     }
 }

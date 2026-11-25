@@ -17,6 +17,7 @@ import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
 import org.fogofwarlabs.sc4j.launcher.release.ReleaseNotesUtils;
 import org.fogofwarlabs.sc4j.launcher.update.LauncherRelease;
 import org.fogofwarlabs.sc4j.launcher.update.LauncherUpdater;
+import org.fogofwarlabs.sc4j.launcher.update.PackagePlatform;
 import org.fogofwarlabs.sc4j.launcher.update.PackageSwap;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.jetbrains.annotations.NotNull;
@@ -51,7 +52,8 @@ final class LauncherUpdateDialogTest {
     private static final @NotNull String TAG = "v1.2.0";
     private static final @NotNull String VERSION = "1.2.0";
     private static final @NotNull String PACKAGE = "SC4J-1.2.0";
-    private static final @NotNull String PACKAGE_FILE = PACKAGE + ".zip";
+    private static final @NotNull PackagePlatform PLATFORM = PackagePlatform.LINUX_X64;
+    private static final @NotNull String PACKAGE_FILE = PACKAGE + "-" + PLATFORM.getId() + ".zip";
     private static final @NotNull String RUNNING_VERSION = "1.1.0";
     private static final @NotNull Instant PUBLISHED_AT = Instant.parse("2026-11-16T12:00:00Z");
     private static final @NotNull String NOTES = """
@@ -81,7 +83,7 @@ final class LauncherUpdateDialogTest {
         AtomicInteger skipped = new AtomicInteger();
 
         try (ReleaseServerScenario server = ReleaseServerScenario.start()) {
-            LauncherUpdater updater = new LauncherUpdater(install, new ReleaseClient(server.getApi()));
+            LauncherUpdater updater = new LauncherUpdater(install, new ReleaseClient(server.getApi()), PLATFORM);
             byte[] packageContents = createPackage(FILLER_SIZE);
             LauncherRelease release;
 
@@ -124,7 +126,7 @@ final class LauncherUpdateDialogTest {
         InstallLayout install = InstallLayout.of(directory);
 
         try (ReleaseServerScenario server = ReleaseServerScenario.start()) {
-            LauncherUpdater updater = new LauncherUpdater(install, new ReleaseClient(server.getApi()));
+            LauncherUpdater updater = new LauncherUpdater(install, new ReleaseClient(server.getApi()), PLATFORM);
             byte[] packageContents = createPackage(FILLER_SIZE);
             String total = " / " + texts.formatSize(packageContents.length);
             CountDownLatch resume;
@@ -173,7 +175,7 @@ final class LauncherUpdateDialogTest {
         AtomicInteger closed = new AtomicInteger();
 
         try (ReleaseServerScenario server = ReleaseServerScenario.start()) {
-            LauncherUpdater updater = new LauncherUpdater(install, new ReleaseClient(server.getApi()));
+            LauncherUpdater updater = new LauncherUpdater(install, new ReleaseClient(server.getApi()), PLATFORM);
             LauncherRelease release;
             LauncherShell shell;
 
@@ -211,7 +213,7 @@ final class LauncherUpdateDialogTest {
         String mismatch = texts.describeReleaseProblem(ReleaseProblem.CHECKSUM_MISMATCH);
 
         try (ReleaseServerScenario server = ReleaseServerScenario.start()) {
-            LauncherUpdater updater = new LauncherUpdater(install, new ReleaseClient(server.getApi()));
+            LauncherUpdater updater = new LauncherUpdater(install, new ReleaseClient(server.getApi()), PLATFORM);
             byte[] packageContents = createPackage(0);
             byte[] otherChecksum = ReleaseServerScenario.createChecksum(new byte[]{1}, PACKAGE_FILE);
             LauncherRelease release;
@@ -290,10 +292,16 @@ final class LauncherUpdateDialogTest {
 
         try (ZipOutputStream zip = new ZipOutputStream(output)) {
             for (String item : PackageSwap.ITEMS) {
-                zip.putNextEntry(new ZipEntry(PACKAGE + "/" + item));
-                zip.write(item.getBytes(StandardCharsets.UTF_8));
-                zip.closeEntry();
+                if (!item.equals(InstallLayout.LAUNCHER_FOLDER)) {
+                    zip.putNextEntry(new ZipEntry(PACKAGE + "/" + item));
+                    zip.write(item.getBytes(StandardCharsets.UTF_8));
+                    zip.closeEntry();
+                }
             }
+
+            zip.putNextEntry(new ZipEntry(PACKAGE + "/" + PackageSwap.PACKAGE_PLATFORM_FILE));
+            zip.write(PLATFORM.getId().getBytes(StandardCharsets.UTF_8));
+            zip.closeEntry();
 
             if (fillerSize > 0) {
                 byte[] filler = new byte[fillerSize];

@@ -1,6 +1,7 @@
 package org.fogofwarlabs.sc4j.beaconlink.client;
 
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
+import org.fogofwarlabs.sc4j.beaconlink.client.firewall.InboundFirewall;
 import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMappingConfiguration;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.identity.PlayerStamp;
 import org.jetbrains.annotations.NotNull;
@@ -9,8 +10,8 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Holds the timings of a Beacon.Link client: how often and how long a request is sent, when a node that failed is tried again, the requested
  * registration lifetime, the lifetime and refresh of a published room, the community values (the player stamp difficulty, the lifetime and
- * refresh of a presence and the chat rate) and the port mapping of the session socket on the router, off unless set.
- * {@link #createDefault()} gives the values of a normal run without port mapping.
+ * refresh of a presence and the chat rate), the port mapping of the session socket on the router and the firewall the session checks, both
+ * off unless set. {@link #createDefault()} gives the values of a normal run without port mapping and firewall check.
  */
 public final class ClientConfiguration {
     private static final long DEFAULT_RESEND_MILLIS = 1_000L;
@@ -46,6 +47,7 @@ public final class ClientConfiguration {
         private int chatRate;
 
         private @Nullable PortMappingConfiguration portMapping;
+        private @Nullable InboundFirewall firewall;
 
         /**
          * Creates a {@link Builder} instance with the default values.
@@ -66,6 +68,7 @@ public final class ClientConfiguration {
             this.chatRate               = DEFAULT_CHAT_RATE;
 
             this.portMapping = null;
+            this.firewall    = null;
         }
 
         /**
@@ -213,6 +216,18 @@ public final class ClientConfiguration {
         }
 
         /**
+         * Sets the firewall a session checks for its process's executable when it opens.
+         *
+         * @param firewall the firewall, or {@code null} for no check
+         * @return this instance for chaining
+         */
+        public @NotNull Builder setFirewall(@Nullable InboundFirewall firewall) {
+            this.firewall = firewall;
+
+            return this;
+        }
+
+        /**
          * Builds a {@link ClientConfiguration} instance from the values set.
          *
          * @return the built {@link ClientConfiguration} instance
@@ -248,6 +263,7 @@ public final class ClientConfiguration {
     private final int chatRate;
 
     private final @Nullable PortMappingConfiguration portMapping;
+    private final @Nullable InboundFirewall firewall;
 
     private ClientConfiguration(@NotNull Builder builder) {
         if (builder.resendMillis <= 0L || builder.requestAttempts <= 0 || builder.retryMillis <= 0L) {
@@ -288,6 +304,7 @@ public final class ClientConfiguration {
         this.chatRate               = builder.chatRate;
 
         this.portMapping = builder.portMapping;
+        this.firewall    = builder.firewall;
     }
 
     /**
@@ -372,5 +389,12 @@ public final class ClientConfiguration {
      */
     public @Nullable PortMappingConfiguration getPortMapping() {
         return this.portMapping;
+    }
+
+    /**
+     * @return the firewall a session checks for its process's executable, or {@code null} for no check
+     */
+    public @Nullable InboundFirewall getFirewall() {
+        return this.firewall;
     }
 }

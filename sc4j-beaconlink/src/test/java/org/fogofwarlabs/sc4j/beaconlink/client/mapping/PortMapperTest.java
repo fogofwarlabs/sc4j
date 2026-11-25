@@ -16,9 +16,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 
 /**
- * Tests the port mapper against a PCP and NAT-PMP gateway and a UPnP device emulated on 127.0.0.1: mapping, renewal and release in each
+ * Tests the port mapper against PCP and NAT-PMP gateways and a UPnP device emulated on 127.0.0.1: mapping, renewal and release in each
  * protocol, another external port, the version answers of PCP and NAT-PMP servers, no answer and refusals, UPnP conflicts and permanent
- * leases, leftover cleanup, the preferred protocol, and the skipped mappings behind another NAT.
+ * leases, leftover cleanup, the preferred protocol, the choice among several routers by the observed address, and the skipped mappings behind
+ * another NAT.
  */
 @Timeout(PortMapperTest.TEST_SECONDS)
 final class PortMapperTest {
@@ -53,7 +54,11 @@ final class PortMapperTest {
         }
     }
 
+    /**
+     * Reports {@link #EXTERNAL} as the observed address and waits for the mapping kept for it.
+     */
     private static @NotNull PortMapping awaitMapping(@NotNull PortMapper mapper) throws InterruptedException {
+        mapper.checkObservedAddress(EXTERNAL);
         await(() -> mapper.getState() != PortMappingState.STARTING, "the mapper settles");
 
         PortMapping mapping = mapper.getMapping();
@@ -78,6 +83,7 @@ final class PortMapperTest {
             try (GatewayScenario gateway = GatewayScenario.open(EXTERNAL)) {
                 PortMapper mapper = PortMapper.start(DYNAMIC_PORT_MINIMUM, gateway.createConfiguration().build());
 
+                mapper.checkObservedAddress(EXTERNAL);
                 await(() -> mapper.getMapping() != null, "the port is mapped");
                 mapper.close();
 
@@ -229,7 +235,7 @@ final class PortMapperTest {
     }
 
     @Test
-    void an_observed_address_that_differs_skips_and_releases_the_mapping() throws IOException, InterruptedException {
+    void a_later_observed_address_that_differs_skips_and_releases_the_kept_mapping() throws IOException, InterruptedException {
         try (GatewayScenario gateway = GatewayScenario.open(EXTERNAL);
              PortMapper mapper = PortMapper.start(DYNAMIC_PORT_MINIMUM, gateway.createConfiguration().build())) {
             PortMapping mapping = awaitMapping(mapper);
@@ -243,6 +249,85 @@ final class PortMapperTest {
 
             Assertions.assertNull(mapper.getMapping());
             Assertions.assertEquals(PortMappingState.SKIPPED, mapper.getState());
+            await(() -> gateway.getRequestedLifetimes(MappingProtocol.PCP).equals(List.of(LEASE_SECONDS, 0)), "the mapping is released");
+        }
+    }
+
+    @Test
+    void no_mapping_is_offered_before_a_node_observed_its_address() throws IOException, InterruptedException {
+        try (GatewayScenario gateway = GatewayScenario.open(EXTERNAL);
+             PortMapper mapper = PortMapper.start(DYNAMIC_PORT_MINIMUM, gateway.createConfiguration().build())) {
+            await(() -> gateway.getRequestedLifetimes(MappingProtocol.PCP).equals(List.of(LEASE_SECONDS)), "the router maps the port");
+            Thread.sleep(QUIET_MILLIS);
+
+            Assertions.assertEquals(PortMappingState.STARTING, mapper.getState());
+            Assertions.assertNull(mapper.getMapping());
+
+            mapper.checkObservedAddress(OTHER_PRIVATE);
+
+            Assertions.assertNull(mapper.getMapping(), "an observed address that is not public chooses nothing");
+
+            mapper.checkObservedAddress(EXTERNAL);
+
+            Assertions.assertEquals(new InetSocketAddress(EXTERNAL, DYNAMIC_PORT_MINIMUM), awaitMapping(mapper).getExternalAddress());
+            Assertions.assertEquals(PortMappingState.MAPPED, mapper.getState());
+        }
+    }
+
+    @Test
+    void only_the_mapping_at_the_observed_address_is_kept_among_routers() throws IOException, InterruptedException {
+        try (GatewayScenario first = GatewayScenario.open(EXTERNAL);
+             GatewayScenario second = GatewayScenario.open(OTHER_PUBLIC)) {
+            List<InetSocketAddress> gateways = List.of(first.getAddress(), second.getAddress());
+            PortMappingConfiguration configuration = first.createConfiguration().setGateways(gateways).build();
+
+            try (PortMapper mapper = PortMapper.start(DYNAMIC_PORT_MINIMUM, configuration)) {
+                await(() -> !first.getRequestedLifetimes(MappingProtocol.PCP).isEmpty() &&
+                            !second.getRequestedLifetimes(MappingProtocol.PCP).isEmpty(), "both routers map the port");
+                mapper.checkObservedAddress(OTHER_PUBLIC);
+                await(() -> mapper.getState() != PortMappingState.STARTING, "the mapper chooses");
+
+                PortMapping mapping = mapper.getMapping();
+
+                Assertions.assertNotNull(mapping);
+                Assertions.assertEquals(new InetSocketAddress(OTHER_PUBLIC, DYNAMIC_PORT_MINIMUM), mapping.getExternalAddress());
+                await(() -> first.getRequestedLifetimes(MappingProtocol.PCP).equals(List.of(LEASE_SECONDS, 0)),
+                      "the other router's mapping is released");
+                Assertions.assertEquals(List.of(LEASE_SECONDS), second.getRequestedLifetimes(MappingProtocol.PCP), "the kept mapping stays");
+            }
+
+            Assertions.assertEquals(List.of(LEASE_SECONDS, 0), second.getRequestedLifetimes(MappingProtocol.PCP),
+                                    "the close releases the kept mapping");
+        }
+    }
+
+    @Test
+    void the_preferred_protocol_is_kept_when_two_routers_map_the_observed_address() throws IOException, InterruptedException {
+        try (GatewayScenario first = GatewayScenario.open(EXTERNAL);
+             GatewayScenario second = GatewayScenario.open(EXTERNAL)) {
+            List<InetSocketAddress> gateways = List.of(second.getAddress(), first.getAddress());
+            PortMappingConfiguration configuration = second.createConfiguration().setGateways(gateways).build();
+
+            first.setNatPmpAnswer(GatewayScenario.NatPmpAnswer.SILENT);
+            second.setPcpAnswer(GatewayScenario.PcpAnswer.SILENT);
+
+            try (PortMapper mapper = PortMapper.start(DYNAMIC_PORT_MINIMUM, configuration)) {
+                Assertions.assertEquals(MappingProtocol.PCP, awaitMapping(mapper).getProtocol());
+                await(() -> second.getRequestedLifetimes(MappingProtocol.NAT_PMP).equals(List.of(LEASE_SECONDS, 0)),
+                      "the NAT-PMP mapping at the other router is released");
+            }
+        }
+    }
+
+    @Test
+    void no_mapping_is_kept_when_none_maps_the_observed_address() throws IOException, InterruptedException {
+        try (GatewayScenario gateway = GatewayScenario.open(EXTERNAL);
+             PortMapper mapper = PortMapper.start(DYNAMIC_PORT_MINIMUM, gateway.createConfiguration().build())) {
+            mapper.checkObservedAddress(OTHER_PUBLIC);
+            await(() -> mapper.getState() != PortMappingState.STARTING, "the mapper chooses");
+
+            Assertions.assertEquals(PortMappingState.SKIPPED, mapper.getState());
+            Assertions.assertNull(mapper.getMapping());
             await(() -> gateway.getRequestedLifetimes(MappingProtocol.PCP).equals(List.of(LEASE_SECONDS, 0)), "the mapping is released");
         }
     }

@@ -10,6 +10,7 @@ import javafx.scene.input.ContextMenuEvent;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
+import org.fogofwarlabs.sc4j.beaconlink.client.firewall.FirewallState;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.LinkConnectivity;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
@@ -43,7 +44,8 @@ import java.util.concurrent.atomic.AtomicReference;
 final class ChatScreenTest {
     private static final double SCENE_WIDTH = 1280;
     private static final double SCENE_HEIGHT = 800;
-    private static final @NotNull SelfView CONNECTED = new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null, LinkConnectivity.UNKNOWN);
+    private static final @NotNull SelfView CONNECTED = new SelfView(SessionState.CONNECTED, SelfStatus.ONLINE, "", 1, null, LinkConnectivity.UNKNOWN,
+                                                                    FirewallState.NOT_NEEDED);
     private static final @NotNull String SHARED = "SC4J";
     private static final @NotNull String LADDER = "Ladder";
     private static final @NotNull String KOREA = "Korea";
@@ -537,7 +539,8 @@ final class ChatScreenTest {
         LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         RecordingLauncherSession session = new RecordingLauncherSession(RAYNOR.getCode(), new SelfView(SessionState.OFFLINE, SelfStatus.ONLINE, "", 0,
                                                                                                        SessionFailure.SIGNED_OUT,
-                                                                                                       LinkConnectivity.UNKNOWN));
+                                                                                                       LinkConnectivity.UNKNOWN,
+                                                                                                       FirewallState.NOT_NEEDED));
 
         LauncherFxScenario.run(() -> {
             LauncherShell shell = createShell(texts, directory, session, new ArrayList<>());

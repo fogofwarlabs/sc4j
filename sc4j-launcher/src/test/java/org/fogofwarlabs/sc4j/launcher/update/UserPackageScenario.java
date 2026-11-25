@@ -18,6 +18,21 @@ import java.util.zip.ZipOutputStream;
  */
 final class UserPackageScenario {
     /**
+     * The platform of the packages and updaters of the tests, whatever platform runs them.
+     */
+    static final @NotNull PackagePlatform PLATFORM = PackagePlatform.LINUX_X64;
+
+    /**
+     * Gives the platform file of a package ({@link PackageSwap#PACKAGE_PLATFORM_FILE}).
+     *
+     * @param platform the platform the package names
+     * @return the file by its path in the package
+     */
+    static @NotNull Map<@NotNull String, @NotNull String> createPlatformFile(@NotNull PackagePlatform platform) {
+        return Map.of(PackageSwap.PACKAGE_PLATFORM_FILE, platform.getId() + "\n");
+    }
+
+    /**
      * Gives the files of a user package with each item a program of the update replaces.
      *
      * @param text the contents of every file

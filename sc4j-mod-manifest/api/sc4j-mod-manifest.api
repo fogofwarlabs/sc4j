@@ -95,10 +95,11 @@ public final class org.fogofwarlabs.sc4j.manifest.settings.ChoiceSetting extends
 public final class org.fogofwarlabs.sc4j.manifest.settings.DirectorySetting extends org.fogofwarlabs.sc4j.manifest.settings.SettingDefinition {
   public java.lang.String getSharedName();
   public java.nio.file.Path detect(org.fogofwarlabs.sc4j.manifest.settings.InstallationRecords);
+  public java.util.List<java.lang.String> getAnyContainedPaths();
   public java.util.List<java.lang.String> getContainedPaths();
   public java.util.List<java.lang.String> getProgramFolders();
   public java.util.List<java.lang.String> getUninstallEntries();
-  public org.fogofwarlabs.sc4j.manifest.settings.DirectorySetting(java.lang.String, org.fogofwarlabs.sc4j.manifest.text.LocalizedText, org.fogofwarlabs.sc4j.manifest.text.LocalizedText, boolean, java.nio.file.Path, org.fogofwarlabs.sc4j.manifest.text.LocalizedText, java.util.List<java.lang.String>, java.util.List<java.lang.String>, java.util.List<java.lang.String>, java.lang.String);
+  public org.fogofwarlabs.sc4j.manifest.settings.DirectorySetting(java.lang.String, org.fogofwarlabs.sc4j.manifest.text.LocalizedText, org.fogofwarlabs.sc4j.manifest.text.LocalizedText, boolean, java.nio.file.Path, org.fogofwarlabs.sc4j.manifest.text.LocalizedText, java.util.List<java.lang.String>, java.util.List<java.lang.String>, java.util.List<java.lang.String>, java.util.List<java.lang.String>, java.lang.String);
   public org.fogofwarlabs.sc4j.manifest.settings.SettingType getType();
 }
 
@@ -249,6 +250,7 @@ public final class org.fogofwarlabs.sc4j.manifest.validation.ProblemCode extends
   public static final org.fogofwarlabs.sc4j.manifest.validation.ProblemCode SETTING_TYPE_UNKNOWN;
   public static final org.fogofwarlabs.sc4j.manifest.validation.ProblemCode VALUES_SYNTAX;
   public static final org.fogofwarlabs.sc4j.manifest.validation.ProblemCode VALUE_CONTAINS;
+  public static final org.fogofwarlabs.sc4j.manifest.validation.ProblemCode VALUE_CONTAINS_ANY;
   public static final org.fogofwarlabs.sc4j.manifest.validation.ProblemCode VALUE_DIRECTORY;
   public static final org.fogofwarlabs.sc4j.manifest.validation.ProblemCode VALUE_EXTENSION;
   public static final org.fogofwarlabs.sc4j.manifest.validation.ProblemCode VALUE_FILE;

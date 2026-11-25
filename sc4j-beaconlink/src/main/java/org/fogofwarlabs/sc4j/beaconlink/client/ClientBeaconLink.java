@@ -1,6 +1,7 @@
 package org.fogofwarlabs.sc4j.beaconlink.client;
 
 import org.fogofwarlabs.sc4j.base.exception.IgnoreException;
+import org.fogofwarlabs.sc4j.beaconlink.client.firewall.InboundFirewall;
 import org.fogofwarlabs.sc4j.beaconlink.client.mapping.PortMappingConfiguration;
 import org.fogofwarlabs.sc4j.beaconlink.peer.account.Account;
 import org.fogofwarlabs.sc4j.beaconlink.peer.bootstrap.KnownNodes;
@@ -49,7 +50,8 @@ public final class ClientBeaconLink implements BeaconLink, Closeable {
     /**
      * Creates a {@link ClientBeaconLink} instance with the default timings, a leaf embedded peer with the default limits, the system clock and
      * a socket on any local address and port, so that the nodes of the internet are reachable; with port mapping, each session's socket is
-     * mapped on the router with the default mapping settings ({@link PortMappingConfiguration#createDefault()}).
+     * mapped on the router with the default mapping settings ({@link PortMappingConfiguration#createDefault()}). Each session checks the
+     * operating system's firewall for the process's executable ({@link InboundFirewall#createDefault()}).
      *
      * @param setup       the run's account, seeds and shared peers file
      * @param identity    the run's mod identity
@@ -58,21 +60,26 @@ public final class ClientBeaconLink implements BeaconLink, Closeable {
      */
     public static @NotNull ClientBeaconLink create(@NotNull ClientSetup setup, @NotNull ModIdentity identity, boolean portMapping) {
         PortMappingConfiguration mapping = portMapping ? PortMappingConfiguration.createDefault() : null;
-        ClientConfiguration configuration = new ClientConfiguration.Builder().setPortMapping(mapping).build();
+        ClientConfiguration configuration = new ClientConfiguration.Builder().setPortMapping(mapping)
+                                                                             .setFirewall(InboundFirewall.createDefault())
+                                                                             .build();
 
         return new ClientBeaconLink(setup, identity, configuration, new InetSocketAddress(0), ProtocolClock.SYSTEM);
     }
 
     /**
      * Creates a {@link ClientBeaconLink} instance whose sessions run no embedded peer, with the default timings, the system clock and a
-     * socket on any local address and port: the launcher's, whose node is the computer's peer.
+     * socket on any local address and port: the launcher's, whose node is the computer's peer. Each session checks the operating system's
+     * firewall for the process's executable ({@link InboundFirewall#createDefault()}).
      *
      * @param setup    the account, seeds and shared peers file
      * @param identity the mod identity the sessions show
      * @return the created {@link ClientBeaconLink} instance
      */
     public static @NotNull ClientBeaconLink createWithoutPeer(@NotNull ClientSetup setup, @NotNull ModIdentity identity) {
-        return new ClientBeaconLink(setup, identity, ClientConfiguration.createDefault(), null, new InetSocketAddress(0), ProtocolClock.SYSTEM);
+        ClientConfiguration configuration = new ClientConfiguration.Builder().setFirewall(InboundFirewall.createDefault()).build();
+
+        return new ClientBeaconLink(setup, identity, configuration, null, new InetSocketAddress(0), ProtocolClock.SYSTEM);
     }
 
 
@@ -146,7 +153,7 @@ public final class ClientBeaconLink implements BeaconLink, Closeable {
      * @throws IllegalArgumentException if the mod identity does not fit a room fingerprint
      */
     @Override
-    public @NotNull BeaconLinkSession open() throws IOException {
+    public @NotNull BeaconLinkClient open() throws IOException {
         SecureRandom random = new SecureRandom();
         KnownNodes knownNodes = this.setup.openKnownNodes();
         IdentityKeyPair keyPair = this.setup.readKey(random);

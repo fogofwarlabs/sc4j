@@ -34,6 +34,9 @@ import java.util.function.LongSupplier;
  * The display mode keeps the windowed bounds while the window is fullscreen or borderless, so returning to windowed mode
  * restores them. The swap interval is only passed on when it changes. A buffer swap waits until the previous frame's commands completed, so at most
  * one presented frame is queued ahead of the display.
+ * <p>
+ * On Wayland, where a program can neither read nor set window positions, move the pointer or set gamma ramps, the window is never placed (the
+ * compositor places it), the pointer is never moved and gamma ramps are not applied.
  */
 @ApiStatus.Internal
 public final class GlfwHostWindow implements HostWindow {
@@ -50,6 +53,10 @@ public final class GlfwHostWindow implements HostWindow {
      * The index of the blue channel in a gamma ramp (red {@code 0}, green {@code 1}).
      */
     private static final int BLUE_CHANNEL_INDEX = 2;
+    /**
+     * The fewest values per channel of a monitor's gamma ramp that a ramp is resampled to.
+     */
+    private static final int MINIMUM_GAMMA_RAMP_SIZE = 2;
     private static final @NotNull GlfwKeyCodes KEY_CODES = GlfwKeyCodes.getInstance();
     private static final @NotNull Logger LOGGER = Logger.of(GlfwHostWindow.class);
     private static final @NotNull String OPERATING_SYSTEM_PROPERTY = "os.name";
@@ -60,23 +67,24 @@ public final class GlfwHostWindow implements HostWindow {
     private static final long FRAME_FENCE_TIMEOUT_NANOSECONDS = 1_000_000_000L;
 
     /**
-     * Reads the gamma ramp of a monitor.
+     * Reads the gamma ramp of a monitor, at the monitor's own number of values per channel.
      *
      * @param monitor the monitor
-     * @return the red, green and blue values, or {@code null} if the monitor's ramp is not {@link #GAMMA_RAMP_SIZE} values per channel
+     * @return the red, then green, then blue values, or {@code null} if fewer than {@link #MINIMUM_GAMMA_RAMP_SIZE} per channel can be read
      */
     private static short @Nullable [] readGammaRamp(long monitor) {
         GLFWGammaRamp original = GLFW.glfwGetGammaRamp(monitor);
 
-        if (original == null || original.size() != GAMMA_RAMP_SIZE) {
+        if (original == null || original.size() < MINIMUM_GAMMA_RAMP_SIZE) {
             return null;
         }
 
-        short[] ramp = new short[GAMMA_RAMP_SIZE * GAMMA_RAMP_CHANNEL_COUNT];
+        int size = original.size();
+        short[] ramp = new short[size * GAMMA_RAMP_CHANNEL_COUNT];
 
-        original.red().get(0, ramp, 0, GAMMA_RAMP_SIZE);
-        original.green().get(0, ramp, GAMMA_RAMP_SIZE, GAMMA_RAMP_SIZE);
-        original.blue().get(0, ramp, GAMMA_RAMP_SIZE * BLUE_CHANNEL_INDEX, GAMMA_RAMP_SIZE);
+        original.red().get(0, ramp, 0, size);
+        original.green().get(0, ramp, size, size);
+        original.blue().get(0, ramp, size * BLUE_CHANNEL_INDEX, size);
 
         return ramp;
     }
@@ -85,20 +93,65 @@ public final class GlfwHostWindow implements HostWindow {
      * Writes the gamma ramp of a monitor.
      *
      * @param monitor the monitor
-     * @param ramp    the red, green and blue values
+     * @param ramp    the red, then green, then blue values, of the monitor's number of values per channel
      */
     private static void writeGammaRamp(long monitor, short @NotNull [] ramp) {
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            ShortBuffer red = stack.mallocShort(GAMMA_RAMP_SIZE).put(0, ramp, 0, GAMMA_RAMP_SIZE);
-            ShortBuffer green = stack.mallocShort(GAMMA_RAMP_SIZE).put(0, ramp, GAMMA_RAMP_SIZE, GAMMA_RAMP_SIZE);
-            ShortBuffer blue = stack.mallocShort(GAMMA_RAMP_SIZE).put(0, ramp, GAMMA_RAMP_SIZE * BLUE_CHANNEL_INDEX, GAMMA_RAMP_SIZE);
+        int size = ramp.length / GAMMA_RAMP_CHANNEL_COUNT;
+        ShortBuffer values = MemoryUtil.memAllocShort(ramp.length).put(0, ramp);
 
-            GLFW.glfwSetGammaRamp(monitor, GLFWGammaRamp.malloc(stack).red(red).green(green).blue(blue).size(GAMMA_RAMP_SIZE));
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            GLFWGammaRamp gammaRamp = GLFWGammaRamp.malloc(stack).red(values.slice(0, size)).green(values.slice(size, size))
+                                                   .blue(values.slice(size * BLUE_CHANNEL_INDEX, size)).size(size);
+
+            GLFW.glfwSetGammaRamp(monitor, gammaRamp);
+        } finally {
+            MemoryUtil.memFree(values);
         }
+    }
+
+    /**
+     * Resamples a ramp of {@link #GAMMA_RAMP_SIZE} values per channel to another number of values per channel, interpolating linearly.
+     *
+     * @param ramp the red, then green, then blue values
+     * @param size the number of values per channel of the result, at least {@link #MINIMUM_GAMMA_RAMP_SIZE}
+     * @return the ramp itself when the size is {@link #GAMMA_RAMP_SIZE}, a resampled ramp otherwise
+     */
+    private static short @NotNull [] resampleGammaRamp(short @NotNull [] ramp, int size) {
+        if (size == GAMMA_RAMP_SIZE) {
+            return ramp;
+        }
+
+        short[] resampled = new short[size * GAMMA_RAMP_CHANNEL_COUNT];
+        int lastIndex = size - 1;
+
+        for (int channel = 0; channel < GAMMA_RAMP_CHANNEL_COUNT; channel++) {
+            int sourceOffset = channel * GAMMA_RAMP_SIZE;
+            int destinationOffset = channel * size;
+
+            for (int index = 0; index < size; index++) {
+                int position = index * (GAMMA_RAMP_SIZE - 1);
+                int sourceIndex = position / lastIndex;
+                int fraction = position % lastIndex;
+                int start = Short.toUnsignedInt(ramp[sourceOffset + sourceIndex]);
+                int end = fraction == 0 ? start : Short.toUnsignedInt(ramp[sourceOffset + sourceIndex + 1]);
+
+                resampled[destinationOffset + index] = (short) (start + (long) (end - start) * fraction / lastIndex);
+            }
+        }
+
+        return resampled;
     }
 
     private final long handle;
     private final @NotNull WindowSettings settings;
+    /**
+     * Whether the platform lets a program read and set window positions and move the pointer.
+     */
+    private final boolean positionSupported;
+    /**
+     * Whether the platform lets a program read and set the gamma ramps of monitors.
+     */
+    private final boolean gammaRampSupported;
 
     private @Nullable DisplayMode displayMode;
     private int windowedLeft;
@@ -139,8 +192,12 @@ public final class GlfwHostWindow implements HostWindow {
      * @param settings the settings the window was created with
      */
     GlfwHostWindow(long handle, @NotNull WindowSettings settings) {
-        this.handle   = handle;
-        this.settings = settings;
+        boolean wayland = GLFW.glfwGetPlatform() == GLFW.GLFW_PLATFORM_WAYLAND;
+
+        this.handle             = handle;
+        this.settings           = settings;
+        this.positionSupported  = !wayland;
+        this.gammaRampSupported = !wayland;
 
         this.displayMode    = null;
         this.windowedLeft   = 0;
@@ -243,7 +300,10 @@ public final class GlfwHostWindow implements HostWindow {
             int[] width = new int[1];
             int[] height = new int[1];
 
-            GLFW.glfwGetWindowPos(this.handle, x, y);
+            if (this.positionSupported) {
+                GLFW.glfwGetWindowPos(this.handle, x, y);
+            }
+
             GLFW.glfwGetWindowSize(this.handle, width, height);
 
             this.windowedLeft   = x[0];
@@ -480,9 +540,9 @@ public final class GlfwHostWindow implements HostWindow {
     /**
      * Narrows the captured area to a rectangle: while the pointer mode is {@link PointerMode#CAPTURED}, the window is focused and not minimized,
      * the pointer stays inside the rectangle instead of the whole content area. On Windows the system cursor is clipped ({@code ClipCursor});
-     * elsewhere a pointer reported outside is moved to the nearest point inside. The clip follows the content area when the display mode changes;
-     * after a move, a resize or a focus change, GLFW captures the whole content area again and the clip is applied again as soon as the pointer
-     * passes its edge.
+     * elsewhere a pointer reported outside is moved to the nearest point inside, where the platform lets a program move the pointer. The clip
+     * follows the content area when the display mode changes; after a move, a resize or a focus change, GLFW captures the whole content area
+     * again and the clip is applied again as soon as the pointer passes its edge.
      *
      * @param clip the rectangle in framebuffer pixels, or {@code null} for the whole content area
      */
@@ -509,7 +569,8 @@ public final class GlfwHostWindow implements HostWindow {
     boolean confinePointer(double x, double y) {
         int[] bounds = this.pointerClipBounds;
 
-        if (bounds == null || !PointerClip.isApplied(this.pointerClip, this.pointerMode, this.isFocused(), this.isMinimized(), this.closed)) {
+        if (bounds == null || !this.positionSupported ||
+            !PointerClip.isApplied(this.pointerClip, this.pointerMode, this.isFocused(), this.isMinimized(), this.closed)) {
             return false;
         }
 
@@ -568,14 +629,17 @@ public final class GlfwHostWindow implements HostWindow {
     }
 
     /**
-     * Moves the pointer to a point of the content area. Nothing moves while the window does not have the input focus.
+     * Moves the pointer to a point of the content area. Nothing moves while the window does not have the input focus, or on a platform that
+     * does not let a program move the pointer.
      *
      * @param x the column in window coordinates
      * @param y the row in window coordinates
      */
     @Override
     public void setPointerPosition(double x, double y) {
-        GLFW.glfwSetCursorPos(this.handle, x, y);
+        if (this.positionSupported) {
+            GLFW.glfwSetCursorPos(this.handle, x, y);
+        }
     }
 
     /**
@@ -613,7 +677,9 @@ public final class GlfwHostWindow implements HostWindow {
      * Applies a gamma ramp to the monitor of the fullscreen window while the window is focused, and gives the monitor its original ramp back
      * otherwise: when the window is windowed or not focused, has moved to another monitor, or the ramp is {@code null}. A client calls it once
      * per frame; a monitor is written only when the target monitor or the ramp changes. Closing the window gives the monitor its original ramp
-     * back.
+     * back. On a platform that does not let a program set gamma ramps nothing is applied.
+     * <p>
+     * The ramp is resampled to the monitor's number of values per channel; a monitor whose ramp cannot be read is left as it is.
      *
      * @param ramp the {@link #GAMMA_RAMP_SIZE} red, then green, then blue values (unsigned 16-bit), or {@code null} for the original ramp
      * @throws IllegalArgumentException if the ramp does not hold {@link #GAMMA_RAMP_CHANNEL_COUNT} times {@link #GAMMA_RAMP_SIZE} values
@@ -623,6 +689,10 @@ public final class GlfwHostWindow implements HostWindow {
         if (ramp != null && ramp.length != GAMMA_RAMP_SIZE * GAMMA_RAMP_CHANNEL_COUNT) {
             throw Exceptions.newIllegalArgumentException("A gamma ramp holds {0} values, not {1}.", GAMMA_RAMP_SIZE * GAMMA_RAMP_CHANNEL_COUNT,
                                                          ramp.length);
+        }
+
+        if (!this.gammaRampSupported) {
+            return;
         }
 
         long monitor = GLFW.glfwGetWindowMonitor(this.handle);
@@ -641,7 +711,12 @@ public final class GlfwHostWindow implements HostWindow {
                 this.originalGammaRamp = readGammaRamp(target);
             }
 
-            writeGammaRamp(target, ramp);
+            short[] original = this.originalGammaRamp;
+
+            // A monitor takes a ramp of its own number of values per channel; one whose ramp cannot be read takes none.
+            if (original != null) {
+                writeGammaRamp(target, resampleGammaRamp(ramp, original.length / GAMMA_RAMP_CHANNEL_COUNT));
+            }
         }
 
         this.gammaMonitor     = target;
@@ -678,7 +753,8 @@ public final class GlfwHostWindow implements HostWindow {
 
     /**
      * Centers the window, frame included, in the primary monitor's work area (the desktop without the task bar); a window larger
-     * than the work area is first made as large as the work area allows. Without a primary monitor nothing changes.
+     * than the work area is first made as large as the work area allows. Without a primary monitor nothing changes. On a platform that does
+     * not let a program place windows the window is only fitted and the platform places it.
      */
     @Override
     public void center() {
@@ -716,6 +792,10 @@ public final class GlfwHostWindow implements HostWindow {
             // A window scaled to a monitor of a high display scale can be larger than the monitor.
             if (fittedWidth != width.get(0) || fittedHeight != height.get(0)) {
                 GLFW.glfwSetWindowSize(this.handle, fittedWidth, fittedHeight);
+            }
+
+            if (!this.positionSupported) {
+                return;
             }
 
             int outerWidth = fittedWidth + frameWidth;
