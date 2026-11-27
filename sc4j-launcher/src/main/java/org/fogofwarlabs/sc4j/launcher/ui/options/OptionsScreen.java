@@ -26,7 +26,8 @@ import java.util.function.Consumer;
 /**
  * Shows the launcher's Settings screen in two columns of equal width. The left column holds the launcher panel with Check now in its header
  * and a form of one field per row: the version with the result of the last check, the UI language (the system language or an explicit
- * choice), the chat sound switch and the update source (the update parts are {@link UpdateView}); under it the chat translation panel
+ * choice), the chat sound switch, the high-performance GPU switch (where the operating system has the graphics preference) and the update
+ * source (the update parts are {@link UpdateView}); under it the chat translation panel
  * ({@link TranslationPanel}: the translation model and the download, licence and deletion of each preset). The right column holds the
  * Beacon.Link panel ({@link BeaconLinkPanel}: the node setting and the launcher node's status; keys are automatic and not shown) and, under it
  * behind its Peers button, the seed list editor (the node list). The editor lists the seeds in the order the client contacts them and has the host and
@@ -55,6 +56,13 @@ public final class OptionsScreen {
          * @param muted whether the chat notification sound is muted
          */
         void onChatSoundMutedChanged(boolean muted);
+
+        /**
+         * Called when the user turns the high-performance GPU of games on or off.
+         *
+         * @param highPerformanceGpu whether games run on the high-performance GPU
+         */
+        void onHighPerformanceGpuChanged(boolean highPerformanceGpu);
 
         /**
          * Called when the user changes the node list; the launcher saves it.
@@ -152,19 +160,21 @@ public final class OptionsScreen {
     /**
      * Creates a {@link OptionsScreen} instance.
      *
-     * @param shell            shows the screen's dialogs
-     * @param texts            the launcher texts of the display language
-     * @param language         the language chosen in the launcher settings, or {@code null} when the launcher follows the operating system
-     * @param chatSoundMuted   whether the launcher settings mute the chat notification sound
-     * @param updateView       the update parts of the launcher panel
-     * @param nodes            the saved node list, or the shipped seed list while the user has saved none
-     * @param nodesLoadProblem why that list could not be read, or {@code null}
-     * @param nodeRunner       the launcher's Beacon.Link node
-     * @param translation      the launcher's translation, its presets and their downloads
-     * @param actions          receives the changes
+     * @param shell                   shows the screen's dialogs
+     * @param texts                   the launcher texts of the display language
+     * @param language                the language chosen in the launcher settings, or {@code null} when the launcher follows the operating system
+     * @param chatSoundMuted          whether the launcher settings mute the chat notification sound
+     * @param highPerformanceGpu      whether the launcher settings run games on the high-performance GPU
+     * @param highPerformanceGpuShown whether the high-performance GPU switch is shown: where the operating system has the graphics preference
+     * @param updateView              the update parts of the launcher panel
+     * @param nodes                   the saved node list, or the shipped seed list while the user has saved none
+     * @param nodesLoadProblem        why that list could not be read, or {@code null}
+     * @param nodeRunner              the launcher's Beacon.Link node
+     * @param translation             the launcher's translation, its presets and their downloads
+     * @param actions                 receives the changes
      */
     public OptionsScreen(@NotNull LauncherShell shell, @NotNull LauncherTexts texts, @Nullable UiLanguage language, boolean chatSoundMuted,
-                         @NotNull UpdateView updateView,
+                         boolean highPerformanceGpu, boolean highPerformanceGpuShown, @NotNull UpdateView updateView,
                          @NotNull List<@NotNull ConfiguredNode> nodes, @Nullable NodeListProblem nodesLoadProblem, @NotNull LauncherNodeRunner nodeRunner,
                          @NotNull LauncherTranslation translation, @NotNull Actions actions) {
         VBox nodesPanel;
@@ -197,7 +207,8 @@ public final class OptionsScreen {
         nodesPanel = this.createNodesPanel(nodesLoadProblem);
         VBox.setVgrow(nodesPanel, Priority.ALWAYS);
 
-        launcherColumn   = ComponentUtils.createColumn(Spacing.L, this.createLauncherPanel(language, chatSoundMuted, updateView),
+        launcherColumn   = ComponentUtils.createColumn(Spacing.L, this.createLauncherPanel(language, chatSoundMuted, highPerformanceGpu,
+                                                                                           highPerformanceGpuShown, updateView),
                                                        new TranslationPanel(shell, texts, translation, actions).getRoot());
         beaconLinkColumn = ComponentUtils.createColumn(Spacing.L, new BeaconLinkPanel(texts, nodeRunner, nodesPanel).getRoot(), nodesPanel);
         this.root        = ComponentUtils.createEqualColumns(Spacing.L, launcherColumn, beaconLinkColumn);
@@ -229,9 +240,11 @@ public final class OptionsScreen {
         this.nodeList.refresh();
     }
 
-    private @NotNull VBox createLauncherPanel(@Nullable UiLanguage language, boolean chatSoundMuted, @NotNull UpdateView updateView) {
+    private @NotNull VBox createLauncherPanel(@Nullable UiLanguage language, boolean chatSoundMuted, boolean highPerformanceGpu,
+                                              boolean highPerformanceGpuShown, @NotNull UpdateView updateView) {
         ComboBox<LanguageOption> choice = ComponentUtils.createComboBox(ControlWidth.M);
         CheckBox mute = new CheckBox(this.texts.get("settings.chat.sound.mute"));
+        CheckBox gpu = new CheckBox(this.texts.get("settings.gpu.high.performance"));
         UiLanguage system = UiLanguage.select(null, Locale.getDefault());
         LanguageOption systemOption = new LanguageOption(null, this.texts.format("language.system", this.getLanguageName(system)));
         VBox form;
@@ -257,9 +270,17 @@ public final class OptionsScreen {
 
         mute.setSelected(chatSoundMuted);
         mute.selectedProperty().addListener((observable, previous, current) -> this.actions.onChatSoundMutedChanged(current));
+        gpu.setSelected(highPerformanceGpu);
+        gpu.selectedProperty().addListener((observable, previous, current) -> this.actions.onHighPerformanceGpuChanged(current));
 
         form = ComponentUtils.createForm(updateView.getVersionField(), ComponentUtils.createField(this.texts.get("settings.language"), choice),
-                                         ComponentUtils.createField(this.texts.get("settings.sound"), mute), updateView.getSourceField());
+                                         ComponentUtils.createField(this.texts.get("settings.sound"), mute));
+
+        if (highPerformanceGpuShown) {
+            form.getChildren().add(ComponentUtils.createField(this.texts.get("settings.graphics"), gpu));
+        }
+
+        form.getChildren().add(updateView.getSourceField());
 
         return ComponentUtils.createPanel(this.texts.get("settings.launcher"), ComponentUtils.createPanelBody(form), updateView.getCheckButton());
     }

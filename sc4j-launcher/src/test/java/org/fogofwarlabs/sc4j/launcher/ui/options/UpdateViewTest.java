@@ -59,6 +59,10 @@ final class UpdateViewTest {
         }
 
         @Override
+        public void onHighPerformanceGpuChanged(boolean highPerformanceGpu) {
+        }
+
+        @Override
         public @Nullable String onNodesChanged(@NotNull List<@NotNull ConfiguredNode> nodes) {
             return null;
         }
@@ -117,8 +121,8 @@ final class UpdateViewTest {
         LauncherTranslation translation = new LauncherTranslation(TranslationStorage.of(install.getUserDataDirectory()),
                                                                   TranslationPresetUtils.getPresets());
 
-        return new OptionsScreen(shell, texts, null, false, view, List.of(), null, new LauncherNodeRunner(install), translation, new NoActions())
-                .getRoot();
+        return new OptionsScreen(shell, texts, null, false, true, false, view, List.of(), null, new LauncherNodeRunner(install), translation,
+                                 new NoActions()).getRoot();
     }
 
     private static void layOut(@NotNull GridPane root) {

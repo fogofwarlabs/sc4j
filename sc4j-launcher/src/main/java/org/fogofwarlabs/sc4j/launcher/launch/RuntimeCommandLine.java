@@ -164,7 +164,7 @@ public final class RuntimeCommandLine {
      * @param windows  whether the program runs on Windows (Java program {@value #WINDOWS_JAVA})
      * @return the Java program {@code <java home>/bin/java}
      */
-    static @NotNull Path getJavaProgram(@NotNull Path javaHome, boolean windows) {
+    public static @NotNull Path getJavaProgram(@NotNull Path javaHome, boolean windows) {
         return javaHome.resolve(BINARY_FOLDER).resolve(windows ? WINDOWS_JAVA : UNIX_JAVA);
     }
 

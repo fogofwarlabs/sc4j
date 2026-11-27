@@ -93,28 +93,31 @@ public final class ModDetailView {
     private final @Nullable String updateRelease;
     private final @NotNull LauncherTexts texts;
     private final @NotNull ModArt art;
+    private final @NotNull Runnable onSettingsChanged;
     private final @NotNull Actions actions;
     private final @NotNull Region root;
 
     /**
      * Creates a {@link ModDetailView} instance.
      *
-     * @param entry         the mod
-     * @param updateRelease the tag of the mod's newer release, or {@code null} when none is known
-     * @param form          the mod's settings form, or {@code null} for a mod with an error
-     * @param texts         the launcher texts of the display language
-     * @param art           the decoded mod images
-     * @param running       {@code true} while a run is in progress, which keeps Run disabled
-     * @param actions       receives the actions
+     * @param entry             the mod
+     * @param updateRelease     the tag of the mod's newer release, or {@code null} when none is known
+     * @param form              the mod's settings form, or {@code null} for a mod with an error
+     * @param texts             the launcher texts of the display language
+     * @param art               the decoded mod images
+     * @param running           {@code true} while a run is in progress, which keeps Run disabled
+     * @param onSettingsChanged called after the user changed a field of the settings form or reset it to the defaults
+     * @param actions           receives the actions
      */
     public ModDetailView(@NotNull ModEntry entry, @Nullable String updateRelease, @Nullable SettingsForm form, @NotNull LauncherTexts texts,
-                         @NotNull ModArt art, @NotNull ObservableBooleanValue running, @NotNull Actions actions) {
-        this.entry         = entry;
-        this.updateRelease = updateRelease;
-        this.texts         = texts;
-        this.art           = art;
-        this.actions       = actions;
-        this.root          = form != null && entry.getStatus().isStartable() ? this.createUsableView(form, running) : this.createUnusableView();
+                         @NotNull ModArt art, @NotNull ObservableBooleanValue running, @NotNull Runnable onSettingsChanged, @NotNull Actions actions) {
+        this.entry             = entry;
+        this.updateRelease     = updateRelease;
+        this.texts             = texts;
+        this.art               = art;
+        this.onSettingsChanged = onSettingsChanged;
+        this.actions           = actions;
+        this.root              = form != null && entry.getStatus().isStartable() ? this.createUsableView(form, running) : this.createUnusableView();
     }
 
     /**
@@ -261,7 +264,7 @@ public final class ModDetailView {
     }
 
     private @NotNull VBox createSettingsPanel(@NotNull SettingsForm form, @NotNull ObservableBooleanValue running) {
-        SettingsFormView formView = new SettingsFormView(form, this.texts);
+        SettingsFormView formView = new SettingsFormView(form, this.texts, this.onSettingsChanged);
         ScrollPane scroll = new ScrollPane(formView.getRoot());
         VBox body = ComponentUtils.createPanelBody();
         Button reset = ComponentUtils.createButton(this.texts.get("detail.reset"), ButtonRole.SECONDARY);

@@ -44,10 +44,7 @@ import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
 import org.fogofwarlabs.sc4j.launcher.install.ModInstaller;
 import org.fogofwarlabs.sc4j.launcher.install.ModReleaseState;
 import org.fogofwarlabs.sc4j.launcher.install.ModSource;
-import org.fogofwarlabs.sc4j.launcher.launch.RuntimeCommandLine;
-import org.fogofwarlabs.sc4j.launcher.launch.RuntimeListener;
-import org.fogofwarlabs.sc4j.launcher.launch.RuntimeProcess;
-import org.fogofwarlabs.sc4j.launcher.launch.RuntimeRun;
+import org.fogofwarlabs.sc4j.launcher.launch.*;
 import org.fogofwarlabs.sc4j.launcher.link.LauncherLinkAddress;
 import org.fogofwarlabs.sc4j.launcher.nodes.NodePingResult;
 import org.fogofwarlabs.sc4j.launcher.nodes.NodePinger;
@@ -291,6 +288,13 @@ public final class LauncherWindow {
         return lastCheck == null || !now.isBefore(lastCheck.plus(UPDATE_CHECK_PERIOD));
     }
 
+    /**
+     * @return the Java program the runs start the runtime with
+     */
+    private static @NotNull Path getRuntimeProgram() {
+        return RuntimeCommandLine.getJavaProgram(RuntimeCommandLine.getLauncherJavaHome(), RuntimeCommandLine.isWindows());
+    }
+
 
     private final @NotNull Stage stage;
     private final @NotNull InstallLayout install;
@@ -309,6 +313,7 @@ public final class LauncherWindow {
     private final @NotNull LauncherUpdater launcherUpdater;
     private final @NotNull ModInstaller modInstaller;
     private final @NotNull ModIndex modIndex;
+    private final @NotNull GraphicsPreference graphicsPreference;
     private final @NotNull Scene scene;
     private final @NotNull VBox notices;
     private final @NotNull SimpleBooleanProperty running;
@@ -377,26 +382,27 @@ public final class LauncherWindow {
                           @NotNull Runnable playChatSound, @Nullable LauncherLinkAddress launcherLink, @NotNull LauncherTranslation translation) {
         ReleaseClient releaseClient = new ReleaseClient(ReleaseClient.GITHUB_API);
 
-        this.stage           = stage;
-        this.install         = install;
-        this.version         = version;
-        this.showDocument    = showDocument;
-        this.openFolder      = openFolder;
-        this.nodeRunner      = nodeRunner;
-        this.openSession     = openSession;
-        this.playChatSound   = playChatSound;
-        this.launcherLink    = launcherLink;
-        this.translation     = translation;
-        this.settingsFile    = new LauncherSettingsFile(install.getLauncherSettingsFile());
-        this.nodesFile       = new NodeListFile(install.getNodesFile());
-        this.seedsFile       = new NodeListFile(install.getSeedsFile());
-        this.accountStore    = AccountStore.of(install.getBeaconLinkDirectory());
-        this.launcherUpdater = new LauncherUpdater(install, releaseClient);
-        this.modInstaller    = new ModInstaller(install, releaseClient);
-        this.modIndex        = new ModIndex(releaseClient, ModIndex.DEFAULT_ADDRESS);
-        this.scene           = new Scene(new StackPane(), DEFAULT_WIDTH, DEFAULT_HEIGHT);
-        this.notices         = ComponentUtils.createColumn(Spacing.M);
-        this.running         = new SimpleBooleanProperty(false);
+        this.stage              = stage;
+        this.install            = install;
+        this.version            = version;
+        this.showDocument       = showDocument;
+        this.openFolder         = openFolder;
+        this.nodeRunner         = nodeRunner;
+        this.openSession        = openSession;
+        this.playChatSound      = playChatSound;
+        this.launcherLink       = launcherLink;
+        this.translation        = translation;
+        this.settingsFile       = new LauncherSettingsFile(install.getLauncherSettingsFile());
+        this.nodesFile          = new NodeListFile(install.getNodesFile());
+        this.seedsFile          = new NodeListFile(install.getSeedsFile());
+        this.accountStore       = AccountStore.of(install.getBeaconLinkDirectory());
+        this.launcherUpdater    = new LauncherUpdater(install, releaseClient);
+        this.modInstaller       = new ModInstaller(install, releaseClient);
+        this.modIndex           = new ModIndex(releaseClient, ModIndex.DEFAULT_ADDRESS);
+        this.graphicsPreference = GraphicsPreference.createDefault();
+        this.scene              = new Scene(new StackPane(), DEFAULT_WIDTH, DEFAULT_HEIGHT);
+        this.notices            = ComponentUtils.createColumn(Spacing.M);
+        this.running            = new SimpleBooleanProperty(false);
 
         this.confirmedVersions = new HashSet<>();
 
@@ -1473,6 +1479,22 @@ public final class LauncherWindow {
             }
 
             /**
+             * Called when the user turns the high-performance GPU of games on or off; turning it off removes the graphics preference that
+             * the runs wrote.
+             *
+             * @param highPerformanceGpu whether games run on the high-performance GPU
+             */
+            @Override
+            public void onHighPerformanceGpuChanged(boolean highPerformanceGpu) {
+                LauncherWindow.this.settings = LauncherWindow.this.settings.withHighPerformanceGpu(highPerformanceGpu);
+                LauncherWindow.this.saveSettings();
+
+                if (!highPerformanceGpu) {
+                    LauncherWindow.this.graphicsPreference.removeHighPerformance(getRuntimeProgram());
+                }
+            }
+
+            /**
              * Called when the user changes the node list; the launcher saves it.
              *
              * @param changed the new node list
@@ -1541,7 +1563,8 @@ public final class LauncherWindow {
         this.updateView = shownUpdate;
         this.showUpdateStatus();
 
-        return new OptionsScreen(this.shell, this.texts, this.settings.getLanguage(), this.settings.isChatSoundMuted(), shownUpdate,
+        return new OptionsScreen(this.shell, this.texts, this.settings.getLanguage(), this.settings.isChatSoundMuted(),
+                                 this.settings.isHighPerformanceGpu(), this.graphicsPreference.isSupported(), shownUpdate,
                                  this.nodes, this.nodesProblem, this.nodeRunner, this.translation, actions);
     }
 
@@ -1724,6 +1747,10 @@ public final class LauncherWindow {
 
         if (failure == null && commandLine.getMissingProgram() != null) {
             failure = this.texts.format("run.program.missing", commandLine.getMissingProgram());
+        }
+
+        if (failure == null && this.settings.isHighPerformanceGpu()) {
+            this.graphicsPreference.addHighPerformance(getRuntimeProgram());
         }
 
         if (failure == null) {

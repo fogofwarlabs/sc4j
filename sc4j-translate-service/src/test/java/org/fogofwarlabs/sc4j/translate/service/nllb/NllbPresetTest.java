@@ -18,7 +18,7 @@ import java.util.Set;
 final class NllbPresetTest {
     @Test
     void supported_languages_should_have_one_distinct_locale_per_code() {
-        NllbPreset preset = new NllbPreset();
+        NllbPreset preset = NllbPreset.DISTILLED_600M;
         List<Locale> languages = preset.getSupportedLanguages();
         Set<Locale> distinct = new HashSet<>(languages);
 
@@ -33,7 +33,7 @@ final class NllbPresetTest {
 
     @Test
     void find_code_should_map_common_locales() {
-        NllbPreset preset = new NllbPreset();
+        NllbPreset preset = NllbPreset.DISTILLED_600M;
 
         Assertions.assertEquals("kor_Hang", preset.findCode(Locale.KOREAN));
         Assertions.assertEquals("kor_Hang", preset.findCode(Locale.KOREA));
@@ -58,23 +58,35 @@ final class NllbPresetTest {
 
     @Test
     void files_should_have_distinct_names_sizes_and_checksums() {
-        Set<String> names = new HashSet<>();
+        for (NllbPreset preset : List.of(NllbPreset.DISTILLED_600M, NllbPreset.DISTILLED_1_3B)) {
+            Set<String> names = new HashSet<>();
 
-        for (PresetFile file : new NllbPreset().getFiles()) {
-            Assertions.assertTrue(names.add(file.getName()), file.getName());
-            Assertions.assertTrue(file.getSize() > 0, file.getName());
-            Assertions.assertTrue(file.getSha256().matches("[0-9a-f]{64}"), file.getName());
-            Assertions.assertTrue(file.getAddress().toString().startsWith("https://huggingface.co/"), file.getName());
+            for (PresetFile file : preset.getFiles()) {
+                Assertions.assertTrue(names.add(file.getName()), file.getName());
+                Assertions.assertTrue(file.getSize() > 0, file.getName());
+                Assertions.assertTrue(file.getSha256().matches("[0-9a-f]{64}"), file.getName());
+                Assertions.assertTrue(file.getAddress().toString().startsWith("https://huggingface.co/"), file.getName());
+            }
+
+            Assertions.assertEquals(Set.of(NllbPreset.MODEL_FILE, NllbPreset.CONFIG_FILE, NllbPreset.VOCABULARY_FILE, NllbPreset.TOKENIZER_FILE,
+                                           NllbPreset.IDENTIFIER_FILE), names, preset.getId());
         }
+    }
 
-        Assertions.assertEquals(Set.of(NllbPreset.MODEL_FILE, NllbPreset.CONFIG_FILE, NllbPreset.VOCABULARY_FILE, NllbPreset.TOKENIZER_FILE,
-                                       NllbPreset.IDENTIFIER_FILE), names);
+    @Test
+    void presets_should_have_distinct_ids_and_share_the_tokenizer_and_the_identifier() {
+        NllbPreset small = NllbPreset.DISTILLED_600M;
+        NllbPreset large = NllbPreset.DISTILLED_1_3B;
+
+        Assertions.assertNotEquals(small.getId(), large.getId());
+        Assertions.assertEquals(small.getFiles().subList(3, 5), large.getFiles().subList(3, 5));
+        Assertions.assertNotEquals(small.getFiles().getFirst().getSha256(), large.getFiles().getFirst().getSha256());
     }
 
     @Test
     void installed_models_should_translate_and_identify() throws ModelException {
-        NllbPreset preset = new NllbPreset();
-        Path folder = TranslationTestResources.requirePresetFolder(NllbPreset.ID);
+        NllbPreset preset = NllbPreset.DISTILLED_600M;
+        Path folder = TranslationTestResources.requirePresetFolder(NllbPreset.DISTILLED_600M.getId());
 
         try (TranslationModel model = preset.createTranslationModel(folder); LanguageIdentifier identifier = preset.createLanguageIdentifier(folder)) {
             List<String> batch = model.translate(List.of(new TranslationInput("Let's play another game.", Locale.ENGLISH, Locale.KOREAN),

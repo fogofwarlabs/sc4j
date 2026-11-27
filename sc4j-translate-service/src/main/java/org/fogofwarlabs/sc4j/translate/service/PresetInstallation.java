@@ -4,6 +4,7 @@ import org.fogofwarlabs.sc4j.base.exception.Exceptions;
 import org.fogofwarlabs.sc4j.translate.service.model.PresetFile;
 import org.fogofwarlabs.sc4j.translate.service.model.TranslationPreset;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,7 +26,8 @@ import java.util.concurrent.CancellationException;
 /**
  * Installs the files of a preset into its folder and deletes them. A download goes to a {@code .part} file next to its target, is checked
  * against the preset's size and SHA-256 checksum, and only then takes the file's name, so a file of the folder is always complete; files
- * that are already there with their size are kept. The installation runs only when {@link #install} is called, on the caller's thread, and
+ * that are already there with their size are kept. A file that a preset folder next to this one holds with the same name, size and checksum,
+ * such as a file that two presets share, is linked from there, or copied where links are not supported, instead of downloaded. The installation runs only when {@link #install} is called, on the caller's thread, and
  * stops when {@link #cancel()} is called or the thread is interrupted.
  */
 public final class PresetInstallation {
@@ -146,7 +148,7 @@ public final class PresetInstallation {
 
         for (PresetFile file : this.preset.getFiles()) {
             if (!this.isFileInstalled(file)) {
-                installed = this.download(file, installed, total, listener);
+                installed = this.installFile(file, installed, total, listener);
             }
         }
     }
@@ -189,6 +191,74 @@ public final class PresetInstallation {
     }
 
     /**
+     * Installs one file from a preset folder next to this one when one holds it, and downloads it otherwise.
+     *
+     * @return the installed bytes after the file
+     */
+    private long installFile(@NotNull PresetFile file, long installedBefore, long total, @NotNull ProgressListener listener) throws IOException {
+        Path copy = this.findCopy(file);
+
+        if (copy != null && this.isCopyValid(copy, file, installedBefore, total, listener)) {
+            Path target = this.folder.resolve(file.getName());
+
+            try {
+                Files.createLink(target, copy);
+            } catch (IOException | UnsupportedOperationException exception) {
+                Path partial = this.folder.resolve(file.getName() + PARTIAL_SUFFIX);
+
+                Files.copy(copy, partial, StandardCopyOption.REPLACE_EXISTING);
+                Files.move(partial, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            return installedBefore + file.getSize();
+        }
+
+        return this.download(file, installedBefore, total, listener);
+    }
+
+    /**
+     * Finds the file in the preset folders next to this one.
+     *
+     * @return a file with the same name and size, or {@code null} when no other preset folder has one
+     */
+    private @Nullable Path findCopy(@NotNull PresetFile file) throws IOException {
+        Path own = this.folder.toAbsolutePath();
+        Path presets = own.getParent();
+
+        if (presets == null) {
+            return null;
+        }
+
+        try (DirectoryStream<Path> folders = Files.newDirectoryStream(presets, Files::isDirectory)) {
+            for (Path other : folders) {
+                Path candidate = other.resolve(file.getName());
+
+                if (!other.equals(own) && Files.isRegularFile(candidate) && Files.size(candidate) == file.getSize()) {
+                    return candidate;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Reads a copy of the file in another preset folder and checks its checksum.
+     *
+     * @return {@code true} if the copy has the file's checksum, {@code false} otherwise
+     */
+    private boolean isCopyValid(@NotNull Path copy, @NotNull PresetFile file, long installedBefore, long total, @NotNull ProgressListener listener) throws IOException {
+        MessageDigest digest = createDigest();
+        long read;
+
+        try (InputStream input = Files.newInputStream(copy)) {
+            read = this.transfer(input, null, file, digest, installedBefore, total, listener);
+        }
+
+        return read == file.getSize() && HexFormat.of().formatHex(digest.digest()).equals(file.getSha256());
+    }
+
+    /**
      * Downloads one file to its partial file, checks it and gives it its name.
      *
      * @return the installed bytes after the file
@@ -197,31 +267,11 @@ public final class PresetInstallation {
         Path target = this.folder.resolve(file.getName());
         Path partial = this.folder.resolve(file.getName() + PARTIAL_SUFFIX);
         MessageDigest digest = createDigest();
-        byte[] buffer = new byte[BUFFER_SIZE];
-        long written = 0;
+        long written;
         boolean complete = false;
 
         try (InputStream input = this.open(file.getAddress()); OutputStream output = Files.newOutputStream(partial)) {
-            int read = input.read(buffer);
-
-            while (read >= 0) {
-                if (this.cancelled || Thread.currentThread().isInterrupted()) {
-                    throw new CancellationException(Exceptions.format("The installation of {0} was cancelled", this.preset.getId()));
-                }
-
-                written += read;
-
-                if (written > file.getSize()) {
-                    throw Exceptions.newIOException("{0} is larger than {1} bytes", file.getName(), file.getSize());
-                }
-
-                digest.update(buffer, 0, read);
-                output.write(buffer, 0, read);
-                listener.onProgress(installedBefore + written, total);
-
-                read = input.read(buffer);
-            }
-
+            written  = this.transfer(input, output, file, digest, installedBefore, total, listener);
             complete = true;
         } finally {
             if (!complete) {
@@ -241,6 +291,42 @@ public final class PresetInstallation {
         Files.move(partial, target, StandardCopyOption.REPLACE_EXISTING);
 
         return installedBefore + written;
+    }
+
+    /**
+     * Reads the bytes of a file into the digest and the output, reporting the progress.
+     *
+     * @return the number of bytes read
+     */
+    private long transfer(@NotNull InputStream input, @Nullable OutputStream output, @NotNull PresetFile file, @NotNull MessageDigest digest,
+                          long installedBefore, long total, @NotNull ProgressListener listener) throws IOException {
+        byte[] buffer = new byte[BUFFER_SIZE];
+        long written = 0;
+        int read = input.read(buffer);
+
+        while (read >= 0) {
+            if (this.cancelled || Thread.currentThread().isInterrupted()) {
+                throw new CancellationException(Exceptions.format("The installation of {0} was cancelled", this.preset.getId()));
+            }
+
+            written += read;
+
+            if (written > file.getSize()) {
+                throw Exceptions.newIOException("{0} is larger than {1} bytes", file.getName(), file.getSize());
+            }
+
+            digest.update(buffer, 0, read);
+
+            if (output != null) {
+                output.write(buffer, 0, read);
+            }
+
+            listener.onProgress(installedBefore + written, total);
+
+            read = input.read(buffer);
+        }
+
+        return written;
     }
 
     private @NotNull InputStream open(@NotNull URI address) throws IOException {

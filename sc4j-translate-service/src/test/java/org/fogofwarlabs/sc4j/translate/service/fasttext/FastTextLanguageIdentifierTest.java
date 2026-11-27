@@ -27,7 +27,7 @@ final class FastTextLanguageIdentifierTest {
     void predict_should_match_the_reference_labels_and_probabilities() throws IOException {
         List<Map<?, ?>> cases = TranslationTestResources.readFixture(TranslationTestResources.FASTTEXT_FIXTURE);
 
-        try (FastTextLanguageIdentifier identifier = FastTextLanguageIdentifier.open(TranslationTestResources.requirePresetFolder(NllbPreset.ID)
+        try (FastTextLanguageIdentifier identifier = FastTextLanguageIdentifier.open(TranslationTestResources.requirePresetFolder(NllbPreset.DISTILLED_600M.getId())
                                                                                                              .resolve(NllbPreset.IDENTIFIER_FILE))) {
             for (Map<?, ?> fixture : cases) {
                 String text = (String) fixture.get("text");

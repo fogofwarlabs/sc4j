@@ -15,19 +15,14 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Describes the NLLB-200 distilled 600M preset: the int8 CTranslate2 conversion of {@code facebook/nllb-200-distilled-600M} from
- * {@code fogofwarlabs/nllb-200-distilled-600M-ct2-int8}, the SentencePiece model of {@code facebook/nllb-200-distilled-600M} and the lid218e
- * fastText language identifier of {@code facebook/fasttext-language-identification}, each at a pinned revision. It translates between the
- * 202 FLORES-200 languages of NLLB; the identifier's labels are the same codes.
+ * Describes an NLLB-200 preset: the int8 CTranslate2 conversion of an NLLB-200 model from the {@code fogofwarlabs} organization, the
+ * SentencePiece model of {@code facebook/nllb-200-distilled-600M}, which every NLLB-200 model shares, and the lid218e fastText language
+ * identifier of {@code facebook/fasttext-language-identification}, each at a pinned revision. It translates between the 202 FLORES-200
+ * languages of NLLB; the identifier's labels are the same codes.
  * <p>
  * The CTranslate2 files lie directly in the preset folder, which is the model folder of {@link CTranslate2SequenceModel}.
  */
 public final class NllbPreset implements TranslationPreset {
-    /**
-     * The id of the preset.
-     */
-    public static final @NotNull String ID = "nllb-200-distilled-600m";
-
     /**
      * The file name of the CTranslate2 model weights.
      */
@@ -53,30 +48,63 @@ public final class NllbPreset implements TranslationPreset {
      */
     public static final @NotNull String IDENTIFIER_FILE = "lid218e.bin";
 
-    private static final @NotNull String DISPLAY_NAME = "NLLB-200 distilled 600M";
     private static final @NotNull String LICENSE_NAME = "CC-BY-NC 4.0";
     private static final @NotNull URI LICENSE_ADDRESS = URI.create("https://creativecommons.org/licenses/by-nc/4.0/");
-    private static final @NotNull String MODEL_REVISION = "https://huggingface.co/fogofwarlabs/nllb-200-distilled-600M-ct2-int8/resolve/6790bbb31d215f6cbdc3155b06d90c4b22d90716/";
     private static final @NotNull String TOKENIZER_REVISION = "https://huggingface.co/facebook/nllb-200-distilled-600M/resolve/f8d333a098d19b4fd9a8b18f94170487ad3f821d/";
     private static final @NotNull String IDENTIFIER_REVISION =
             "https://huggingface.co/facebook/fasttext-language-identification/resolve/3af127d4124fc58b75666f3594bb5143b9757e78/";
-    private static final @NotNull List<@NotNull PresetFile> FILES = List.of(
-            new PresetFile(MODEL_FILE, URI.create(MODEL_REVISION + MODEL_FILE), 622_596_105L,
+    private static final @NotNull PresetFile TOKENIZER = new PresetFile(TOKENIZER_FILE, URI.create(TOKENIZER_REVISION + TOKENIZER_FILE), 4_852_054L,
+                                                                        "14bb8dfb35c0ffdea7bc01e56cea38b9e3d5efcdcb9c251d6b40538e1aab555a");
+    private static final @NotNull PresetFile IDENTIFIER = new PresetFile(IDENTIFIER_FILE, URI.create(IDENTIFIER_REVISION + "model.bin"),
+                                                                         1_176_355_829L,
+                                                                         "8ded5749a2ad79ae9ab7c9190c7c8b97ff20d54ad8b9527ffa50107238fc7f6a");
+    private static final @NotNull String DISTILLED_600M_REVISION =
+            "https://huggingface.co/fogofwarlabs/nllb-200-distilled-600M-ct2-int8/resolve/6790bbb31d215f6cbdc3155b06d90c4b22d90716/";
+    private static final @NotNull String DISTILLED_1_3B_REVISION =
+            "https://huggingface.co/fogofwarlabs/nllb-200-distilled-1.3B-ct2-int8/resolve/dd671f31f2893507bccd0b2a829fc8fa610f0cde/";
+
+    /**
+     * The NLLB-200 distilled 600M preset.
+     */
+    public static final @NotNull NllbPreset DISTILLED_600M = new NllbPreset(
+            "nllb-200-distilled-600m", "NLLB-200 distilled 600M",
+            new PresetFile(MODEL_FILE, URI.create(DISTILLED_600M_REVISION + MODEL_FILE), 622_596_105L,
                            "398726640cc2a02cc6a35277fa3cf2159ce8a1a66b48aa1b6c8837a47e3dd00c"),
-            new PresetFile(CONFIG_FILE, URI.create(MODEL_REVISION + CONFIG_FILE), 233L,
+            new PresetFile(CONFIG_FILE, URI.create(DISTILLED_600M_REVISION + CONFIG_FILE), 233L,
                            "72901fbd8abd89fb5cf4a388f26fc681f5c4c58a1e1a88b30b879f107270e7ee"),
-            new PresetFile(VOCABULARY_FILE, URI.create(MODEL_REVISION + VOCABULARY_FILE), 6_177_383L,
-                           "768aa4170693765cb4c62fc485ea4fd954cd3e5a44bc645d11d83f41f2393776"),
-            new PresetFile(TOKENIZER_FILE, URI.create(TOKENIZER_REVISION + TOKENIZER_FILE), 4_852_054L,
-                           "14bb8dfb35c0ffdea7bc01e56cea38b9e3d5efcdcb9c251d6b40538e1aab555a"),
-            new PresetFile(IDENTIFIER_FILE, URI.create(IDENTIFIER_REVISION + "model.bin"), 1_176_355_829L,
-                           "8ded5749a2ad79ae9ab7c9190c7c8b97ff20d54ad8b9527ffa50107238fc7f6a")
-    );
+            new PresetFile(VOCABULARY_FILE, URI.create(DISTILLED_600M_REVISION + VOCABULARY_FILE), 6_177_383L,
+                           "768aa4170693765cb4c62fc485ea4fd954cd3e5a44bc645d11d83f41f2393776"));
+
+    /**
+     * The NLLB-200 distilled 1.3B preset.
+     */
+    public static final @NotNull NllbPreset DISTILLED_1_3B = new NllbPreset(
+            "nllb-200-distilled-1.3b", "NLLB-200 distilled 1.3B",
+            new PresetFile(MODEL_FILE, URI.create(DISTILLED_1_3B_REVISION + MODEL_FILE), 1_381_827_201L,
+                           "d02c1ceb6d79dcd3ac06583d4f84060a49d248939ad6f7b00d60853b09c18702"),
+            new PresetFile(CONFIG_FILE, URI.create(DISTILLED_1_3B_REVISION + CONFIG_FILE), 233L,
+                           "72901fbd8abd89fb5cf4a388f26fc681f5c4c58a1e1a88b30b879f107270e7ee"),
+            new PresetFile(VOCABULARY_FILE, URI.create(DISTILLED_1_3B_REVISION + VOCABULARY_FILE), 6_177_383L,
+                           "768aa4170693765cb4c62fc485ea4fd954cd3e5a44bc645d11d83f41f2393776"));
+
+    private final @NotNull String id;
+    private final @NotNull String displayName;
+    private final @NotNull List<@NotNull PresetFile> files;
 
     /**
      * Creates a {@link NllbPreset} instance.
+     *
+     * @param id          the id of the preset
+     * @param displayName the name shown to the user
+     * @param model       the CTranslate2 model weights
+     * @param config      the CTranslate2 model configuration
+     * @param vocabulary  the CTranslate2 vocabulary
      */
-    public NllbPreset() {
+    private NllbPreset(@NotNull String id, @NotNull String displayName, @NotNull PresetFile model, @NotNull PresetFile config,
+                       @NotNull PresetFile vocabulary) {
+        this.id          = id;
+        this.displayName = displayName;
+        this.files       = List.of(model, config, vocabulary, TOKENIZER, IDENTIFIER);
     }
 
     /**
@@ -84,7 +112,7 @@ public final class NllbPreset implements TranslationPreset {
      */
     @Override
     public @NotNull String getId() {
-        return ID;
+        return this.id;
     }
 
     /**
@@ -92,7 +120,7 @@ public final class NllbPreset implements TranslationPreset {
      */
     @Override
     public @NotNull String getDisplayName() {
-        return DISPLAY_NAME;
+        return this.displayName;
     }
 
     /**
@@ -116,7 +144,7 @@ public final class NllbPreset implements TranslationPreset {
      */
     @Override
     public @NotNull List<@NotNull PresetFile> getFiles() {
-        return FILES;
+        return this.files;
     }
 
     /**
@@ -165,7 +193,7 @@ public final class NllbPreset implements TranslationPreset {
         try {
             tokenizer = SentencePieceTokenizer.read(folder.resolve(TOKENIZER_FILE));
         } catch (IOException exception) {
-            throw new ModelException(Exceptions.format("Cannot read the tokenizer of {0}: {1}", ID, exception.getMessage()), exception);
+            throw new ModelException(Exceptions.format("Cannot read the tokenizer of {0}: {1}", this.id, exception.getMessage()), exception);
         }
 
         return new NllbTranslationModel(tokenizer, CTranslate2SequenceModel.open(folder));
@@ -183,7 +211,7 @@ public final class NllbPreset implements TranslationPreset {
         try {
             return new NllbLanguageIdentifier(FastTextLanguageIdentifier.open(folder.resolve(IDENTIFIER_FILE)));
         } catch (IOException exception) {
-            throw new ModelException(Exceptions.format("Cannot read the language identifier of {0}: {1}", ID, exception.getMessage()), exception);
+            throw new ModelException(Exceptions.format("Cannot read the language identifier of {0}: {1}", this.id, exception.getMessage()), exception);
         }
     }
 }

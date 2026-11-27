@@ -313,7 +313,7 @@ final class LauncherSessionTest {
         // The account's install lists no node and has learned none.
         ClientSetup setup = ClientSetup.of(account, List.of(), null);
         LauncherSession session = LauncherSession.start(account, ClientBeaconLink.createWithoutPeer(setup, LauncherSession.createIdentity("1.0.0")),
-                                                        Runnable::run);
+                                                        RuntimeFirewall.UNCHECKED, Runnable::run);
 
         try {
             LauncherSessionScenario.await(() -> session.getSelf().getFailure() == SessionFailure.NO_NODES, "the session finds no node");

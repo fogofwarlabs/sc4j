@@ -78,6 +78,8 @@ final class ModDetailViewTest {
     private static final @NotNull String NOTICE_SELECTOR = ".notice";
     private static final @NotNull String UPDATE_RELEASE = "v1.1.0";
     private static final double CENTER_TOLERANCE = 1;
+    private static final @NotNull Runnable NO_CHANGE = () -> {
+    };
 
     /**
      * Receives no action; the test only lays the view out.
@@ -174,7 +176,7 @@ final class ModDetailViewTest {
         LauncherFxScenario.run(() -> {
             SimpleBooleanProperty running = new SimpleBooleanProperty(true);
             ModDetailView view = new ModDetailView(entry, null, SettingsForm.create(manifest.getSettings(), Map.of()), texts, new ModArt(1),
-                                                   running, new NoActions());
+                                                   running, NO_CHANGE, new NoActions());
             Region root = view.getRoot();
             Scene scene = new Scene(root, SCENE_WIDTH, SCENE_HEIGHT);
 
@@ -208,7 +210,7 @@ final class ModDetailViewTest {
 
         LauncherFxScenario.run(() -> {
             ModDetailView view = new ModDetailView(entry, UPDATE_RELEASE, SettingsForm.create(manifest.getSettings(), Map.of()), texts,
-                                                   new ModArt(1), new SimpleBooleanProperty(false), new NoActions());
+                                                   new ModArt(1), new SimpleBooleanProperty(false), NO_CHANGE, new NoActions());
             Region root = view.getRoot();
             Scene scene = new Scene(root, SCENE_WIDTH, SCENE_HEIGHT);
 
@@ -239,7 +241,7 @@ final class ModDetailViewTest {
 
                 SettingsForm form = SettingsForm.create(manifest.getSettings(), Map.of());
                 ModDetailView view = new ModDetailView(entry, null, form, LauncherTexts.of(UiLanguage.ENGLISH), new ModArt(1),
-                                                       new SimpleBooleanProperty(false), new NoActions());
+                                                       new SimpleBooleanProperty(false), NO_CHANGE, new NoActions());
                 Region root = view.getRoot();
                 Scene scene = new Scene(root, SCENE_WIDTH, SCENE_HEIGHT);
 

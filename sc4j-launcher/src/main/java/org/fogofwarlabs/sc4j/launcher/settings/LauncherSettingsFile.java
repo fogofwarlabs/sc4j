@@ -29,12 +29,14 @@ import java.util.Map;
  *   "updateRepository": "owner/name",
  *   "skippedVersion": "1.2.0",
  *   "chatSoundMuted": true,
- *   "translationPreset": "nllb-200-distilled-600m"
+ *   "translationPreset": "nllb-200-distilled-600m",
+ *   "highPerformanceGpu": false
  * }
  *}
  * Every field but {@code format} is optional: without {@code language} the launcher follows the operating system's language, without
  * {@code updateRepository} it updates from {@link LauncherSettings#DEFAULT_UPDATE_REPOSITORY}, without {@code skippedVersion} it skips
- * no version, without {@code chatSoundMuted} the chat sound is on, and without {@code translationPreset} the chat is not translated.
+ * no version, without {@code chatSoundMuted} the chat sound is on, without {@code translationPreset} the chat is not translated, and without
+ * {@code highPerformanceGpu} games run on the high-performance GPU.
  */
 public final class LauncherSettingsFile {
     /**
@@ -55,6 +57,7 @@ public final class LauncherSettingsFile {
     private static final @NotNull String SKIPPED_VERSION_FIELD = "skippedVersion";
     private static final @NotNull String CHAT_SOUND_MUTED_FIELD = "chatSoundMuted";
     private static final @NotNull String TRANSLATION_PRESET_FIELD = "translationPreset";
+    private static final @NotNull String HIGH_PERFORMANCE_GPU_FIELD = "highPerformanceGpu";
 
     private static @Nullable UiLanguage readLanguage(@NotNull Path path, @Nullable Object value) throws IOException {
         if (value == null) {
@@ -156,9 +159,15 @@ public final class LauncherSettingsFile {
             throw Exceptions.newIOException("Invalid launcher settings file {0}: translationPreset must be a preset id", this.path);
         }
 
+        Object highPerformanceGpu = object.get(HIGH_PERFORMANCE_GPU_FIELD);
+
+        if (highPerformanceGpu != null && !(highPerformanceGpu instanceof Boolean)) {
+            throw Exceptions.newIOException("Invalid launcher settings file {0}: highPerformanceGpu must be true or false", this.path);
+        }
+
         return new LauncherSettings(readLanguage(this.path, object.get(LANGUAGE_FIELD)), (String) lastMod,
                                     readWindow(this.path, object.get(WINDOW_FIELD)), (String) updateRepository, (String) skippedVersion,
-                                    Boolean.TRUE.equals(chatSoundMuted), (String) translationPreset);
+                                    Boolean.TRUE.equals(chatSoundMuted), (String) translationPreset, !Boolean.FALSE.equals(highPerformanceGpu));
     }
 
     /**
@@ -207,6 +216,10 @@ public final class LauncherSettingsFile {
 
         if (settings.getTranslationPreset() != null) {
             object.put(TRANSLATION_PRESET_FIELD, settings.getTranslationPreset());
+        }
+
+        if (!settings.isHighPerformanceGpu()) {
+            object.put(HIGH_PERFORMANCE_GPU_FIELD, false);
         }
 
         AtomicFileUtils.write(this.path, JsonWriterUtils.write(object).getBytes(StandardCharsets.UTF_8));

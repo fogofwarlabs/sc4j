@@ -6,6 +6,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import org.fogofwarlabs.sc4j.base.log.Logger;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModCatalog;
 import org.fogofwarlabs.sc4j.launcher.catalog.ModEntry;
 import org.fogofwarlabs.sc4j.launcher.form.FormField;
@@ -26,11 +27,15 @@ import java.util.Map;
 
 /**
  * Shows the Mods screen: the mod list on the left and the selected mod's details on the right. The settings form of each
- * mod is created once from its saved values and kept while the screen lives, so edits survive switching between mods. The field of a
- * shared setting is created once per shared name and used by the forms of every mod that declares it. The details show the newer release
- * of a mod when the launcher has found one ({@link #setUpdates}).
+ * mod is created once from its saved values and kept while the screen lives, so edits survive switching between mods. Every change of a
+ * form, invalid values and a reset to the defaults included, is saved at once to the mod's settings value file and the shared settings
+ * value file ({@link SettingValueStore#of}); a failed save is logged and the form keeps the values. The field of a shared setting is created
+ * once per shared name and used by the forms of every mod that declares it. The details show the newer release of a mod when the launcher
+ * has found one ({@link #setUpdates}).
  */
 public final class ModsScreen {
+    private static final @NotNull Logger LOGGER = Logger.of(ModsScreen.class);
+
     /**
      * Receives the actions of the Mods screen.
      */
@@ -164,9 +169,28 @@ public final class ModsScreen {
         }
     }
 
+    /**
+     * Saves the values of a mod's settings form, as the user entered them.
+     */
+    private void saveForm(@NotNull ModEntry entry) {
+        ModManifest manifest = entry.getManifest();
+        SettingsForm form = this.forms.get(entry.getJarName());
+
+        if (manifest == null || form == null) {
+            return;
+        }
+
+        try {
+            form.save(SettingValueStore.of(this.install, manifest));
+        } catch (IOException | SettingValuesException exception) {
+            LOGGER.warning("The settings of {0} cannot be saved: {1}", manifest.getId(), exception.getMessage());
+        }
+    }
+
     private void showDetail(@NotNull ModEntry entry) {
         SettingsForm form = this.getForm(entry);
-        ModDetailView view = new ModDetailView(entry, this.updates.get(entry.getJarName()), form, this.texts, this.art, this.running, this.actions);
+        ModDetailView view = new ModDetailView(entry, this.updates.get(entry.getJarName()), form, this.texts, this.art, this.running,
+                                               () -> this.saveForm(entry), this.actions);
 
         this.shown = entry;
         this.detailArea.getChildren().setAll(view.getRoot());

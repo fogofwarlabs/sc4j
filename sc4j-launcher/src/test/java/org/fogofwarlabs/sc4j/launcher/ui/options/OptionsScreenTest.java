@@ -4,10 +4,7 @@ import javafx.geometry.Bounds;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Hyperlink;
-import javafx.scene.control.Label;
+import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Region;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.file.ConfiguredNode;
@@ -46,7 +43,8 @@ import java.util.function.Consumer;
  * right of the header controls as above and below them and on every side of the peer footer; Peers shows and hides the list and keeps the
  * header heights, and Ping asks for the listed peers and marks every row as being pinged until the results come. Under the launcher panel the
  * chat translation panel lists the offered presets with their state, Download shows the licence before anything is downloaded, and the
- * model choice reports the chosen preset.
+ * model choice reports the chosen preset. The high-performance GPU switch shows only where the operating system has the graphics preference,
+ * under the sound switch, and reports its changes.
  */
 final class OptionsScreenTest {
     private static final @NotNull String VERSION = "1.1.0";
@@ -64,26 +62,30 @@ final class OptionsScreenTest {
     private static final @NotNull String PANEL_TITLE_SELECTOR = ".panel-title";
     private static final @NotNull String FORM_SELECTOR = ".form";
     private static final @NotNull String HEADER_SELECTOR = ".panel-header";
+    private static final @NotNull String CHECK_BOX_SELECTOR = ".check-box";
     private static final int NODE_PORT = 7455;
     private static final @NotNull List<@NotNull ConfiguredNode> NODES = List.of(ConfiguredNode.of("node.example.org", NODE_PORT, null),
                                                                                 ConfiguredNode.of("192.0.2.10", NODE_PORT, null),
                                                                                 ConfiguredNode.of("seed.example.net", NODE_PORT + 1, null));
 
     /**
-     * Records the pinged peers, holding their results back, the chosen translation presets and the opened addresses.
+     * Records the pinged peers, holding their results back, the chosen translation presets, the high-performance GPU switch changes and the
+     * opened addresses.
      */
     private static final class PingActions implements OptionsScreen.Actions {
         private final @NotNull List<@NotNull ConfiguredNode> pinged;
         private final @NotNull List<@Nullable String> chosenPresets;
+        private final @NotNull List<@NotNull Boolean> highPerformanceGpuChanges;
         private final @NotNull List<@NotNull String> opened;
 
         /**
          * Creates a {@link PingActions} instance.
          */
         private PingActions() {
-            this.pinged        = new ArrayList<>();
-            this.chosenPresets = new ArrayList<>();
-            this.opened        = new ArrayList<>();
+            this.pinged                    = new ArrayList<>();
+            this.chosenPresets             = new ArrayList<>();
+            this.highPerformanceGpuChanges = new ArrayList<>();
+            this.opened                    = new ArrayList<>();
         }
 
         @Override
@@ -92,6 +94,11 @@ final class OptionsScreenTest {
 
         @Override
         public void onChatSoundMutedChanged(boolean muted) {
+        }
+
+        @Override
+        public void onHighPerformanceGpuChanged(boolean highPerformanceGpu) {
+            this.highPerformanceGpuChanges.add(highPerformanceGpu);
         }
 
         @Override
@@ -210,7 +217,7 @@ final class OptionsScreenTest {
         InstallLayout install = InstallLayout.of(directory);
         LauncherTranslation translation = new LauncherTranslation(TranslationStorage.of(install.getUserDataDirectory()), presets);
 
-        return new OptionsScreen(shell, texts, null, false, view, NODES, null, new LauncherNodeRunner(install), translation, actions);
+        return new OptionsScreen(shell, texts, null, false, true, false, view, NODES, null, new LauncherNodeRunner(install), translation, actions);
     }
 
     private static @NotNull ComboBox<?> findModelChoice(@NotNull Node root, @NotNull LauncherTexts texts) {
@@ -322,6 +329,36 @@ final class OptionsScreenTest {
     }
 
     @Test
+    void high_performance_gpu_switch_shows_where_the_graphics_preference_exists_and_reports_changes(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
+        InstallLayout install = InstallLayout.of(directory);
+        LauncherTranslation translation = new LauncherTranslation(TranslationStorage.of(install.getUserDataDirectory()), List.of());
+
+        LauncherFxScenario.run(() -> {
+            PingActions actions = new PingActions();
+            UpdateView view = createUpdateView(texts);
+            GridPane root = new OptionsScreen(createShell(texts, directory), texts, null, false, true, true, view, NODES, null,
+                                              new LauncherNodeRunner(install), translation, actions).getRoot();
+            GridPane hidden = createScreen(texts, directory, new PingActions()).getRoot();
+            List<Node> fields = ((Parent) root.lookup(FORM_SELECTOR)).getChildrenUnmodifiable();
+            CheckBox gpu = (CheckBox) fields.get(3).lookup(CHECK_BOX_SELECTOR);
+
+            Assertions.assertEquals(0, countShownLabels(hidden, texts.get("settings.graphics")), "no switch without the graphics preference");
+            Assertions.assertEquals(List.of(view.getVersionField(), fields.get(1), fields.get(2), fields.get(3), view.getSourceField()), fields);
+            Assertions.assertNotNull(gpu);
+            Assertions.assertEquals(texts.get("settings.gpu.high.performance"), gpu.getText());
+            Assertions.assertTrue(gpu.isSelected(), "the switch shows the setting");
+
+            gpu.fire();
+            gpu.fire();
+
+            Assertions.assertEquals(List.of(false, true), actions.highPerformanceGpuChanges);
+
+            return null;
+        });
+    }
+
+    @Test
     void translation_panel_shows_the_licence_before_a_download_and_reports_the_chosen_model(@TempDir @NotNull Path directory) throws Exception {
         LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
         TranslationPreset preset = TranslationPresetUtils.getPresets().getFirst();
@@ -338,9 +375,9 @@ final class OptionsScreenTest {
             root.applyCss();
             root.layout();
 
-            // The preset is listed with its state, and only Download is offered for a preset that is not installed.
+            // Each preset is listed with its state, and only Download is offered for a preset that is not installed.
             Assertions.assertEquals(1, countShownLabels(root, preset.getDisplayName()));
-            Assertions.assertEquals(1, countShownLabels(root, texts.get("translation.missing")));
+            Assertions.assertEquals(TranslationPresetUtils.getPresets().size(), countShownLabels(root, texts.get("translation.missing")));
             Assertions.assertTrue(root.lookupAll(".button").stream()
                                       .noneMatch(node -> node instanceof Button button && texts.get("translation.delete").equals(button.getText()) &&
                                                          LauncherFxScenario.isShown(button)), "Delete is offered for an installed preset only");

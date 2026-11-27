@@ -17,6 +17,7 @@ import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.*;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChannelChat;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntry;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind;
+import org.fogofwarlabs.sc4j.launcher.launch.RuntimeCommandLine;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.fogofwarlabs.sc4j.manifest.version.EngineVersion;
 import org.fogofwarlabs.sc4j.manifest.version.ModVersion;
@@ -141,7 +142,8 @@ public final class LauncherSession implements LauncherSessionView {
 
     /**
      * Logs a launcher in: starts the session of an account of an install, with the install's seeds (the user's node list once saved, else the
-     * shipped seed list) and its shared peers file, without an embedded peer.
+     * shipped seed list) and its shared peers file, without an embedded peer. The firewall is also checked for the Java program the launcher
+     * starts games with ({@link RuntimeFirewall}).
      *
      * @param install         the install
      * @param account         the account
@@ -162,7 +164,10 @@ public final class LauncherSession implements LauncherSessionView {
 
         ClientSetup setup = ClientSetup.of(account, seeds, install.getBeaconLinkDirectory().resolve(PeerStore.FILE_NAME));
 
-        return start(account, ClientBeaconLink.createWithoutPeer(setup, createIdentity(launcherVersion)), publisher);
+        RuntimeFirewall firewall = RuntimeFirewall.create(RuntimeCommandLine.getJavaProgram(RuntimeCommandLine.getLauncherJavaHome(),
+                                                                                            RuntimeCommandLine.isWindows()));
+
+        return start(account, ClientBeaconLink.createWithoutPeer(setup, createIdentity(launcherVersion)), firewall, publisher);
     }
 
     /**
@@ -171,13 +176,16 @@ public final class LauncherSession implements LauncherSessionView {
      *
      * @param account   the account
      * @param link      the account's Beacon.Link, whose sessions run no embedded peer; the session closes it
+     * @param firewall  the firewall check of the Java program the launcher starts games with, which the session starts
      * @param publisher runs the publication of new views: the JavaFX thread in the launcher
      * @return the started session
      */
-    public static @NotNull LauncherSession start(@NotNull Account account, @NotNull ClientBeaconLink link, @NotNull Executor publisher) {
-        LauncherSession session = new LauncherSession(account, link, publisher);
+    public static @NotNull LauncherSession start(@NotNull Account account, @NotNull ClientBeaconLink link, @NotNull RuntimeFirewall firewall,
+                                                 @NotNull Executor publisher) {
+        LauncherSession session = new LauncherSession(account, link, firewall, publisher);
 
         session.thread.start();
+        firewall.check();
 
         return session;
     }
@@ -233,6 +241,7 @@ public final class LauncherSession implements LauncherSessionView {
 
     private final @NotNull Account account;
     private final @NotNull ClientBeaconLink link;
+    private final @NotNull RuntimeFirewall firewall;
     private final @NotNull Executor publisher;
     private final @NotNull FriendCode friendCode;
     private final @NotNull BlockingQueue<@NotNull Runnable> commands;
@@ -265,9 +274,11 @@ public final class LauncherSession implements LauncherSessionView {
     private volatile @Nullable Runnable listener;
     private volatile boolean closed;
 
-    private LauncherSession(@NotNull Account account, @NotNull ClientBeaconLink link, @NotNull Executor publisher) {
+    private LauncherSession(@NotNull Account account, @NotNull ClientBeaconLink link, @NotNull RuntimeFirewall firewall,
+                            @NotNull Executor publisher) {
         this.account    = account;
         this.link       = link;
+        this.firewall   = firewall;
         this.publisher  = publisher;
         this.friendCode = FriendCode.of(account.getKey().getBytes());
         this.commands   = new LinkedBlockingQueue<>();
@@ -528,8 +539,9 @@ public final class LauncherSession implements LauncherSessionView {
     }
 
     /**
-     * Asks the user to allow connections that other computers start to the launcher, through the operating system's approval. Does nothing
-     * unless the firewall has no rule for the launcher or blocks it ({@link SelfView#getFirewall()}).
+     * Asks the user to allow connections that other computers start to the launcher and to the Java program it starts games with, through
+     * the operating system's approval: one request for each of them that the firewall has no rule for or blocks
+     * ({@link SelfView#getFirewall()}).
      */
     @Override
     public void requestFirewallAllow() {
@@ -539,6 +551,8 @@ public final class LauncherSession implements LauncherSessionView {
             if (opened != null) {
                 opened.requestFirewallAllow();
             }
+
+            this.firewall.requestAllow();
         });
     }
 
@@ -794,7 +808,8 @@ public final class LauncherSession implements LauncherSessionView {
     private @NotNull SelfView createSelf() {
         BeaconLinkClient opened = this.connection;
         CommunitySession openedCommunity = this.community;
-        FirewallState firewall = opened == null ? this.lastSelf.getFirewall() : opened.getFirewallState();
+        FirewallState firewall = opened == null ? this.lastSelf.getFirewall()
+                                                : RuntimeFirewall.combine(opened.getFirewallState(), this.firewall.getState());
 
         if (opened == null || openedCommunity == null) {
             return new SelfView(SessionState.OFFLINE, this.status, this.awayText, 0, SessionFailure.NOT_STARTED, LinkConnectivity.UNKNOWN, firewall);

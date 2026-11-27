@@ -22,14 +22,14 @@ Every open launcher runs the computer's node, logged in or not. The first launch
 
 1. Launcher, Settings, Beacon.Link: "Help other players connect" on, UDP port (default 7455), Apply.
 2. Router: with port mapping on, nothing to do when the router opens the port (log line `port mapping by ...`); otherwise forward UDP (not TCP) 7455 to this PC and give the PC a fixed LAN address (DHCP reservation).
-3. Windows Defender Firewall: the launcher reads its inbound rules for its own executable; when none allows it or one blocks it (a cancelled first-run Windows prompt adds block rules), a notice offers Allow, which after Windows asks for approval adds inbound UDP and TCP rules named `SC4J (<program>)` for every profile and removes the program's block rules.
+3. Windows Defender Firewall: the launcher reads its inbound rules for its own executable and for the Java runtime it starts games with (checked once when both are one program, as in a development install); when none allows one of them or one blocks it (a cancelled first-run Windows prompt adds block rules), a notice offers Allow, which after Windows asks for approval, once for each such program, adds inbound UDP and TCP rules named `SC4J (<program>)` for every profile and removes the program's block rules.
 4. Keep the launcher running; no game needs to be open.
 
 **The panel** shows the network state ("Connected", "No peer answers", "No peers"), "External access OK", "External access not checked" or "No external access (UDP 7455)", the local and external IP addresses and the peer counts. "External access OK" needs a passed self-test or a stranger's hello; the very first seed shows "not checked" until another peer connects. "Node runs in another launcher" means another launcher of the install holds the node.
 
 **Port mapping log lines** (launcher and game logs): `port mapping by <protocol> at <router>: <external address> -> :<port>/UDP, lease <time>`; `port mapping not available (PCP: ..., NAT-PMP: ..., UPnP: ...)`; `port mapping by <protocol> at <router> kept: <external address> matches observed`; `port mapping at <router> skipped: mapped address <a> differs from observed <b> (another NAT outside, or not on the route)` or `... is not public (another NAT outside)`; `port mapping by <protocol> at <router> renewed`, `released` or `lost: ...`. A `network connectivity DIRECT` line ends with `inbound needs the firewall to allow SC4J`.
 
-**Firewall log lines** (launcher and game logs, Windows): `firewall allows <program>`, `firewall has no inbound rule for <program>` or `firewall blocks <program>`, where `<program>` is the process's executable (`SC4J.exe` for the launcher, the Java runtime for a game).
+**Firewall log lines** (launcher and game logs, Windows): `firewall allows <program>`, `firewall has no inbound rule for <program>` or `firewall blocks <program>`, where `<program>` is the process's executable (`SC4J.exe` for the launcher, the Java runtime for a game); the launcher log also has `LAUNCHER: firewall ...` lines for the Java runtime it starts games with.
 
 **No external access**: check the port mapping log lines, the forward and the firewall rule. An external IP in 100.64.0.0/10, or one that differs from the router's WAN address, is behind carrier-grade NAT: this PC cannot be a full peer. With a dynamic IP, use a dynamic DNS name as the seed address.
 

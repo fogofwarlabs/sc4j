@@ -22,7 +22,7 @@ final class SentencePieceTokenizerTest {
 
     @Test
     void encode_ids_should_match_the_reference_ids_and_decode_should_match_the_reference_texts() throws IOException {
-        SentencePieceTokenizer tokenizer = SentencePieceTokenizer.read(TranslationTestResources.requirePresetFolder(NllbPreset.ID)
+        SentencePieceTokenizer tokenizer = SentencePieceTokenizer.read(TranslationTestResources.requirePresetFolder(NllbPreset.DISTILLED_600M.getId())
                                                                                                .resolve(NllbPreset.TOKENIZER_FILE));
         List<Map<?, ?>> cases = TranslationTestResources.readFixture(TranslationTestResources.SENTENCEPIECE_FIXTURE);
 

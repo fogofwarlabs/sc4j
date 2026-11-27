@@ -153,7 +153,7 @@ public final class LauncherSessionScenario implements AutoCloseable {
         ClientBeaconLink link = new ClientBeaconLink(this.createSetup(account), LauncherSession.createIdentity(LAUNCHER_VERSION),
                                                      createClientConfiguration(), null, new InetSocketAddress(LOOPBACK, 0), ProtocolClock.SYSTEM);
 
-        return LauncherSession.start(account, link, publisher);
+        return LauncherSession.start(account, link, RuntimeFirewall.UNCHECKED, publisher);
     }
 
     /**

@@ -131,6 +131,47 @@ final class PresetInstallationTest {
     }
 
     @Test
+    void install_should_take_a_file_that_another_preset_folder_holds_instead_of_downloading_it() throws IOException {
+        byte[] shared = "shared file".getBytes(StandardCharsets.UTF_8);
+        PresetFile file = this.serve("shared.bin", shared, shared);
+        PresetInstallation first = this.createInstallation(List.of(file));
+
+        first.install((installed, total) -> {
+        });
+
+        PresetInstallation second = new PresetInstallation(first.getPreset(), first.getFolder().resolveSibling("other"));
+        List<long[]> progress = new ArrayList<>();
+
+        second.install((installed, total) -> progress.add(new long[]{installed, total}));
+
+        Assertions.assertTrue(second.isInstalled());
+        Assertions.assertArrayEquals(shared, Files.readAllBytes(second.getFolder().resolve("shared.bin")));
+        Assertions.assertArrayEquals(new long[]{shared.length, shared.length}, progress.getLast());
+        Assertions.assertEquals(1, this.requests.get(), "the file of the other preset folder is not downloaded again");
+
+        first.delete();
+
+        Assertions.assertArrayEquals(shared, Files.readAllBytes(second.getFolder().resolve("shared.bin")), "deleting one preset keeps the other's file");
+    }
+
+    @Test
+    void install_should_download_a_file_whose_copy_in_another_preset_folder_does_not_match_its_checksum() throws IOException {
+        byte[] expected = "expected".getBytes(StandardCharsets.UTF_8);
+        byte[] changed = "changed!".getBytes(StandardCharsets.UTF_8);
+        PresetInstallation installation = this.createInstallation(List.of(this.serve("model.bin", expected, expected)));
+        Path other = installation.getFolder().resolveSibling("other");
+
+        Files.createDirectories(other);
+        Files.write(other.resolve("model.bin"), changed);
+
+        installation.install((installed, total) -> {
+        });
+
+        Assertions.assertArrayEquals(expected, Files.readAllBytes(installation.getFolder().resolve("model.bin")));
+        Assertions.assertEquals(1, this.requests.get());
+    }
+
+    @Test
     void delete_should_remove_the_files_and_the_empty_folder() throws IOException {
         byte[] contents = "contents".getBytes(StandardCharsets.UTF_8);
         PresetInstallation installation = this.createInstallation(List.of(this.serve("model.bin", contents, contents)));

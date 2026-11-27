@@ -203,9 +203,9 @@ final class RuntimeSessionTest {
         Assertions.assertEquals("UNAVAILABLE", Files.readString(translationFile));
         Assertions.assertTrue(Files.readString(logFile).contains("TRANSLATION: unknown preset unknown-preset"));
 
-        Assertions.assertEquals(ExitCode.SUCCESS, run(install, "--headless", "--translation-preset", NllbPreset.ID));
+        Assertions.assertEquals(ExitCode.SUCCESS, run(install, "--headless", "--translation-preset", NllbPreset.DISTILLED_600M.getId()));
         Assertions.assertEquals("UNAVAILABLE", Files.readString(translationFile), "a preset that is not installed translates nothing");
-        Assertions.assertTrue(Files.readString(logFile).contains("TRANSLATION: local preset " + NllbPreset.ID));
+        Assertions.assertTrue(Files.readString(logFile).contains("TRANSLATION: local preset " + NllbPreset.DISTILLED_600M.getId()));
     }
 
     @Test

@@ -14,14 +14,14 @@ import java.nio.file.Path;
 
 /**
  * Tests reading and writing the launcher settings file {@code userdata/launcher.json}, with the launcher version the player skipped, the
- * muted chat sound and the translation preset.
+ * muted chat sound, the translation preset and the high-performance GPU switch.
  */
 final class LauncherSettingsFileTest {
     @Test
     void write_and_read_should_keep_every_setting(@TempDir @NotNull Path directory) throws IOException {
         LauncherSettingsFile file = new LauncherSettingsFile(directory.resolve("userdata").resolve("launcher.json"));
         LauncherSettings settings = new LauncherSettings(UiLanguage.KOREAN, "my-mod.jar", new WindowState(-8, 40, 1280, 800, true), "owner/fork",
-                                                         "1.2.0", true, "nllb-200-distilled-600m");
+                                                         "1.2.0", true, "nllb-200-distilled-600m", false);
 
         file.write(settings);
 
@@ -44,6 +44,9 @@ final class LauncherSettingsFileTest {
         Assertions.assertEquals("nllb-200-distilled-600m", read.getTranslationPreset());
         Assertions.assertNull(read.withTranslationPreset(null).getTranslationPreset());
         Assertions.assertNull(LauncherSettings.DEFAULT.getTranslationPreset(), "the chat is not translated by default");
+        Assertions.assertFalse(read.isHighPerformanceGpu());
+        Assertions.assertTrue(read.withHighPerformanceGpu(true).isHighPerformanceGpu());
+        Assertions.assertTrue(LauncherSettings.DEFAULT.isHighPerformanceGpu(), "games run on the high-performance GPU by default");
     }
 
     @Test

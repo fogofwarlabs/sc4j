@@ -11,7 +11,7 @@ import java.util.List;
  * Lists the translation presets that SC4J offers for download and finds them by id.
  */
 public final class TranslationPresetUtils {
-    private static final @NotNull List<@NotNull TranslationPreset> PRESETS = List.of(new NllbPreset());
+    private static final @NotNull List<@NotNull TranslationPreset> PRESETS = List.of(NllbPreset.DISTILLED_600M, NllbPreset.DISTILLED_1_3B);
 
     /**
      * @return the offered presets in the order they are shown; unmodifiable
