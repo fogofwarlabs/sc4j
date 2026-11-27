@@ -48,6 +48,7 @@ import org.fogofwarlabs.sc4j.launcher.launch.RuntimeCommandLine;
 import org.fogofwarlabs.sc4j.launcher.launch.RuntimeListener;
 import org.fogofwarlabs.sc4j.launcher.launch.RuntimeProcess;
 import org.fogofwarlabs.sc4j.launcher.launch.RuntimeRun;
+import org.fogofwarlabs.sc4j.launcher.link.LauncherLinkAddress;
 import org.fogofwarlabs.sc4j.launcher.nodes.NodePingResult;
 import org.fogofwarlabs.sc4j.launcher.nodes.NodePinger;
 import org.fogofwarlabs.sc4j.launcher.peer.LauncherNodeRunner;
@@ -56,6 +57,7 @@ import org.fogofwarlabs.sc4j.launcher.session.LauncherSessionView;
 import org.fogofwarlabs.sc4j.launcher.settings.LauncherSettings;
 import org.fogofwarlabs.sc4j.launcher.settings.LauncherSettingsFile;
 import org.fogofwarlabs.sc4j.launcher.settings.WindowState;
+import org.fogofwarlabs.sc4j.launcher.translation.LauncherTranslation;
 import org.fogofwarlabs.sc4j.launcher.ui.accounts.LoginScreen;
 import org.fogofwarlabs.sc4j.launcher.ui.mods.ModArt;
 import org.fogofwarlabs.sc4j.launcher.ui.mods.ModReleaseDialogs;
@@ -63,10 +65,7 @@ import org.fogofwarlabs.sc4j.launcher.ui.mods.ModsScreen;
 import org.fogofwarlabs.sc4j.launcher.ui.options.OptionsScreen;
 import org.fogofwarlabs.sc4j.launcher.ui.options.UpdateView;
 import org.fogofwarlabs.sc4j.launcher.ui.run.RunScreen;
-import org.fogofwarlabs.sc4j.launcher.ui.session.AccountMenu;
-import org.fogofwarlabs.sc4j.launcher.ui.session.ChatAlerts;
-import org.fogofwarlabs.sc4j.launcher.ui.session.ChatScreen;
-import org.fogofwarlabs.sc4j.launcher.ui.session.Conversations;
+import org.fogofwarlabs.sc4j.launcher.ui.session.*;
 import org.fogofwarlabs.sc4j.launcher.update.LauncherRelease;
 import org.fogofwarlabs.sc4j.launcher.update.LauncherUpdater;
 import org.fogofwarlabs.sc4j.manifest.ModManifest;
@@ -103,7 +102,9 @@ import java.util.function.Function;
  * the Mods screen; the account and its menu are at the right end of the app bar, and the Chat screen shows the session's channels and
  * whispers; Whisper in the menu's Friends opens the friend's conversation there. The Chat entry of the navigation shows a dot while a line or
  * a whisper is unread ({@link Conversations#hasUnread()}), and a line or whisper that arrives in a conversation the user is not looking at
- * plays the chat sound unless the launcher settings mute it ({@link ChatAlerts}). The first time in a run that the session finds the network
+ * plays the chat sound unless the launcher settings mute it ({@link ChatAlerts}). While the preset chosen in the launcher settings is installed,
+ * the chat lines of other players are translated ({@link LauncherTranslation}, {@link ChatTranslations}) and a started runtime gets the
+ * preset's id. The first time in a run that the session finds the network
  * restricted ({@link LinkConnectivity#RESTRICTED}), a warning notice shows above every screen until the user closes it or the session finds
  * direct connections working ({@link LinkConnectivity#DIRECT}, {@link LinkConnectivity#OPEN}). While the firewall has no rule for the
  * launcher or blocks it ({@link FirewallState#NO_RULE}, {@link FirewallState#BLOCKED}), a warning notice offers Allow, which asks the user's
@@ -299,6 +300,8 @@ public final class LauncherWindow {
     private final @NotNull LauncherNodeRunner nodeRunner;
     private final @NotNull Function<@NotNull Account, @NotNull LauncherSessionView> openSession;
     private final @NotNull Runnable playChatSound;
+    private final @Nullable LauncherLinkAddress launcherLink;
+    private final @NotNull LauncherTranslation translation;
     private final @NotNull LauncherSettingsFile settingsFile;
     private final @NotNull NodeListFile nodesFile;
     private final @NotNull NodeListFile seedsFile;
@@ -324,6 +327,7 @@ public final class LauncherWindow {
     private @Nullable LauncherSessionView session;
     private @Nullable Conversations conversations;
     private @Nullable ChatAlerts chatAlerts;
+    private @Nullable ChatTranslations chatTranslations;
     private boolean networkWarned;
     private boolean networkWarningShown;
     private @NotNull FirewallState shownFirewall;
@@ -364,11 +368,13 @@ public final class LauncherWindow {
      * @param nodeRunner    the launcher's Beacon.Link node, shown and set up on the Settings screen
      * @param openSession   opens the session of the account the user logs in to
      * @param playChatSound plays the chat notification sound
+     * @param launcherLink  the address of the launcher's link that the started runtimes connect to, or {@code null} when the launcher has none
+     * @param translation   the launcher's translation, which the window gives the preset chosen in the launcher settings
      */
     public LauncherWindow(@NotNull Stage stage, @NotNull InstallLayout install, @NotNull String version,
                           @NotNull Consumer<@NotNull String> showDocument, @NotNull Consumer<@NotNull Path> openFolder,
                           @NotNull LauncherNodeRunner nodeRunner, @NotNull Function<@NotNull Account, @NotNull LauncherSessionView> openSession,
-                          @NotNull Runnable playChatSound) {
+                          @NotNull Runnable playChatSound, @Nullable LauncherLinkAddress launcherLink, @NotNull LauncherTranslation translation) {
         ReleaseClient releaseClient = new ReleaseClient(ReleaseClient.GITHUB_API);
 
         this.stage           = stage;
@@ -379,6 +385,8 @@ public final class LauncherWindow {
         this.nodeRunner      = nodeRunner;
         this.openSession     = openSession;
         this.playChatSound   = playChatSound;
+        this.launcherLink    = launcherLink;
+        this.translation     = translation;
         this.settingsFile    = new LauncherSettingsFile(install.getLauncherSettingsFile());
         this.nodesFile       = new NodeListFile(install.getNodesFile());
         this.seedsFile       = new NodeListFile(install.getSeedsFile());
@@ -404,6 +412,7 @@ public final class LauncherWindow {
         this.session             = null;
         this.conversations       = null;
         this.chatAlerts          = null;
+        this.chatTranslations    = null;
         this.networkWarned       = false;
         this.networkWarningShown = false;
         this.shownFirewall       = FirewallState.CHECKING;
@@ -432,6 +441,7 @@ public final class LauncherWindow {
         this.run         = null;
         this.selectedJar = this.settings.getLastMod();
 
+        this.translation.choose(this.settings.getTranslationPreset());
         this.stage.setScene(this.scene);
         this.stage.setOnCloseRequest(event -> {
             event.consume();
@@ -661,15 +671,18 @@ public final class LauncherWindow {
     private void logIn(@NotNull Account loggedIn) {
         LauncherSessionView opened = this.openSession.apply(loggedIn);
         Conversations openedConversations = new Conversations(opened);
+        ChatTranslations openedTranslations = new ChatTranslations(this.translation, this.translation::getActivePresetId, Platform::runLater);
 
-        this.account       = loggedIn;
-        this.session       = opened;
-        this.conversations = openedConversations;
-        this.chatAlerts    = new ChatAlerts(opened);
-        this.accountMenu   = this.createAccountMenu(loggedIn, opened);
-        this.section       = FIRST_SECTION;
+        this.account          = loggedIn;
+        this.session          = opened;
+        this.conversations    = openedConversations;
+        this.chatAlerts       = new ChatAlerts(opened);
+        this.chatTranslations = openedTranslations;
+        this.accountMenu      = this.createAccountMenu(loggedIn, opened);
+        this.section          = FIRST_SECTION;
 
         openedConversations.setOnRead(this::updateChatDot);
+        openedTranslations.setOnChanged(this::updateChatScreen);
         opened.setOnChanged(this::onSessionChanged);
         opened.openChat(this.texts.getLocale());
         this.showSection(FIRST_SECTION);
@@ -721,6 +734,17 @@ public final class LauncherWindow {
     }
 
     /**
+     * Shows the chat lines again on the Chat screen, when it is shown, after a translation came in or a line switched its text.
+     */
+    private void updateChatScreen() {
+        ChatScreen shownChat = this.chatScreen;
+
+        if (shownChat != null) {
+            shownChat.update();
+        }
+    }
+
+    /**
      * Shows the dot of the Chat entry while a line or a whisper is unread.
      */
     private void updateChatDot() {
@@ -739,15 +763,21 @@ public final class LauncherWindow {
 
     private void closeSession() {
         LauncherSessionView closed = this.session;
+        ChatTranslations closedTranslations = this.chatTranslations;
 
         this.accountMenu         = null;
         this.chatScreen          = null;
         this.conversations       = null;
         this.chatAlerts          = null;
+        this.chatTranslations    = null;
         this.networkWarningShown = false;
         this.shownFirewall       = FirewallState.CHECKING;
         this.session             = null;
         this.account             = null;
+
+        if (closedTranslations != null) {
+            closedTranslations.setOnChanged(null);
+        }
 
         if (closed != null) {
             closed.setOnChanged(null);
@@ -1383,8 +1413,9 @@ public final class LauncherWindow {
         Account loggedIn = this.account;
         LauncherSessionView opened = this.session;
         Conversations openedConversations = this.conversations;
+        ChatTranslations openedTranslations = this.chatTranslations;
 
-        if (loggedIn == null || opened == null || openedConversations == null) {
+        if (loggedIn == null || opened == null || openedConversations == null || openedTranslations == null) {
             throw Exceptions.newIllegalStateException("The Chat screen needs a logged-in account.");
         }
 
@@ -1409,8 +1440,8 @@ public final class LauncherWindow {
                 LauncherWindow.this.showDocument.accept(address);
             }
         };
-        ChatScreen screen = new ChatScreen(this.shell, this.texts, loggedIn.getTaggedName(), opened, openedConversations, this::findModName,
-                                           actions);
+        ChatScreen screen = new ChatScreen(this.shell, this.texts, loggedIn.getTaggedName(), opened, openedConversations, openedTranslations,
+                                           this::findModName, actions);
 
         this.chatScreen = screen;
         screen.update();
@@ -1464,6 +1495,28 @@ public final class LauncherWindow {
                                     @NotNull Consumer<@NotNull List<@NotNull NodePingResult>> results) {
                 LauncherWindow.this.pingNodes(pinged, results);
             }
+
+            /**
+             * Called when the user chooses the model the chat is translated with, and when the chosen model is deleted.
+             *
+             * @param presetId the id of the chosen preset, or {@code null} for Off
+             */
+            @Override
+            public void onTranslationPresetChanged(@Nullable String presetId) {
+                LauncherWindow.this.settings = LauncherWindow.this.settings.withTranslationPreset(presetId);
+                LauncherWindow.this.saveSettings();
+                LauncherWindow.this.translation.choose(presetId);
+            }
+
+            /**
+             * Called when the user opens a web address, such as the licence of a translation preset.
+             *
+             * @param address the {@code http} or {@code https} address
+             */
+            @Override
+            public void onOpenWebsite(@NotNull String address) {
+                LauncherWindow.this.showDocument.accept(address);
+            }
         };
         UpdateView shownUpdate = new UpdateView(this.texts, this.version, this.settings.getUpdateRepository(), new UpdateView.Actions() {
             /**
@@ -1488,8 +1541,8 @@ public final class LauncherWindow {
         this.updateView = shownUpdate;
         this.showUpdateStatus();
 
-        return new OptionsScreen(this.texts, this.settings.getLanguage(), this.settings.isChatSoundMuted(), shownUpdate,
-                                 this.nodes, this.nodesProblem, this.nodeRunner, actions);
+        return new OptionsScreen(this.shell, this.texts, this.settings.getLanguage(), this.settings.isChatSoundMuted(), shownUpdate,
+                                 this.nodes, this.nodesProblem, this.nodeRunner, this.translation, actions);
     }
 
     private void showAbout() {
@@ -1639,8 +1692,9 @@ public final class LauncherWindow {
         }
 
         RuntimeCommandLine commandLine = RuntimeCommandLine.create(this.install, manifest.getId(), entry.getJar(), chosen.getDirectory(),
-                                                                   this.nodeRunner.getSettings().isPortMapping(),
-                                                                   RuntimeCommandLine.getLauncherJavaHome(), RuntimeCommandLine.isWindows());
+                                                                   this.nodeRunner.getSettings().isPortMapping(), this.launcherLink,
+                                                                   this.translation.getActivePresetId(), RuntimeCommandLine.getLauncherJavaHome(),
+                                                                   RuntimeCommandLine.isWindows());
         String failure = null;
         String settingsText = "";
 

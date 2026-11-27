@@ -2,6 +2,7 @@ package org.fogofwarlabs.sc4j.launcher.launch;
 
 import org.fogofwarlabs.sc4j.beaconlink.peer.bootstrap.PeerStore;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.file.NodeListFile;
+import org.fogofwarlabs.sc4j.launcher.link.LauncherLinkAddress;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -14,6 +15,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Builds the command line that starts the runtime for one mod: the Java program, the arguments of the runtime's {@link #LAUNCH_FILE} and
@@ -29,9 +31,12 @@ import java.util.Locale;
  *     --seeds <install>/userdata/beaconlink/nodes.json, or <install>/launcher/seeds.json until the user saved a node list
  *     --peers <install>/userdata/beaconlink/peers.json
  *     --no-port-mapping, when the launcher's port mapping setting is off
+ *     --launcher-link <install>/userdata/run/launcher-<pid>.sock, when the launcher's link is open
+ *     --translation-preset <preset id>, when the launcher translates with an installed preset
  *}
- * {@code --seeds} is left out while neither seed list exists. Each path is one argument. A program file the install lacks is reported by
- * {@link #getMissingProgram()}.
+ * {@code --seeds} is left out while neither seed list exists. Each path is one argument. The token of the launcher's link goes into the
+ * environment variable {@value LauncherLinkAddress#TOKEN_ENVIRONMENT_VARIABLE} of the process ({@link #getEnvironment()}), never on the command
+ * line. A program file the install lacks is reported by {@link #getMissingProgram()}.
  */
 public final class RuntimeCommandLine {
     /**
@@ -60,6 +65,8 @@ public final class RuntimeCommandLine {
     private static final @NotNull String SEEDS_OPTION = "--seeds";
     private static final @NotNull String PEERS_OPTION = "--peers";
     private static final @NotNull String NO_PORT_MAPPING_OPTION = "--no-port-mapping";
+    private static final @NotNull String LAUNCHER_LINK_OPTION = "--launcher-link";
+    private static final @NotNull String TRANSLATION_PRESET_OPTION = "--translation-preset";
     private static final @NotNull String QUOTE = "\"";
     private static final @NotNull String ARGUMENT_SEPARATOR = " ";
     private static final @NotNull String WINDOWS_NAME_PREFIX = "windows";
@@ -68,18 +75,20 @@ public final class RuntimeCommandLine {
     /**
      * Creates a {@link RuntimeCommandLine} instance for a mod of an install.
      *
-     * @param install          the install
-     * @param modId            the mod id, which names the settings file, the storage folder and the log folder
-     * @param modJar           the mod jar
-     * @param accountDirectory the folder of the account the game runs with
-     * @param portMapping      whether the game's Beacon.Link sessions map their socket on the router
-     * @param javaHome         the Java runtime that runs the runtime
-     * @param windows          whether the runtime runs on Windows (Java program {@value #WINDOWS_JAVA})
+     * @param install           the install
+     * @param modId             the mod id, which names the settings file, the storage folder and the log folder
+     * @param modJar            the mod jar
+     * @param accountDirectory  the folder of the account the game runs with
+     * @param portMapping       whether the game's Beacon.Link sessions map their socket on the router
+     * @param launcherLink      the address of the launcher's link, or {@code null} when the launcher has no link
+     * @param translationPreset the id of the installed preset the launcher translates with, or {@code null} for none
+     * @param javaHome          the Java runtime that runs the runtime
+     * @param windows           whether the runtime runs on Windows (Java program {@value #WINDOWS_JAVA})
      * @return the created {@link RuntimeCommandLine} instance
      */
     public static @NotNull RuntimeCommandLine create(@NotNull InstallLayout install, @NotNull String modId, @NotNull Path modJar,
-                                                     @NotNull Path accountDirectory, boolean portMapping,
-                                                     @NotNull Path javaHome, boolean windows) {
+                                                     @NotNull Path accountDirectory, boolean portMapping, @Nullable LauncherLinkAddress launcherLink,
+                                                     @Nullable String translationPreset, @NotNull Path javaHome, boolean windows) {
         List<String> arguments = new ArrayList<>();
         Path settingsFile = install.getSettingsFile(modId);
         Path seedsFile = new NodeListFile(install.getNodesFile()).selectExistingOr(new NodeListFile(install.getSeedsFile())).getPath();
@@ -118,7 +127,20 @@ public final class RuntimeCommandLine {
             arguments.add(NO_PORT_MAPPING_OPTION);
         }
 
-        return new RuntimeCommandLine(arguments, install.getRoot(), settingsFile, install.getLogDirectory(modId), missingProgram);
+        if (launcherLink != null) {
+            arguments.add(LAUNCHER_LINK_OPTION);
+            arguments.add(launcherLink.getSocket().toString());
+        }
+
+        if (translationPreset != null) {
+            arguments.add(TRANSLATION_PRESET_OPTION);
+            arguments.add(translationPreset);
+        }
+
+        Map<String, String> environment = launcherLink == null ? Map.of()
+                                                               : Map.of(LauncherLinkAddress.TOKEN_ENVIRONMENT_VARIABLE, launcherLink.getTokenText());
+
+        return new RuntimeCommandLine(arguments, environment, install.getRoot(), settingsFile, install.getLogDirectory(modId), missingProgram);
     }
 
     /**
@@ -209,6 +231,7 @@ public final class RuntimeCommandLine {
 
 
     private final @NotNull List<@NotNull String> arguments;
+    private final @NotNull Map<@NotNull String, @NotNull String> environment;
     private final @NotNull Path workingDirectory;
     private final @NotNull Path settingsFile;
     private final @NotNull Path logDirectory;
@@ -218,14 +241,17 @@ public final class RuntimeCommandLine {
      * Creates a {@link RuntimeCommandLine} instance.
      *
      * @param arguments        the Java program followed by its arguments
+     * @param environment      the variables the process gets in addition to the launcher's environment
      * @param workingDirectory the install folder, the runtime's working folder
      * @param settingsFile     the settings value file the runtime reads
      * @param logDirectory     the folder of the runtime's log files
      * @param missingProgram   the program file the install lacks, or {@code null} when it has them all
      */
-    private RuntimeCommandLine(@NotNull List<@NotNull String> arguments, @NotNull Path workingDirectory, @NotNull Path settingsFile,
-                               @NotNull Path logDirectory, @Nullable Path missingProgram) {
+    private RuntimeCommandLine(@NotNull List<@NotNull String> arguments, @NotNull Map<@NotNull String, @NotNull String> environment,
+                               @NotNull Path workingDirectory, @NotNull Path settingsFile, @NotNull Path logDirectory,
+                               @Nullable Path missingProgram) {
         this.arguments        = List.copyOf(arguments);
+        this.environment      = Map.copyOf(environment);
         this.workingDirectory = workingDirectory;
         this.settingsFile     = settingsFile;
         this.logDirectory     = logDirectory;
@@ -237,6 +263,13 @@ public final class RuntimeCommandLine {
      */
     public @NotNull List<@NotNull String> getArguments() {
         return this.arguments;
+    }
+
+    /**
+     * @return the variables the process gets in addition to the launcher's environment, which {@link #describe()} leaves out
+     */
+    public @NotNull Map<@NotNull String, @NotNull String> getEnvironment() {
+        return this.environment;
     }
 
     /**

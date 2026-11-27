@@ -10,8 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Runs the runtime as a separate process with a {@link RuntimeCommandLine} and streams its standard output and standard
- * error, merged in output order, to a {@link RuntimeListener}.
+ * Runs the runtime as a separate process with a {@link RuntimeCommandLine}, its environment variables added to the launcher's, and streams
+ * its standard output and standard error, merged in output order, to a {@link RuntimeListener}.
  * <p>
  * The runtime's output is decoded with the platform's native encoding, which a JVM uses for redirected output.
  */
@@ -37,6 +37,7 @@ public final class RuntimeProcess {
         }
 
         builder.directory(commandLine.getWorkingDirectory().toFile());
+        builder.environment().putAll(commandLine.getEnvironment());
         builder.redirectErrorStream(true);
 
         Process process = builder.start();

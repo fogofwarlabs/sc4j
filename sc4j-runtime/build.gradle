@@ -11,12 +11,18 @@ dependencies {
     implementation project(':sc4j-engine')
     // The Beacon.Link client behind the engine's Beacon.Link interface of the launch request; it opens nothing until a mod asks.
     implementation project(':sc4j-beaconlink')
+    // The link to the launcher that started the run; a run without it goes on alone.
+    implementation project(':sc4j-launcher-link')
+    // The mod's translator: the launcher's translation service over the link, else a local one of the preset the command line names.
+    implementation project(':sc4j-translate-service')
     // The catalog reader (releases and the mod catalog) that a mod may use; the runtime ships it once on the class path the mod class
     // loaders see, so mod jars do not hold it.
     runtimeOnly project(':sc4j-catalog')
 
-    // The native libraries of the engine client (LWJGL, FFmpeg through JavaCPP) for lib/natives of the distribution.
+    // The native libraries of the engine client (LWJGL, FFmpeg through JavaCPP) and of the translation service (CTranslate2) for lib/natives
+    // of the distribution.
     nativeLibraries project(path: ':sc4j-engine-client', configuration: 'nativeLibraries')
+    nativeLibraries project(path: ':sc4j-translate-service', configuration: 'nativeLibraries')
 
     // Test mod jars (org.fogofwarlabs.sc4j.manifest.test.TestJarUtils).
     testImplementation testFixtures(project(':sc4j-mod-manifest'))

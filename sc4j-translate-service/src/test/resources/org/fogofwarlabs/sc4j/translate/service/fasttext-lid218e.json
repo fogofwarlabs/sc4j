@@ -1,0 +1,340 @@
+[
+ {
+  "text": "Hello, how are you doing today?",
+  "labels": [
+   "__label__eng_Latn",
+   "__label__ron_Latn",
+   "__label__ita_Latn"
+  ],
+  "probabilities": [
+   1.0000056028366089,
+   1.1178995009686332e-05,
+   1.0595653293421492e-05
+  ]
+ },
+ {
+  "text": "Let's play another game after this one.",
+  "labels": [
+   "__label__eng_Latn",
+   "__label__kor_Hang",
+   "__label__bod_Tibt"
+  ],
+  "probabilities": [
+   1.0000083446502686,
+   1.0964206012431532e-05,
+   1.02444128060597e-05
+  ]
+ },
+ {
+  "text": "안녕하세요, 오늘 게임 같이 하실 분?",
+  "labels": [
+   "__label__kor_Hang",
+   "__label__ady_Cyrl",
+   "__label__srd_Latn"
+  ],
+  "probabilities": [
+   1.0000100135803223,
+   1.0000003385357559e-05,
+   1.0000003385357559e-05
+  ]
+ },
+ {
+  "text": "こんにちは、今日は一緒にプレイしませんか？",
+  "labels": [
+   "__label__jpn_Jpan",
+   "__label__vie_Latn",
+   "__label__bod_Tibt"
+  ],
+  "probabilities": [
+   0.09258901327848434,
+   0.06627768278121948,
+   0.06474278122186661
+  ]
+ },
+ {
+  "text": "你好，我们一起玩游戏吧。",
+  "labels": [
+   "__label__vie_Latn",
+   "__label__arb_Arab",
+   "__label__bod_Tibt"
+  ],
+  "probabilities": [
+   0.14897523820400238,
+   0.11534710973501205,
+   0.11390343308448792
+  ]
+ },
+ {
+  "text": "我們一起玩遊戲吧。",
+  "labels": [
+   "__label__zho_Hant",
+   "__label__yue_Hant",
+   "__label__deu_Latn"
+  ],
+  "probabilities": [
+   0.9530112147331238,
+   0.0349043607711792,
+   0.0028297428507357836
+  ]
+ },
+ {
+  "text": "Привет, как дела? Пойдём играть.",
+  "labels": [
+   "__label__rus_Cyrl",
+   "__label__che_Cyrl",
+   "__label__tat_Cyrl"
+  ],
+  "probabilities": [
+   0.9999074935913086,
+   4.770443410961889e-05,
+   2.8250980903976597e-05
+  ]
+ },
+ {
+  "text": "Привіт, як справи? Ходімо грати.",
+  "labels": [
+   "__label__ukr_Cyrl",
+   "__label__bel_Cyrl",
+   "__label__bul_Cyrl"
+  ],
+  "probabilities": [
+   0.9999966621398926,
+   2.3235275875777006e-05,
+   1.0078885679831728e-05
+  ]
+ },
+ {
+  "text": "¿Quieres jugar conmigo esta noche?",
+  "labels": [
+   "__label__spa_Latn",
+   "__label__cat_Latn",
+   "__label__ast_Latn"
+  ],
+  "probabilities": [
+   0.9996358156204224,
+   0.00034228136064484715,
+   2.0807001419598237e-05
+  ]
+ },
+ {
+  "text": "Você quer jogar comigo hoje à noite?",
+  "labels": [
+   "__label__por_Latn",
+   "__label__oci_Latn",
+   "__label__vie_Latn"
+  ],
+  "probabilities": [
+   1.0000100135803223,
+   1.000317934085615e-05,
+   1.0001166629081126e-05
+  ]
+ },
+ {
+  "text": "Ça va très bien, merci beaucoup.",
+  "labels": [
+   "__label__fra_Latn",
+   "__label__fon_Latn",
+   "__label__lim_Latn"
+  ],
+  "probabilities": [
+   0.9999356269836426,
+   4.521223672782071e-05,
+   2.4536639102734625e-05
+  ]
+ },
+ {
+  "text": "Größe, Straße, Übermaß. Wir spielen heute Abend.",
+  "labels": [
+   "__label__deu_Latn",
+   "__label__kor_Hang",
+   "__label__pol_Latn"
+  ],
+  "probabilities": [
+   0.999957799911499,
+   2.8343867597868666e-05,
+   1.755404991854448e-05
+  ]
+ },
+ {
+  "text": "Xin chào, bạn có khỏe không?",
+  "labels": [
+   "__label__vie_Latn",
+   "__label__cat_Latn",
+   "__label__swe_Latn"
+  ],
+  "probabilities": [
+   1.0000100135803223,
+   1.000006068352377e-05,
+   1.0000050679082051e-05
+  ]
+ },
+ {
+  "text": "مرحبا، كيف حالك؟",
+  "labels": [
+   "__label__arb_Arab",
+   "__label__urd_Arab",
+   "__label__eng_Latn"
+  ],
+  "probabilities": [
+   0.9997321963310242,
+   0.00010879406181629747,
+   7.52144114812836e-05
+  ]
+ },
+ {
+  "text": "नमस्ते, आप कैसे हैं?",
+  "labels": [
+   "__label__hin_Deva",
+   "__label__mar_Deva",
+   "__label__min_Latn"
+  ],
+  "probabilities": [
+   1.0000100135803223,
+   1.0008055141952354e-05,
+   1.000637530523818e-05
+  ]
+ },
+ {
+  "text": "Merhaba, bu akşam oynamak ister misin?",
+  "labels": [
+   "__label__tur_Latn",
+   "__label__zsm_Latn",
+   "__label__tuk_Latn"
+  ],
+  "probabilities": [
+   0.9998873472213745,
+   0.00010672357893781736,
+   2.989552194776479e-05
+  ]
+ },
+ {
+  "text": "Hej, vill du spela ikväll?",
+  "labels": [
+   "__label__swe_Latn",
+   "__label__nno_Latn",
+   "__label__epo_Latn"
+  ],
+  "probabilities": [
+   0.9999973773956299,
+   1.5274832549039274e-05,
+   1.193064781546127e-05
+  ]
+ },
+ {
+  "text": "Cześć, zagramy dziś wieczorem?",
+  "labels": [
+   "__label__pol_Latn",
+   "__label__ces_Latn",
+   "__label__szl_Latn"
+  ],
+  "probabilities": [
+   1.0000054836273193,
+   1.1974944754911121e-05,
+   1.1452569196990225e-05
+  ]
+ },
+ {
+  "text": "gg",
+  "labels": [
+   "__label__nno_Latn",
+   "__label__swe_Latn",
+   "__label__vie_Latn"
+  ],
+  "probabilities": [
+   0.9837441444396973,
+   0.014799795113503933,
+   0.001359963440336287
+  ]
+ },
+ {
+  "text": "ok",
+  "labels": [
+   "__label__pol_Latn",
+   "__label__nld_Latn",
+   "__label__vie_Latn"
+  ],
+  "probabilities": [
+   0.9899013042449951,
+   0.008370744995772839,
+   0.0008530007908120751
+  ]
+ },
+ {
+  "text": "lol",
+  "labels": [
+   "__label__eng_Latn",
+   "__label__hun_Latn",
+   "__label__vie_Latn"
+  ],
+  "probabilities": [
+   0.8751845359802246,
+   0.060716234147548676,
+   0.03514474257826805
+  ]
+ },
+ {
+  "text": "ㅋㅋㅋㅋ",
+  "labels": [
+   "__label__eng_Latn",
+   "__label__bod_Tibt",
+   "__label__vie_Latn"
+  ],
+  "probabilities": [
+   0.4394427239894867,
+   0.24903430044651031,
+   0.14479106664657593
+  ]
+ },
+ {
+  "text": "123 456",
+  "labels": [
+   "__label__eng_Latn",
+   "__label__min_Latn",
+   "__label__vie_Latn"
+  ],
+  "probabilities": [
+   0.5403839945793152,
+   0.14482106268405914,
+   0.11381450295448303
+  ]
+ },
+ {
+  "text": "Ｆｕｌｌ－ｗｉｄｔｈ　ＡＢＣ",
+  "labels": [
+   "__label__bod_Tibt",
+   "__label__eng_Latn",
+   "__label__vie_Latn"
+  ],
+  "probabilities": [
+   0.14729832112789154,
+   0.145539328455925,
+   0.09512852132320404
+  ]
+ },
+ {
+  "text": "emoji 😀👍🏽 only",
+  "labels": [
+   "__label__eng_Latn",
+   "__label__lit_Latn",
+   "__label__ces_Latn"
+  ],
+  "probabilities": [
+   0.9282505512237549,
+   0.06477489322423935,
+   0.002394257113337517
+  ]
+ },
+ {
+  "text": "  multiple   spaces\tand\ttabs  ",
+  "labels": [
+   "__label__eng_Latn",
+   "__label__kor_Hang",
+   "__label__fra_Latn"
+  ],
+  "probabilities": [
+   0.9989325404167175,
+   0.0006816078093834221,
+   0.00020421446242835373
+  ]
+ }
+]

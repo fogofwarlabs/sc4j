@@ -29,10 +29,11 @@ dependencies {
     nativeLibraries "org.lwjgl:lwjgl-openal:$LWJGL_VERSION:$LWJGL_NATIVES"
     nativeLibraries "org.lwjgl:lwjgl-stb:$LWJGL_VERSION:$LWJGL_NATIVES"
 
-    // The video default (engine.client.video): FFmpeg 7.1 through the bytedeco JavaCPP presets, LGPL build.
-    implementation 'org.bytedeco:javacpp:1.5.11'
+    // The video default (engine.client.video): FFmpeg 7.1 through the bytedeco JavaCPP presets, LGPL build, with the JavaCPP version of the
+    // whole build.
+    implementation "org.bytedeco:javacpp:$JAVACPP_VERSION"
     implementation 'org.bytedeco:ffmpeg:7.1-1.5.11'
-    nativeLibraries "org.bytedeco:javacpp:1.5.11:$JAVACPP_PLATFORM"
+    nativeLibraries "org.bytedeco:javacpp:$JAVACPP_VERSION:$JAVACPP_PLATFORM"
     nativeLibraries "org.bytedeco:ffmpeg:7.1-1.5.11:$JAVACPP_PLATFORM"
 
     // The skirmish and lockstep games of the session, view and replay tests (the replay, save and snapshot tests record through a client

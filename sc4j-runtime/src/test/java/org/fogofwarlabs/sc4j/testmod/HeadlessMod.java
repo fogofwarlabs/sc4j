@@ -1,6 +1,8 @@
 package org.fogofwarlabs.sc4j.testmod;
 
 import org.fogofwarlabs.sc4j.engine.mod.*;
+import org.fogofwarlabs.sc4j.translate.Translation;
+import org.fogofwarlabs.sc4j.translate.TranslationRequest;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -8,12 +10,17 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * A test mod on the engine-only path without a client: it registers a headless runner, which writes {@value #RUN_FILE} into its storage (the
  * launch's headless flag, identity, whether it offers Beacon.Link, which the runner does not open, and the value of its
- * {@value #GAME_FOLDER_SETTING} setting) when its {@value RecordingMod#HEADLESS_SETTING} setting is on, and nothing to run otherwise. It
- * registers no first scene, so the runtime tests open no window.
+ * {@value #GAME_FOLDER_SETTING} setting) and {@value #TRANSLATION_FILE} (the status of its translator's answer to {@value #TRANSLATED_TEXT})
+ * when its {@value RecordingMod#HEADLESS_SETTING} setting is on, and nothing to run otherwise. It registers no first scene, so the runtime
+ * tests open no window.
  */
 public final class HeadlessMod implements Mod {
     /**
@@ -25,6 +32,18 @@ public final class HeadlessMod implements Mod {
      * The directory setting whose value the headless runner writes; {@code null} is written without a value.
      */
     public static final @NotNull String GAME_FOLDER_SETTING = "gameFolder";
+
+    /**
+     * The storage file with the status of the translator's answer.
+     */
+    public static final @NotNull String TRANSLATION_FILE = "headless-translation.txt";
+
+    /**
+     * The text the headless runner translates into Korean.
+     */
+    public static final @NotNull String TRANSLATED_TEXT = "Hello";
+
+    private static final long TRANSLATION_WAIT_SECONDS = 30L;
 
     private @Nullable ModContext context;
 
@@ -70,8 +89,19 @@ public final class HeadlessMod implements Mod {
         String run = "headless=" + launch.isHeadless() + " identity=" + launch.getIdentity().getModId() +
                      " beaconLink=" + (launch.getBeaconLink() != null) + " game=" + game;
 
+        Translation translation;
+
+        try {
+            translation = initialized.getTranslator()
+                                     .translate(new TranslationRequest.Builder(TRANSLATED_TEXT, Locale.KOREAN).build())
+                                     .get(TRANSLATION_WAIT_SECONDS, TimeUnit.SECONDS);
+        } catch (InterruptedException | ExecutionException | TimeoutException exception) {
+            throw ModException.create(exception, "The test translation failed: {0}", exception.toString());
+        }
+
         try {
             Files.writeString(initialized.getStorage().resolve(RUN_FILE), run, StandardCharsets.UTF_8);
+            Files.writeString(initialized.getStorage().resolve(TRANSLATION_FILE), translation.getStatus().name(), StandardCharsets.UTF_8);
         } catch (IOException exception) {
             throw ModException.create(exception, "The test run cannot be written: {0}", exception.getMessage());
         }

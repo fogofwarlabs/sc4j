@@ -43,6 +43,9 @@ SC4J(Simulation Core for Java)는 실시간 전략 게임 엔진입니다. 게�
 | `sc4j-engine` | 모드가 컴파일할 때 쓰는 모드 API와 클라이언트 애플리케이션 |
 | `sc4j-runtime` | 모드 jar 하나를 창 모드 또는 헤드리스로 실행 |
 | `sc4j-launcher` | 런처(JavaFX) |
+| `sc4j-launcher-link` | 런처와 런처가 시작한 런타임 사이의 로컬 채널: 토큰, 프레임, 이름 붙은 서비스 |
+| `sc4j-translate` | 모드가 보는 번역 계약: 번역기, 요청, 번역, 상태 |
+| `sc4j-translate-service` | 채팅 번역: 모델 프리셋과 내려받기, NLLB 프리셋(SentencePiece, CTranslate2, fastText), 런처 링크의 서비스 |
 | `sc4j-catalog` | 공개된 정보: GitHub 릴리즈, 새 릴리즈 확인, 모드 목록. 런처가 사용하고 런타임이 모드용으로 포함 |
 | `sc4j-beaconlink-protocol`, `-peer`, `-node`, `sc4j-beaconlink` | Beacon.Link 와이어 프로토콜, 피어 라이브러리, 헤드리스 노드, 클라이언트 |
 | [`mods/`](mods/) | 데모 모드 |

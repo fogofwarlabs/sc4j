@@ -188,6 +188,7 @@ public interface org.fogofwarlabs.sc4j.engine.mod.ModContext {
   public abstract org.fogofwarlabs.sc4j.engine.mod.ModSettings getSettings();
   public abstract org.fogofwarlabs.sc4j.engine.mod.ModStorage getStorage();
   public abstract org.fogofwarlabs.sc4j.manifest.ModManifest getManifest();
+  public abstract org.fogofwarlabs.sc4j.translate.Translator getTranslator();
 }
 
 public final class org.fogofwarlabs.sc4j.engine.mod.ModException extends java.lang.Exception {

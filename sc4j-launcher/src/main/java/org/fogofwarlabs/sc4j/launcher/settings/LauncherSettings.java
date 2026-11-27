@@ -8,8 +8,8 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Holds the launcher's own settings, {@code userdata/launcher.json}: the UI language chosen on the Settings screen, the mod selected last,
- * the window state, the update repository, the launcher version the player chose to skip and whether the chat sound is muted. Instances are
- * immutable; each {@code with} method creates a changed copy.
+ * the window state, the update repository, the launcher version the player chose to skip, whether the chat sound is muted and the
+ * translation preset chosen for the chat. Instances are immutable; each {@code with} method creates a changed copy.
  */
 public final class LauncherSettings {
     /**
@@ -19,9 +19,9 @@ public final class LauncherSettings {
 
     /**
      * The settings before anything is saved: the system language, no last mod, the default window, the default update repository, no
-     * skipped version and the chat sound on.
+     * skipped version, the chat sound on and no translation preset.
      */
-    public static final @NotNull LauncherSettings DEFAULT = new LauncherSettings(null, null, null, null, null, false);
+    public static final @NotNull LauncherSettings DEFAULT = new LauncherSettings(null, null, null, null, null, false, null);
 
     private final @Nullable UiLanguage language;
     private final @Nullable String lastMod;
@@ -29,25 +29,28 @@ public final class LauncherSettings {
     private final @Nullable String updateRepository;
     private final @Nullable String skippedVersion;
     private final boolean chatSoundMuted;
+    private final @Nullable String translationPreset;
 
     /**
      * Creates a {@link LauncherSettings} instance.
      *
-     * @param language         the UI language chosen on the Settings screen, or {@code null} to follow the operating system
-     * @param lastMod          the file name of the mod jar selected last, such as {@code my-mod.jar}, or {@code null}
-     * @param window           the window state, or {@code null} for the default window
-     * @param updateRepository the update repository {@code owner/name}, or {@code null} for {@link #DEFAULT_UPDATE_REPOSITORY}
-     * @param skippedVersion   the launcher version the player chose to skip, such as {@code 1.2.0}, or {@code null}
-     * @param chatSoundMuted   whether the chat notification sound is muted
+     * @param language          the UI language chosen on the Settings screen, or {@code null} to follow the operating system
+     * @param lastMod           the file name of the mod jar selected last, such as {@code my-mod.jar}, or {@code null}
+     * @param window            the window state, or {@code null} for the default window
+     * @param updateRepository  the update repository {@code owner/name}, or {@code null} for {@link #DEFAULT_UPDATE_REPOSITORY}
+     * @param skippedVersion    the launcher version the player chose to skip, such as {@code 1.2.0}, or {@code null}
+     * @param chatSoundMuted    whether the chat notification sound is muted
+     * @param translationPreset the id of the translation preset chosen for the chat, or {@code null} for none
      */
     public LauncherSettings(@Nullable UiLanguage language, @Nullable String lastMod, @Nullable WindowState window, @Nullable String updateRepository,
-                            @Nullable String skippedVersion, boolean chatSoundMuted) {
-        this.language         = language;
-        this.lastMod          = lastMod;
-        this.window           = window;
-        this.updateRepository = updateRepository;
-        this.skippedVersion   = skippedVersion;
-        this.chatSoundMuted   = chatSoundMuted;
+                            @Nullable String skippedVersion, boolean chatSoundMuted, @Nullable String translationPreset) {
+        this.language          = language;
+        this.lastMod           = lastMod;
+        this.window            = window;
+        this.updateRepository  = updateRepository;
+        this.skippedVersion    = skippedVersion;
+        this.chatSoundMuted    = chatSoundMuted;
+        this.translationPreset = translationPreset;
     }
 
     /**
@@ -100,6 +103,13 @@ public final class LauncherSettings {
     }
 
     /**
+     * @return the id of the translation preset chosen for the chat, or {@code null} for none
+     */
+    public @Nullable String getTranslationPreset() {
+        return this.translationPreset;
+    }
+
+    /**
      * Tells whether the player chose to skip a launcher version.
      *
      * @param version the version
@@ -116,7 +126,8 @@ public final class LauncherSettings {
      * @return the created {@link LauncherSettings} instance
      */
     public @NotNull LauncherSettings withLanguage(@Nullable UiLanguage language) {
-        return new LauncherSettings(language, this.lastMod, this.window, this.updateRepository, this.skippedVersion, this.chatSoundMuted);
+        return new LauncherSettings(language, this.lastMod, this.window, this.updateRepository, this.skippedVersion, this.chatSoundMuted,
+                                    this.translationPreset);
     }
 
     /**
@@ -126,7 +137,8 @@ public final class LauncherSettings {
      * @return the created {@link LauncherSettings} instance
      */
     public @NotNull LauncherSettings withLastMod(@Nullable String lastMod) {
-        return new LauncherSettings(this.language, lastMod, this.window, this.updateRepository, this.skippedVersion, this.chatSoundMuted);
+        return new LauncherSettings(this.language, lastMod, this.window, this.updateRepository, this.skippedVersion, this.chatSoundMuted,
+                                    this.translationPreset);
     }
 
     /**
@@ -136,7 +148,8 @@ public final class LauncherSettings {
      * @return the created {@link LauncherSettings} instance
      */
     public @NotNull LauncherSettings withWindow(@Nullable WindowState window) {
-        return new LauncherSettings(this.language, this.lastMod, window, this.updateRepository, this.skippedVersion, this.chatSoundMuted);
+        return new LauncherSettings(this.language, this.lastMod, window, this.updateRepository, this.skippedVersion, this.chatSoundMuted,
+                                    this.translationPreset);
     }
 
     /**
@@ -148,7 +161,8 @@ public final class LauncherSettings {
     public @NotNull LauncherSettings withUpdateRepository(@Nullable String updateRepository) {
         String savedRepository = DEFAULT_UPDATE_REPOSITORY.equals(updateRepository) ? null : updateRepository;
 
-        return new LauncherSettings(this.language, this.lastMod, this.window, savedRepository, this.skippedVersion, this.chatSoundMuted);
+        return new LauncherSettings(this.language, this.lastMod, this.window, savedRepository, this.skippedVersion, this.chatSoundMuted,
+                                    this.translationPreset);
     }
 
     /**
@@ -160,7 +174,8 @@ public final class LauncherSettings {
     public @NotNull LauncherSettings withSkippedVersion(@Nullable ReleaseVersion skippedVersion) {
         String savedVersion = skippedVersion == null ? null : skippedVersion.toString();
 
-        return new LauncherSettings(this.language, this.lastMod, this.window, this.updateRepository, savedVersion, this.chatSoundMuted);
+        return new LauncherSettings(this.language, this.lastMod, this.window, this.updateRepository, savedVersion, this.chatSoundMuted,
+                                    this.translationPreset);
     }
 
     /**
@@ -170,6 +185,18 @@ public final class LauncherSettings {
      * @return the created {@link LauncherSettings} instance
      */
     public @NotNull LauncherSettings withChatSoundMuted(boolean chatSoundMuted) {
-        return new LauncherSettings(this.language, this.lastMod, this.window, this.updateRepository, this.skippedVersion, chatSoundMuted);
+        return new LauncherSettings(this.language, this.lastMod, this.window, this.updateRepository, this.skippedVersion, chatSoundMuted,
+                                    this.translationPreset);
+    }
+
+    /**
+     * Creates a copy with another translation preset.
+     *
+     * @param translationPreset the id of the translation preset chosen for the chat, or {@code null} for none
+     * @return the created {@link LauncherSettings} instance
+     */
+    public @NotNull LauncherSettings withTranslationPreset(@Nullable String translationPreset) {
+        return new LauncherSettings(this.language, this.lastMod, this.window, this.updateRepository, this.skippedVersion, this.chatSoundMuted,
+                                    translationPreset);
     }
 }

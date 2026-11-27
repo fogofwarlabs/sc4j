@@ -218,7 +218,7 @@ The mod reads it with `ModContext.getSettings().getDirectory(key)`.
 
 [`DemoMod`](../mods/demo/src/main/java/org/fogofwarlabs/sc4j/demo/DemoMod.java).
 
-- `initialize(ModContext)`: open and check what the mod needs; `ModException` refuses the run. `ModContext` gives the manifest, settings, storage, install folder, mod arguments and logger. Read resources through the mod's class loader.
+- `initialize(ModContext)`: open and check what the mod needs; `ModException` refuses the run. `ModContext` gives the manifest, settings, storage, install folder, mod arguments, logger and translator (`getTranslator()`: translates texts shown to the player with the translation model the user installed in the launcher; without one every request answers `UNAVAILABLE`). Read resources through the mod's class loader.
 - `register(ModRegistration)`: the registration closes when it returns.
 - `close()`: release in reverse order.
 
@@ -427,7 +427,7 @@ Demo: `DemoLobby`, [`BeaconLinkScene`](../mods/demo/src/main/java/org/fogofwarla
 ## 15. Building, installing and running
 
 - **Install**: put the jar into `<install>/mods/`. The launcher shows `READY`, `WARNING` (settings to fix) or `ERROR` (broken jar or manifest, unsupported engine version, missing image, duplicate id).
-- **Runtime**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--no-port-mapping] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]` (`--help`). Exit codes: 0 normal, 1 run failure, 2 command line or settings error, 3 mod load or validation failure. Log: `<install>/userdata/logs/<id>/sc4j.log`.
+- **Runtime**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--no-port-mapping] [--launcher-link <file>] [--translation-preset <id>] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]` (`--help`). Exit codes: 0 normal, 1 run failure, 2 command line or settings error, 3 mod load or validation failure. Log: `<install>/userdata/logs/<id>/sc4j.log`.
 - **Launcher**: starts the runtime with the mod's settings, storage and log folders.
 - **Mod tools**: `SC4J.bat tool <mod id> <tool id> [arguments]` (Linux and macOS `SC4J`, Windows console `SC4J-cli.exe`) runs the tool's `main` with the install's Java runtime and the class path the runtime gives the mod (the runtime's libraries and the mod jar), in the caller's current folder, with the JVM options of the runtime and the install folder in the system property `sc4j.install` (`InstallLayout.INSTALL_PROPERTY`); the arguments are passed on and the tool's exit status is returned. `tool` lists the tools of the installed mods, `tool <mod id>` those of one mod.
 
@@ -435,7 +435,7 @@ Demo: `DemoLobby`, [`BeaconLinkScene`](../mods/demo/src/main/java/org/fogofwarla
 
 Details: [engine API policy](api-policy.md).
 
-- The API is the public and protected classes and members of `sc4j-base`, `sc4j-mod-manifest`, `sc4j-engine-core`, `-sim`, `-net`, `-client`, `sc4j-engine` and `sc4j-catalog`, listed in `api/*.api`. The Javadoc of each class is its contract.
+- The API is the public and protected classes and members of `sc4j-base`, `sc4j-mod-manifest`, `sc4j-engine-core`, `-sim`, `-net`, `-client`, `sc4j-engine`, `sc4j-catalog` and `sc4j-translate`, listed in `api/*.api`. The Javadoc of each class is its contract.
 - Internal, not API (`@ApiStatus.Internal`): `engine.mod.loading`, `engine.client.render.gl`, `engine.client.audio.openal`, `GlfwClientHost`, `GlfwHostWindow`, `GlfwInput`, `GlfwKeyCodes`, `GlfwCursorSurface`, `WindowsTextInputMethod`, `WindowsSystemPointerSpeed`, `WindowsHostTickClock`. Use `engine.client.render` (`GraphicsDevice.getCurrent()`), `engine.client.audio` (`AudioDevice.openDefault()`) and the `engine.client.host` interfaces (`ClientHost.initialize()`; `HostWindow`: `createInput`, `isKeyDown`, `setPointerMode`, `createCursorSurface`, focus, clipboard, dropped files, gamma ramp, `getTextInputMethod`; `SystemPointerSpeed`, `HostTickClock`).
 - The SC4J version is a semantic version; its `MAJOR.MINOR` is the engine API version (`EngineVersion.CURRENT`), which the mod plugin writes into the manifest's `engine` field. A major may break mods, a minor only adds; at 0.x anything may change, visible as `.api` diffs.
 - Changed simulation results raise at least the minor version; replays and saves do not cross engine versions.

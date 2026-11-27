@@ -18,6 +18,7 @@ Every `public` or `protected` class, interface, constructor, method and field (c
 | `sc4j-engine-client` | host, scenes, input, renderer abstraction, projections, text, HUD, command card, console, dialogs, cursors, skins, world view, audio, video, settings store | `sc4j-engine-client/api/sc4j-engine-client.api` |
 | `sc4j-engine` | mod API (`engine.mod`), client application (`engine.client.app`), community screen parts (`engine.client.community`), lobby parts (`engine.client.lobby`) | `sc4j-engine/api/sc4j-engine.api` |
 | `sc4j-catalog` | what is published: GitHub releases, release versions, the check for a newer release, the mod catalog | `sc4j-catalog/api/sc4j-catalog.api` |
+| `sc4j-translate` | the translation contract of `ModContext.getTranslator()`: translator, request, translation, status, priority | `sc4j-translate/api/sc4j-translate.api` |
 
 The mod plugin compiles a mod against these modules, the mod API that the runtime provides ([mod author guide, chapter 7.1](mod-guide.md#71-the-mods-own-build)).
 

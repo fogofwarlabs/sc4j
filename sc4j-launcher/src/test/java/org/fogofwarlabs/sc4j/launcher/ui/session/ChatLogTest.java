@@ -8,6 +8,7 @@ import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.input.*;
 import javafx.scene.layout.Priority;
@@ -36,7 +37,7 @@ import java.util.*;
  * Tests the chat log: a press and drag selects across lines and copies one line (name and text) per line, Shift extends, a double press
  * selects a word, a press below the lines ends the selection; web addresses are links with the hand pointer, a click on one asks before it
  * opens and a drag that starts on one selects; the selection stays on its lines when lines come in or the oldest drop and ends for another
- * conversation.
+ * conversation; a translated line shows its mark, and a click on it off its links switches it while a drag does not.
  */
 final class ChatLogTest {
     private static final double SCENE_WIDTH = 900;
@@ -442,6 +443,43 @@ final class ChatLogTest {
 
             Assertions.assertNull(copySelection(shown));
             Assertions.assertEquals(0, countHighlights(shown));
+
+            return null;
+        });
+    }
+
+    @Test
+    void click_on_a_translated_line_switches_it_and_a_drag_or_a_link_does_not(@TempDir @NotNull java.nio.file.Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
+        String translated = "translated " + ADDRESS + " line";
+        String mark = texts.get("chat.translated");
+
+        LauncherFxScenario.run(() -> {
+            Shown shown = show(texts, directory);
+            List<ChatLog.Line> lines = new ArrayList<>(createLines());
+            List<String> toggles = new ArrayList<>();
+            TextFlow line;
+
+            lines.add(new ChatLog.Line(KERRIGAN + ":", createCode(1), KERRIGAN, translated, "text-body", null, mark, () -> toggles.add("toggle"),
+                                       "original"));
+            shown.log.show(lines, true);
+            layOut(shown.shell);
+            line = findFlow(shown, translated);
+
+            Assertions.assertTrue(shown.log.getView().lookupAll(".label").stream()
+                                           .anyMatch(node -> node instanceof Label label && mark.equals(label.getText()) &&
+                                                             LauncherFxScenario.isShown(label)), "the translated line shows its mark");
+
+            // A click on the text switches the line; a drag over it and a click on its link do not.
+            click(findCell(line), findPoint(line, 2));
+
+            Assertions.assertEquals(List.of("toggle"), toggles);
+
+            drag(findCell(line), findPoint(line, 2), findPoint(line, "translated".length()));
+            click(findCell(line), findPoint(line, translated.indexOf("example") + 2));
+
+            Assertions.assertEquals(List.of("toggle"), toggles);
+            Assertions.assertNotNull(shown.shell.getRoot().lookup(DIALOG_SELECTOR), "the link asks before it opens");
 
             return null;
         });

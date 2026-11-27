@@ -218,7 +218,7 @@ jar 루트의 `sc4j-mod.json`([데모](../mods/demo/src/main/resources/sc4j-mod.
 
 [`DemoMod`](../mods/demo/src/main/java/org/fogofwarlabs/sc4j/demo/DemoMod.java).
 
-- `initialize(ModContext)`: 필요한 것을 열고 확인합니다. `ModException`은 실행을 거부합니다. `ModContext`는 매니페스트, 설정, 저장 폴더, 설치 폴더, 모드 인자, 로거를 줍니다. 리소스는 모드의 클래스 로더로 읽습니다.
+- `initialize(ModContext)`: 필요한 것을 열고 확인합니다. `ModException`은 실행을 거부합니다. `ModContext`는 매니페스트, 설정, 저장 폴더, 설치 폴더, 모드 인자, 로거, 번역기를 줍니다(`getTranslator()`: 사용자가 런처에서 설치한 번역 모델로 플레이어에게 보이는 텍스트를 번역합니다. 모델이 없으면 모든 요청이 `UNAVAILABLE`입니다). 리소스는 모드의 클래스 로더로 읽습니다.
 - `register(ModRegistration)`: 반환하면 등록이 닫힙니다.
 - `close()`: 역순으로 해제합니다.
 
@@ -427,7 +427,7 @@ for (String file : List.of("maps/first-field.json")) {
 ## 15. 빌드, 설치, 실행
 
 - **설치**: jar를 `<install>/mods/`에 넣습니다. 런처는 `READY`, `WARNING`(고칠 설정), `ERROR`(망가진 jar나 매니페스트, 지원하지 않는 엔진 버전, 없는 그림, 중복 id)로 보여 줍니다.
-- **런타임**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--no-port-mapping] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]`(`--help`). 종료 코드: 0 정상, 1 실행 실패, 2 명령줄이나 설정 오류, 3 모드 로드나 검증 실패. 로그: `<install>/userdata/logs/<id>/sc4j.log`.
+- **런타임**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--no-port-mapping] [--launcher-link <file>] [--translation-preset <id>] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]`(`--help`). 종료 코드: 0 정상, 1 실행 실패, 2 명령줄이나 설정 오류, 3 모드 로드나 검증 실패. 로그: `<install>/userdata/logs/<id>/sc4j.log`.
 - **런처**: 모드의 설정, 저장 폴더, 로그 폴더로 런타임을 시작합니다.
 - **모드 도구**: `SC4J.bat tool <mod id> <tool id> [arguments]`(Linux와 macOS는 `SC4J`, Windows 콘솔은 `SC4J-cli.exe`)는 설치본의 Java 런타임과 런타임이 모드에 주는 클래스 경로(런타임 라이브러리와 모드 jar)로 도구의 `main`을 실행합니다. 작업 폴더는 호출한 곳의 현재 폴더이고, 런타임의 JVM 옵션과 함께 설치 폴더를 시스템 속성 `sc4j.install`(`InstallLayout.INSTALL_PROPERTY`)로 넘기며, 인수를 그대로 넘기고 도구의 종료 코드를 돌려줍니다. `tool`은 설치된 모드의 도구를, `tool <mod id>`는 한 모드의 도구를 보여 줍니다.
 
@@ -435,7 +435,7 @@ for (String file : List.of("maps/first-field.json")) {
 
 자세히: [엔진 API 정책](api-policy.ko.md).
 
-- API는 `sc4j-base`, `sc4j-mod-manifest`, `sc4j-engine-core`, `-sim`, `-net`, `-client`, `sc4j-engine`, `sc4j-catalog`의 public, protected 클래스와 멤버이며 `api/*.api`에 나열됩니다. 각 클래스의 Javadoc이 계약입니다.
+- API는 `sc4j-base`, `sc4j-mod-manifest`, `sc4j-engine-core`, `-sim`, `-net`, `-client`, `sc4j-engine`, `sc4j-catalog`, `sc4j-translate`의 public, protected 클래스와 멤버이며 `api/*.api`에 나열됩니다. 각 클래스의 Javadoc이 계약입니다.
 - API가 아닌 내부 요소(`@ApiStatus.Internal`): `engine.mod.loading`, `engine.client.render.gl`, `engine.client.audio.openal`, `GlfwClientHost`, `GlfwHostWindow`, `GlfwInput`, `GlfwKeyCodes`, `GlfwCursorSurface`, `WindowsTextInputMethod`, `WindowsSystemPointerSpeed`, `WindowsHostTickClock`. 대신 `engine.client.render`(`GraphicsDevice.getCurrent()`), `engine.client.audio`(`AudioDevice.openDefault()`), `engine.client.host` 인터페이스(`ClientHost.initialize()`. `HostWindow`: `createInput`, `isKeyDown`, `setPointerMode`, `createCursorSurface`, 포커스, 클립보드, 끌어다 놓은 파일, 감마 램프, `getTextInputMethod`. `SystemPointerSpeed`, `HostTickClock`)를 씁니다.
 - SC4J 버전은 유의적 버전이며, 그 `MAJOR.MINOR`가 엔진 API 버전(`EngineVersion.CURRENT`)입니다. 모드 플러그인이 이 값을 매니페스트의 `engine` 필드에 씁니다. major는 모드를 깨뜨릴 수 있고 minor는 추가만 합니다. 0.x에서는 무엇이든 바뀔 수 있으며 `.api` 차이로 드러납니다.
 - 시뮬레이션 결과가 바뀌면 적어도 minor 버전을 올립니다. 리플레이와 저장 게임은 엔진 버전 사이에 호환되지 않습니다.

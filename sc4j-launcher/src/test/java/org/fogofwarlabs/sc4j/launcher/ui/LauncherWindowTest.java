@@ -33,6 +33,7 @@ import org.fogofwarlabs.sc4j.launcher.session.*;
 import org.fogofwarlabs.sc4j.launcher.settings.LauncherSettings;
 import org.fogofwarlabs.sc4j.launcher.settings.LauncherSettingsFile;
 import org.fogofwarlabs.sc4j.launcher.settings.WindowState;
+import org.fogofwarlabs.sc4j.launcher.translation.LauncherTranslation;
 import org.fogofwarlabs.sc4j.launcher.ui.session.Conversations;
 import org.fogofwarlabs.sc4j.launcher.ui.session.RecordingLauncherSession;
 import org.fogofwarlabs.sc4j.launcher.update.LauncherRelease;
@@ -40,6 +41,8 @@ import org.fogofwarlabs.sc4j.launcher.update.LauncherUpdater;
 import org.fogofwarlabs.sc4j.launcher.update.PackagePlatform;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.fogofwarlabs.sc4j.manifest.test.TestJarUtils;
+import org.fogofwarlabs.sc4j.translate.service.TranslationPresetUtils;
+import org.fogofwarlabs.sc4j.translate.service.TranslationStorage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
@@ -143,6 +146,10 @@ final class LauncherWindowTest {
 
         raynorKey   = IdentityKeyPair.generate(new SecureRandom());
         raynorStamp = PlayerStamp.solve(raynorKey.getPublicKey(), "Raynor", PlayerStamp.DEFAULT_DIFFICULTY);
+    }
+
+    private static @NotNull LauncherTranslation createTranslation(@NotNull InstallLayout install) {
+        return new LauncherTranslation(TranslationStorage.of(install.getUserDataDirectory()), TranslationPresetUtils.getPresets());
     }
 
     private static @NotNull Rectangle2D createScreen(double scale) {
@@ -374,7 +381,8 @@ final class LauncherWindowTest {
                 Stage stage = new Stage();
                 LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
                 }, folder -> {
-                }, new LauncherNodeRunner(install), account -> LauncherSession.open(install, account, VERSION, Platform::runLater), NO_SOUND);
+                }, new LauncherNodeRunner(install), account -> LauncherSession.open(install, account, VERSION, Platform::runLater), NO_SOUND,
+                                                           null, createTranslation(install));
                 Rectangle2D firstScreen = createScreen(FIRST_SCALE);
                 Rectangle2D changedScreen = createScreen(CHANGED_SCALE);
 
@@ -420,7 +428,8 @@ final class LauncherWindowTest {
             Stage stage = new Stage();
             LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
             }, folder -> {
-            }, new LauncherNodeRunner(install), account -> LauncherSession.open(install, account, VERSION, Platform::runLater), NO_SOUND);
+            }, new LauncherNodeRunner(install), account -> LauncherSession.open(install, account, VERSION, Platform::runLater), NO_SOUND, null,
+                                                       createTranslation(install));
 
             window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
 
@@ -458,7 +467,7 @@ final class LauncherWindowTest {
                     sessions.add(session);
 
                     return session;
-                }, NO_SOUND);
+                }, NO_SOUND, null, createTranslation(install));
 
                 shown.set(stage);
                 window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
@@ -545,7 +554,7 @@ final class LauncherWindowTest {
                     sessions.add(session);
 
                     return session;
-                }, NO_SOUND);
+                }, NO_SOUND, null, createTranslation(install));
 
                 window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
                 LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
@@ -588,7 +597,7 @@ final class LauncherWindowTest {
             Stage stage = new Stage();
             LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
             }, folder -> {
-            }, new LauncherNodeRunner(install), account -> session, NO_SOUND);
+            }, new LauncherNodeRunner(install), account -> session, NO_SOUND, null, createTranslation(install));
 
             window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
             LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
@@ -622,7 +631,7 @@ final class LauncherWindowTest {
             Stage stage = new Stage();
             LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
             }, folder -> {
-            }, new LauncherNodeRunner(install), account -> session, sounds::incrementAndGet);
+            }, new LauncherNodeRunner(install), account -> session, sounds::incrementAndGet, null, createTranslation(install));
             List<ChannelView> channels = List.of(new ChannelView(ChannelChat.SHARED_CHANNEL, 2, List.of()), new ChannelView("Ladder", 2, List.of()));
             List<ChatEntryView> entries = new ArrayList<>();
 
@@ -682,7 +691,7 @@ final class LauncherWindowTest {
             Stage stage = new Stage();
             LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
             }, folder -> {
-            }, new LauncherNodeRunner(install), account -> session, NO_SOUND);
+            }, new LauncherNodeRunner(install), account -> session, NO_SOUND, null, createTranslation(install));
 
             window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
             LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
@@ -729,7 +738,7 @@ final class LauncherWindowTest {
             Stage stage = new Stage();
             LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
             }, folder -> {
-            }, new LauncherNodeRunner(install), account -> session, NO_SOUND);
+            }, new LauncherNodeRunner(install), account -> session, NO_SOUND, null, createTranslation(install));
 
             window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
             LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
@@ -782,7 +791,7 @@ final class LauncherWindowTest {
             Stage stage = new Stage();
             LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
             }, folder -> {
-            }, new LauncherNodeRunner(install), account -> session, sounds::incrementAndGet);
+            }, new LauncherNodeRunner(install), account -> session, sounds::incrementAndGet, null, createTranslation(install));
 
             window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
             LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();
@@ -823,7 +832,7 @@ final class LauncherWindowTest {
             Stage stage = new Stage();
             LauncherWindow window = new LauncherWindow(stage, install, VERSION, address -> {
             }, folder -> {
-            }, new LauncherNodeRunner(install), account -> session, NO_SOUND);
+            }, new LauncherNodeRunner(install), account -> session, NO_SOUND, null, createTranslation(install));
 
             window.fitDisplay(FIRST_SCALE, new Rectangle2D(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT));
             LauncherFxScenario.findButton(layRoot(stage), texts.get("accounts.log.in")).fire();

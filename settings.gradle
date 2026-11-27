@@ -17,6 +17,8 @@ include 'sc4j-engine-client'
 include 'sc4j-engine'
 include 'sc4j-runtime'
 include 'sc4j-launcher'
+// The local channel between the launcher and the runtimes it starts: connection, token, frames and named services (no engine).
+include 'sc4j-launcher-link'
 // The reader of what is published (SC4J releases and the mod catalog) that the launcher and the runtime share (no engine).
 include 'sc4j-catalog'
 // Beacon.Link: the wire protocol shared by the peers and the client, the peer library that the launcher, the runtime and the
@@ -26,6 +28,11 @@ include 'sc4j-beaconlink-peer'
 include 'sc4j-beaconlink-node'
 // The Beacon.Link client that the runtime gives a mod, with the loopback NAT emulator of the network tests (test fixtures).
 include 'sc4j-beaconlink'
+// Chat translation: the contract that every side sees (no implementation), and the service behind it: model presets and their
+// installation, the SentencePiece tokenizer, the CTranslate2 sequence model and the fastText language identifier, the worker with its
+// batches and cache (no engine).
+include 'sc4j-translate'
+include 'sc4j-translate-service'
 
 // The demo, a mod made only of the engine: one module in mods/demo/ (project :mods:demo).
 include ':mods:demo'

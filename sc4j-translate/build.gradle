@@ -1,0 +1,10 @@
+plugins {
+    id 'java-library'
+    id 'org.fogofwarlabs.sc4j.java'
+}
+
+// The translation contract that the engine, the launcher and the runtime see: the translator, its request and its answer, and the translator
+// that is always unavailable. No implementation; it uses the generic base only.
+dependencies {
+    api project(':sc4j-base')
+}

@@ -20,6 +20,10 @@ import org.fogofwarlabs.sc4j.launcher.ui.LauncherFxScenario;
 import org.fogofwarlabs.sc4j.launcher.ui.LauncherShell;
 import org.fogofwarlabs.sc4j.launcher.ui.ThemeUtils;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
+import org.fogofwarlabs.sc4j.translate.ProtectedSpan;
+import org.fogofwarlabs.sc4j.translate.Translation;
+import org.fogofwarlabs.sc4j.translate.TranslationStatus;
+import org.fogofwarlabs.sc4j.translate.Translator;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
@@ -28,9 +32,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -38,8 +41,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * conversations and members in compact rows, the shown channel's log and members, lines and whispers sent from the input, leaving and joining
  * a channel, a channel the chat joins shown at once, a whisper conversation opened from elsewhere shown with the input focused and kept while
  * the chat joins the shared channel, the player menu on a member and on a name in the log with its commands, the input footer with the same
- * room around its row and between the input and Send, the header controls with the same room on their right as above and below, and the
- * notice of a session without a connection.
+ * room around its row and between the input and Send, the header controls with the same room on their right as above and below, the
+ * translation of other players' lines, emotes and whispers with its mark and the switch back to the original, and the notice of a session
+ * without a connection.
  */
 final class ChatScreenTest {
     private static final double SCENE_WIDTH = 1280;
@@ -256,12 +260,18 @@ final class ChatScreenTest {
         return createShell(texts, directory, session, copied, new AtomicReference<>());
     }
 
+    private static @NotNull LauncherShell createShell(@NotNull LauncherTexts texts, @NotNull Path directory,
+                                                      @NotNull RecordingLauncherSession session, @NotNull List<@NotNull String> copied,
+                                                      @NotNull AtomicReference<ChatScreen> created) {
+        return createShell(texts, directory, session, copied, created, new ChatTranslations(Translator.unavailable(), () -> null, Runnable::run));
+    }
+
     /**
      * Builds the shell of a logged-in account on its Chat screen, the way the window does, and hands out the screen.
      */
     private static @NotNull LauncherShell createShell(@NotNull LauncherTexts texts, @NotNull Path directory,
                                                       @NotNull RecordingLauncherSession session, @NotNull List<@NotNull String> copied,
-                                                      @NotNull AtomicReference<ChatScreen> created) {
+                                                      @NotNull AtomicReference<ChatScreen> created, @NotNull ChatTranslations translations) {
         LauncherShell shell = new LauncherShell(texts, InstallLayout.of(directory), 1, section -> {
         }, () -> {
         }, () -> {
@@ -288,7 +298,8 @@ final class ChatScreenTest {
                 Assertions.fail("no link is opened");
             }
         };
-        ChatScreen screen = new ChatScreen(shell, texts, RAYNOR.getTaggedName(), session, new Conversations(session), modId -> modId, actions);
+        ChatScreen screen = new ChatScreen(shell, texts, RAYNOR.getTaggedName(), session, new Conversations(session), translations, modId -> modId,
+                                           actions);
 
         created.set(screen);
 
@@ -529,6 +540,91 @@ final class ChatScreenTest {
             Assertions.assertTrue(getList(shell, CONVERSATION_LIST).getSelectionModel().isSelected(0));
             Assertions.assertTrue(showsText(root, texts.format("session.whisper.to", KERRIGAN.getTaggedName())));
             Assertions.assertTrue(showsText(root, texts.get("chat.log.empty")));
+
+            return null;
+        });
+    }
+
+    @Test
+    void chat_screen_translates_the_texts_of_other_players_and_switches_a_line_back(@TempDir @NotNull Path directory) throws Exception {
+        LauncherTexts texts = LauncherTexts.of(UiLanguage.KOREAN);
+        RecordingLauncherSession session = new RecordingLauncherSession(RAYNOR.getCode(), CONNECTED);
+        List<String> requested = new ArrayList<>();
+        Queue<Runnable> published = new ArrayDeque<>();
+        // Marks the text after the protected start and its white space as translated, as a model would translate it.
+        Translator translator = request -> {
+            String text = request.getText();
+            int start = request.getProtectedSpans().stream().mapToInt(ProtectedSpan::getEnd).max().orElse(0);
+            String run = text.substring(start).stripLeading();
+            String kept = text.substring(0, text.length() - run.length());
+
+            requested.add(text);
+
+            return CompletableFuture.completedFuture(new Translation(text, kept + "T:" + run, Locale.ENGLISH, TranslationStatus.TRANSLATED));
+        };
+        ChatTranslations translations = new ChatTranslations(translator, () -> "fake", published::add);
+
+        session.setFriends(List.of(KERRIGAN));
+        session.setWhispers(WHISPERS);
+        session.setChat(CHANNELS, KNOWN_CHANNELS, ENTRIES);
+
+        LauncherFxScenario.run(() -> {
+            AtomicReference<ChatScreen> screen = new AtomicReference<>();
+            LauncherShell shell = createShell(texts, directory, session, new ArrayList<>(), screen, translations);
+            Parent root = shell.getRoot();
+
+            translations.setOnChanged(() -> screen.get().update());
+
+            // The lines show their original text until the translations come; only other players' lines are asked for.
+            Assertions.assertTrue(showsText(root, "gg all"));
+            Assertions.assertFalse(showsText(root, texts.get("chat.translated")));
+            Assertions.assertEquals(List.of("gg all"), requested, "own lines and notices are not translated");
+
+            while (!published.isEmpty()) {
+                published.remove().run();
+            }
+
+            lay(shell);
+
+            Assertions.assertTrue(showsText(root, "T:gg all"));
+            Assertions.assertTrue(showsText(root, texts.get("chat.translated")));
+            Assertions.assertTrue(showsText(root, "hi"));
+            Assertions.assertFalse(showsText(root, "T:hi"));
+
+            // A click switches the line back to its original text with the other mark, and again to the translation.
+            translations.toggle(ENTRIES.get(1));
+            lay(shell);
+
+            Assertions.assertFalse(showsText(root, "T:gg all"));
+            Assertions.assertTrue(showsText(root, texts.get("chat.original")));
+
+            translations.toggle(ENTRIES.get(1));
+            lay(shell);
+
+            Assertions.assertTrue(showsText(root, "T:gg all"));
+
+            // An emote keeps the name it starts with; a received whisper is translated too.
+            select(shell, CHANNEL_LIST, 1);
+
+            while (!published.isEmpty()) {
+                published.remove().run();
+            }
+
+            lay(shell);
+
+            Assertions.assertTrue(showsText(root, "T:anyone 1v1?"));
+            Assertions.assertTrue(showsText(root, "Artanis#0a0b0c T:waves"));
+
+            select(shell, CONVERSATION_LIST, 0);
+
+            while (!published.isEmpty()) {
+                published.remove().run();
+            }
+
+            lay(shell);
+
+            Assertions.assertTrue(showsText(root, "T:Ready?"));
+            Assertions.assertEquals(List.of("gg all", "anyone 1v1?", "Artanis#0a0b0c waves", "Ready?"), requested, "each text is asked once");
 
             return null;
         });

@@ -176,31 +176,35 @@ configurations.consumable('modJarElements') {
     outgoing.artifact(jar)
 }
 
-// The engine runtime of the plugin's version and the native libraries of its LWJGL and JavaCPP libraries for this platform.
+// The engine runtime of the plugin's version and the native libraries of its LWJGL and JavaCPP libraries (org.bytedeco, and the
+// CTranslate2 binding of the organization, org.fogofwarlabs) for this platform. A group without natives for this platform maps to null.
 def runtime = configurations.dependencyScope('sc4jRuntime')
 dependencies.add('sc4jRuntime', engineModule('sc4j-runtime'))
 def runtimeClasspath = configurations.resolvable('sc4jRuntimeClasspath') {
     extendsFrom(runtime.get())
     attributes(javaRuntime)
 }
+def ctranslate2Platforms = ['windows-x86_64', 'linux-x86_64', 'linux-arm64', 'macosx-arm64']
 def nativeClassifiers = {
     def operatingSystem = System.getProperty('os.name').toLowerCase(Locale.ROOT)
     def arm = System.getProperty('os.arch').toLowerCase(Locale.ROOT) in ['aarch64', 'arm64']
+    def classifiers
     if (operatingSystem.contains('windows')) {
-        return ['org.lwjgl': arm ? 'natives-windows-arm64' : 'natives-windows', 'org.bytedeco': arm ? 'windows-arm64' : 'windows-x86_64']
+        classifiers = ['org.lwjgl': arm ? 'natives-windows-arm64' : 'natives-windows', 'org.bytedeco': arm ? 'windows-arm64' : 'windows-x86_64']
+    } else if (operatingSystem.contains('linux')) {
+        classifiers = ['org.lwjgl': arm ? 'natives-linux-arm64' : 'natives-linux', 'org.bytedeco': arm ? 'linux-arm64' : 'linux-x86_64']
+    } else if (operatingSystem.contains('mac')) {
+        classifiers = ['org.lwjgl': arm ? 'natives-macos-arm64' : 'natives-macos', 'org.bytedeco': arm ? 'macosx-arm64' : 'macosx-x86_64']
+    } else {
+        throw new GradleException('The engine runtime has no native libraries for ' + System.getProperty('os.name') + '.')
     }
-    if (operatingSystem.contains('linux')) {
-        return ['org.lwjgl': arm ? 'natives-linux-arm64' : 'natives-linux', 'org.bytedeco': arm ? 'linux-arm64' : 'linux-x86_64']
-    }
-    if (operatingSystem.contains('mac')) {
-        return ['org.lwjgl': arm ? 'natives-macos-arm64' : 'natives-macos', 'org.bytedeco': arm ? 'macosx-arm64' : 'macosx-x86_64']
-    }
-    throw new GradleException('The engine runtime has no native libraries for ' + System.getProperty('os.name') + '.')
+    classifiers['org.fogofwarlabs'] = classifiers['org.bytedeco'] in ctranslate2Platforms ? classifiers['org.bytedeco'] : null
+    return classifiers
 }
 def runtimeNatives = files({
     def classifiers = nativeClassifiers()
     def natives = runtimeClasspath.get().incoming.artifacts.artifacts.collect { artifact -> artifact.id.componentIdentifier }.findAll { component ->
-        component instanceof ModuleComponentIdentifier && classifiers.containsKey(component.group)
+        component instanceof ModuleComponentIdentifier && classifiers[component.group] != null
     }.collect { component ->
         dependencies.create(component.group + ':' + component.module + ':' + component.version + ':' + classifiers[component.group])
     }

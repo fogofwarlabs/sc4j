@@ -7,7 +7,8 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Tests parsing the runtime command line: every option, the repeatable seeds, the mod arguments after {@code --} and the rejected forms.
+ * Tests parsing the runtime command line: every option, the repeatable seeds, the launcher link, the translation preset, the mod arguments
+ * after {@code --} and the rejected forms.
  */
 final class RuntimeCommandLineTest {
     @Test
@@ -15,7 +16,8 @@ final class RuntimeCommandLineTest {
         RuntimeCommandLine commandLine = RuntimeCommandLine.parse(new String[]{
                 "--mod", "mods/my-mod.jar", "--install", "install", "--settings", "my-mod.json", "--storage", "storage", "--log", "logs",
                 "--account", "accounts/0123456789abcdef", "--seeds", "seeds.json", "--seed", "127.0.0.1:7455", "--seed", "[::1]:7456",
-                "--peers", "peers.json", "--no-port-mapping",
+                "--peers", "peers.json", "--no-port-mapping", "--launcher-link", "userdata/run/launcher-1234.sock",
+                "--translation-preset", "nllb-200-distilled-600m",
                 "--headless", "--replay", "game.sc4r", "--join", "192.0.2.2:6121", "--", "--skirmish", "--mod", "x"
         });
 
@@ -30,6 +32,8 @@ final class RuntimeCommandLineTest {
         Assertions.assertEquals(Path.of("peers.json").toAbsolutePath(), commandLine.getPeersFile());
         Assertions.assertTrue(commandLine.hasSeedSource());
         Assertions.assertFalse(commandLine.isPortMapping());
+        Assertions.assertEquals(Path.of("userdata/run/launcher-1234.sock").toAbsolutePath(), commandLine.getLauncherLink());
+        Assertions.assertEquals("nllb-200-distilled-600m", commandLine.getTranslationPreset());
         Assertions.assertTrue(commandLine.isHeadless());
         Assertions.assertEquals(Path.of("game.sc4r").toAbsolutePath(), commandLine.getReplay());
         Assertions.assertEquals("192.0.2.2:6121", commandLine.getJoin());
@@ -51,6 +55,8 @@ final class RuntimeCommandLineTest {
         Assertions.assertNull(commandLine.getPeersFile());
         Assertions.assertFalse(commandLine.hasSeedSource(), "a run without a seed source offers no Beacon.Link");
         Assertions.assertTrue(commandLine.isPortMapping(), "Beacon.Link sessions map their socket unless told not to");
+        Assertions.assertNull(commandLine.getLauncherLink(), "a run without a launcher has no link");
+        Assertions.assertNull(commandLine.getTranslationPreset());
         Assertions.assertFalse(commandLine.isHeadless());
         Assertions.assertEquals(List.of(), commandLine.getModArguments());
         Assertions.assertTrue(RuntimeCommandLine.parse(new String[]{"--help"}).isHelp());
@@ -66,5 +72,7 @@ final class RuntimeCommandLineTest {
         Assertions.assertThrows(IllegalArgumentException.class, () -> RuntimeCommandLine.parse(new String[]{"--mod", "a.jar", "--seed", "node"}));
         Assertions.assertThrows(IllegalArgumentException.class,
                                 () -> RuntimeCommandLine.parse(new String[]{"--mod", "a.jar", "--peers", "a.json", "--peers", "b.json"}));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> RuntimeCommandLine.parse(new String[]{"--mod", "a.jar", "--launcher-link"}));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> RuntimeCommandLine.parse(new String[]{"--mod", "a.jar", "--translation-preset"}));
     }
 }

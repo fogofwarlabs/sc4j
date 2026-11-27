@@ -6,12 +6,13 @@ plugins {
 // The engine that mods compile against and the runtime runs: the mod API (engine.mod), the mod loader (engine.mod.loading), the client
 // application (engine.client.app: the window, audio and first scene of a run, the file lists over replays and saves) and the default parts
 // of the community screens (engine.client.community: room filter, chat log and table controls) and the lobby (engine.client.lobby: recent
-// maps), over the engine modules core, sim, net and client.
+// maps), over the engine modules core, sim, net and client, and the translation contract of the mod context.
 dependencies {
     api project(':sc4j-engine-core')
     api project(':sc4j-engine-sim')
     api project(':sc4j-engine-net')
     api project(':sc4j-engine-client')
+    api project(':sc4j-translate')
 
     // Test mod jars (org.fogofwarlabs.sc4j.manifest.test.TestJarUtils).
     testImplementation testFixtures(project(':sc4j-mod-manifest'))

@@ -12,10 +12,14 @@ import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
 import org.fogofwarlabs.sc4j.launcher.nodes.NodePingResult;
 import org.fogofwarlabs.sc4j.launcher.peer.LauncherNodeRunner;
+import org.fogofwarlabs.sc4j.launcher.translation.LauncherTranslation;
 import org.fogofwarlabs.sc4j.launcher.ui.LauncherFxScenario;
+import org.fogofwarlabs.sc4j.launcher.ui.LauncherShell;
 import org.fogofwarlabs.sc4j.launcher.ui.ThemeUtils;
 import org.fogofwarlabs.sc4j.launcher.ui.Tone;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
+import org.fogofwarlabs.sc4j.translate.service.TranslationPresetUtils;
+import org.fogofwarlabs.sc4j.translate.service.TranslationStorage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
@@ -62,6 +66,14 @@ final class UpdateViewTest {
         @Override
         public void onPingNodes(@NotNull List<@NotNull ConfiguredNode> nodes, @NotNull Consumer<@NotNull List<@NotNull NodePingResult>> results) {
         }
+
+        @Override
+        public void onTranslationPresetChanged(@Nullable String presetId) {
+        }
+
+        @Override
+        public void onOpenWebsite(@NotNull String address) {
+        }
     }
 
     private static @NotNull Bounds getSceneBounds(@NotNull Node node) {
@@ -97,8 +109,16 @@ final class UpdateViewTest {
     }
 
     private static @NotNull GridPane createRoot(@NotNull LauncherTexts texts, @NotNull UpdateView view, @NotNull Path directory) {
-        return new OptionsScreen(texts, null, false, view, List.of(), null, new LauncherNodeRunner(InstallLayout.of(directory)),
-                                 new NoActions()).getRoot();
+        InstallLayout install = InstallLayout.of(directory);
+        LauncherShell shell = new LauncherShell(texts, install, 1, section -> {
+        }, () -> {
+        }, () -> {
+        });
+        LauncherTranslation translation = new LauncherTranslation(TranslationStorage.of(install.getUserDataDirectory()),
+                                                                  TranslationPresetUtils.getPresets());
+
+        return new OptionsScreen(shell, texts, null, false, view, List.of(), null, new LauncherNodeRunner(install), translation, new NoActions())
+                .getRoot();
     }
 
     private static void layOut(@NotNull GridPane root) {

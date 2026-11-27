@@ -3,20 +3,27 @@ plugins {
     id 'application'
     id 'org.openjfx.javafxplugin' version '0.1.0'
     id 'org.fogofwarlabs.sc4j.java'
+    id 'org.fogofwarlabs.sc4j.natives'
 }
 
 // The launcher: lists the mod jars of the install, edits their pre-run settings and starts the runtime as a
 // separate process. It reads mod jars only through the manifest module (never loading a mod class) and depends on no
 // runtime or mod module; the Beacon.Link protocol module gives it the shared node list file and the node Ping, the Beacon.Link
 // peer library the node it runs while it is open, and the Beacon.Link client (the one the games use, with the engine's network
-// interface it implements) the session of the logged-in account, and the catalog reader its updates, the mod catalog and mod releases;
-// JavaFX (OpenJFX) is its only other dependency.
+// interface it implements) the session of the logged-in account, the catalog reader its updates, the mod catalog and mod releases, the
+// launcher link the local channel to the runtimes it starts, and the translation service the chat translation it hosts for itself and those
+// runtimes; JavaFX (OpenJFX) is its only other dependency.
 dependencies {
     implementation project(':sc4j-mod-manifest')
     implementation project(':sc4j-beaconlink-protocol')
     implementation project(':sc4j-beaconlink-peer')
     implementation project(':sc4j-beaconlink')
     implementation project(':sc4j-catalog')
+    implementation project(':sc4j-launcher-link')
+    implementation project(':sc4j-translate-service')
+
+    // The native libraries of the translation service (CTranslate2 and JavaCPP) for lib/natives of the distribution.
+    nativeLibraries project(path: ':sc4j-translate-service', configuration: 'nativeLibraries')
 
     // Test mod jars (org.fogofwarlabs.sc4j.manifest.test.TestJarUtils).
     testImplementation testFixtures(project(':sc4j-mod-manifest'))

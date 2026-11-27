@@ -15,6 +15,7 @@ import org.fogofwarlabs.sc4j.launcher.nodes.NodeEntryProblem;
 import org.fogofwarlabs.sc4j.launcher.nodes.NodeListEditor;
 import org.fogofwarlabs.sc4j.launcher.nodes.NodePingResult;
 import org.fogofwarlabs.sc4j.launcher.peer.LauncherNodeRunner;
+import org.fogofwarlabs.sc4j.launcher.translation.LauncherTranslation;
 import org.fogofwarlabs.sc4j.launcher.ui.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -25,9 +26,10 @@ import java.util.function.Consumer;
 /**
  * Shows the launcher's Settings screen in two columns of equal width. The left column holds the launcher panel with Check now in its header
  * and a form of one field per row: the version with the result of the last check, the UI language (the system language or an explicit
- * choice), the chat sound switch and the update source (the update parts are {@link UpdateView}). The right column holds the Beacon.Link
- * panel ({@link BeaconLinkPanel}: the node setting and the launcher node's status; keys are automatic and not shown) and, under it behind its
- * Peers button, the seed list editor (the node list). The editor lists the seeds in the order the client contacts them and has the host and
+ * choice), the chat sound switch and the update source (the update parts are {@link UpdateView}); under it the chat translation panel
+ * ({@link TranslationPanel}: the translation model and the download, licence and deletion of each preset). The right column holds the
+ * Beacon.Link panel ({@link BeaconLinkPanel}: the node setting and the launcher node's status; keys are automatic and not shown) and, under it
+ * behind its Peers button, the seed list editor (the node list). The editor lists the seeds in the order the client contacts them and has the host and
  * port fields under the list: Add, Update and Remove change entries, Move up and Move down change the order. Field problems are shown with
  * their reasons; every change is saved at once through {@link Actions#onNodesChanged(List)}. Ping checks every listed seed and shows each
  * result in the seed's row: the round-trip delay, the node version and the address the node observed, or why it did not answer.
@@ -70,6 +72,20 @@ public final class OptionsScreen {
          * @param results receives one result per node, in the order of the nodes, on the user interface thread
          */
         void onPingNodes(@NotNull List<@NotNull ConfiguredNode> nodes, @NotNull Consumer<@NotNull List<@NotNull NodePingResult>> results);
+
+        /**
+         * Called when the user chooses the model the chat is translated with, and when the chosen model is deleted.
+         *
+         * @param presetId the id of the chosen preset, or {@code null} for Off
+         */
+        void onTranslationPresetChanged(@Nullable String presetId);
+
+        /**
+         * Called when the user opens a web address, such as the licence of a translation preset.
+         *
+         * @param address the {@code http} or {@code https} address
+         */
+        void onOpenWebsite(@NotNull String address);
     }
 
     /**
@@ -126,6 +142,8 @@ public final class OptionsScreen {
     private final @NotNull Label message;
     private final @NotNull Label nodeCount;
     private final @NotNull Button ping;
+    private final @NotNull Button moveUp;
+    private final @NotNull Button moveDown;
     private final @NotNull GridPane root;
 
     private final @NotNull Map<@NotNull ConfiguredNode, @NotNull NodePingResult> pingResults;
@@ -134,6 +152,7 @@ public final class OptionsScreen {
     /**
      * Creates a {@link OptionsScreen} instance.
      *
+     * @param shell            shows the screen's dialogs
      * @param texts            the launcher texts of the display language
      * @param language         the language chosen in the launcher settings, or {@code null} when the launcher follows the operating system
      * @param chatSoundMuted   whether the launcher settings mute the chat notification sound
@@ -141,12 +160,13 @@ public final class OptionsScreen {
      * @param nodes            the saved node list, or the shipped seed list while the user has saved none
      * @param nodesLoadProblem why that list could not be read, or {@code null}
      * @param nodeRunner       the launcher's Beacon.Link node
+     * @param translation      the launcher's translation, its presets and their downloads
      * @param actions          receives the changes
      */
-    public OptionsScreen(@NotNull LauncherTexts texts, @Nullable UiLanguage language, boolean chatSoundMuted,
+    public OptionsScreen(@NotNull LauncherShell shell, @NotNull LauncherTexts texts, @Nullable UiLanguage language, boolean chatSoundMuted,
                          @NotNull UpdateView updateView,
                          @NotNull List<@NotNull ConfiguredNode> nodes, @Nullable NodeListProblem nodesLoadProblem, @NotNull LauncherNodeRunner nodeRunner,
-                         @NotNull Actions actions) {
+                         @NotNull LauncherTranslation translation, @NotNull Actions actions) {
         VBox nodesPanel;
         VBox launcherColumn;
         VBox beaconLinkColumn;
@@ -160,6 +180,8 @@ public final class OptionsScreen {
         this.message   = ComponentUtils.createLabel("", "field-message");
         this.nodeCount = ComponentUtils.createLabel(texts.formatCount("nodes.count", nodes.size()), "text-caption");
         this.ping      = ComponentUtils.createSmallButton(texts.get("nodes.ping"), ButtonRole.SECONDARY);
+        this.moveUp    = ComponentUtils.createSmallButton(texts.get("nodes.move.up"), ButtonRole.SECONDARY);
+        this.moveDown  = ComponentUtils.createSmallButton(texts.get("nodes.move.down"), ButtonRole.SECONDARY);
 
         this.nodeList.getItems().setAll(nodes);
         this.nodeList.setCellFactory(view -> new ListItemCell<>(this::createNodeItem));
@@ -175,7 +197,8 @@ public final class OptionsScreen {
         nodesPanel = this.createNodesPanel(nodesLoadProblem);
         VBox.setVgrow(nodesPanel, Priority.ALWAYS);
 
-        launcherColumn   = ComponentUtils.createColumn(Spacing.L, this.createLauncherPanel(language, chatSoundMuted, updateView));
+        launcherColumn   = ComponentUtils.createColumn(Spacing.L, this.createLauncherPanel(language, chatSoundMuted, updateView),
+                                                       new TranslationPanel(shell, texts, translation, actions).getRoot());
         beaconLinkColumn = ComponentUtils.createColumn(Spacing.L, new BeaconLinkPanel(texts, nodeRunner, nodesPanel).getRoot(), nodesPanel);
         this.root        = ComponentUtils.createEqualColumns(Spacing.L, launcherColumn, beaconLinkColumn);
 
@@ -258,7 +281,7 @@ public final class OptionsScreen {
         this.ping.setDisable(this.editor.getNodes().isEmpty());
         this.ping.setOnAction(event -> this.pingNodes());
         panel = ComponentUtils.createPanelWithFooter(this.texts.get("nodes.title"), body, ComponentUtils.createPanelFooter(this.createEditor()),
-                                                     this.nodeCount, this.ping);
+                                                     this.nodeCount, this.moveUp, this.moveDown, this.ping);
         ComponentUtils.fillHeight(panel);
 
         return panel;
@@ -270,10 +293,8 @@ public final class OptionsScreen {
         Button add = ComponentUtils.createButton(this.texts.get("nodes.add"), ButtonRole.PRIMARY);
         Button update = ComponentUtils.createButton(this.texts.get("nodes.update"), ButtonRole.SECONDARY);
         Button remove = ComponentUtils.createButton(this.texts.get("nodes.remove"), ButtonRole.DANGER);
-        Button moveUp = ComponentUtils.createButton(this.texts.get("nodes.move.up"), ButtonRole.SECONDARY);
-        Button moveDown = ComponentUtils.createButton(this.texts.get("nodes.move.down"), ButtonRole.SECONDARY);
         HBox fields = ComponentUtils.createRow(Spacing.S, hostField, portField);
-        HBox buttons = ComponentUtils.createRow(Spacing.S, add, update, remove, ComponentUtils.createGrowingSpacer(), moveUp, moveDown);
+        HBox buttons = ComponentUtils.createRow(Spacing.S, add, update, remove);
         VBox editorView = ComponentUtils.createColumn(Spacing.S, fields, buttons, this.message);
 
         ComponentUtils.setControlWidth(this.port, ControlWidth.S);
@@ -282,8 +303,8 @@ public final class OptionsScreen {
         this.message.setManaged(false);
         update.disableProperty().bind(this.nodeList.getSelectionModel().selectedItemProperty().isNull());
         remove.disableProperty().bind(this.nodeList.getSelectionModel().selectedItemProperty().isNull());
-        moveUp.disableProperty().bind(this.nodeList.getSelectionModel().selectedItemProperty().isNull());
-        moveDown.disableProperty().bind(this.nodeList.getSelectionModel().selectedItemProperty().isNull());
+        this.moveUp.disableProperty().bind(this.nodeList.getSelectionModel().selectedItemProperty().isNull());
+        this.moveDown.disableProperty().bind(this.nodeList.getSelectionModel().selectedItemProperty().isNull());
 
         add.setOnAction(event -> {
             ConfiguredNode node = this.readEntry(NodeListEditor.NEW_ENTRY);
@@ -307,8 +328,8 @@ public final class OptionsScreen {
                 this.saveNodes(this.editor.remove(index), -1);
             }
         });
-        moveUp.setOnAction(event -> this.moveSelected(-1));
-        moveDown.setOnAction(event -> this.moveSelected(1));
+        this.moveUp.setOnAction(event -> this.moveSelected(-1));
+        this.moveDown.setOnAction(event -> this.moveSelected(1));
 
         HBox.setHgrow(hostField, Priority.ALWAYS);
         HBox.setHgrow(editorView, Priority.ALWAYS);

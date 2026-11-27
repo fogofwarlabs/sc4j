@@ -28,12 +28,13 @@ import java.util.Map;
  *   "window": {"x": 120, "y": 80, "width": 1280, "height": 800, "maximized": false},
  *   "updateRepository": "owner/name",
  *   "skippedVersion": "1.2.0",
- *   "chatSoundMuted": true
+ *   "chatSoundMuted": true,
+ *   "translationPreset": "nllb-200-distilled-600m"
  * }
  *}
  * Every field but {@code format} is optional: without {@code language} the launcher follows the operating system's language, without
  * {@code updateRepository} it updates from {@link LauncherSettings#DEFAULT_UPDATE_REPOSITORY}, without {@code skippedVersion} it skips
- * no version, and without {@code chatSoundMuted} the chat sound is on.
+ * no version, without {@code chatSoundMuted} the chat sound is on, and without {@code translationPreset} the chat is not translated.
  */
 public final class LauncherSettingsFile {
     /**
@@ -53,6 +54,7 @@ public final class LauncherSettingsFile {
     private static final @NotNull String UPDATE_REPOSITORY_FIELD = "updateRepository";
     private static final @NotNull String SKIPPED_VERSION_FIELD = "skippedVersion";
     private static final @NotNull String CHAT_SOUND_MUTED_FIELD = "chatSoundMuted";
+    private static final @NotNull String TRANSLATION_PRESET_FIELD = "translationPreset";
 
     private static @Nullable UiLanguage readLanguage(@NotNull Path path, @Nullable Object value) throws IOException {
         if (value == null) {
@@ -148,9 +150,15 @@ public final class LauncherSettingsFile {
             throw Exceptions.newIOException("Invalid launcher settings file {0}: chatSoundMuted must be true or false", this.path);
         }
 
+        Object translationPreset = object.get(TRANSLATION_PRESET_FIELD);
+
+        if (translationPreset != null && !(translationPreset instanceof String)) {
+            throw Exceptions.newIOException("Invalid launcher settings file {0}: translationPreset must be a preset id", this.path);
+        }
+
         return new LauncherSettings(readLanguage(this.path, object.get(LANGUAGE_FIELD)), (String) lastMod,
                                     readWindow(this.path, object.get(WINDOW_FIELD)), (String) updateRepository, (String) skippedVersion,
-                                    Boolean.TRUE.equals(chatSoundMuted));
+                                    Boolean.TRUE.equals(chatSoundMuted), (String) translationPreset);
     }
 
     /**
@@ -195,6 +203,10 @@ public final class LauncherSettingsFile {
 
         if (settings.isChatSoundMuted()) {
             object.put(CHAT_SOUND_MUTED_FIELD, true);
+        }
+
+        if (settings.getTranslationPreset() != null) {
+            object.put(TRANSLATION_PRESET_FIELD, settings.getTranslationPreset());
         }
 
         AtomicFileUtils.write(this.path, JsonWriterUtils.write(object).getBytes(StandardCharsets.UTF_8));

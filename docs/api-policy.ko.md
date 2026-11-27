@@ -18,6 +18,7 @@
 | `sc4j-engine-client` | 호스트, 씬, 입력, 렌더러 추상화, 투영, 텍스트, HUD, 커맨드 카드, 콘솔, 대화 상자, 커서, 스킨, 월드 뷰, 오디오, 동영상, 설정 저장소 | `sc4j-engine-client/api/sc4j-engine-client.api` |
 | `sc4j-engine` | 모드 API(`engine.mod`), 클라이언트 애플리케이션(`engine.client.app`), 커뮤니티 화면 부품(`engine.client.community`), 로비 부품(`engine.client.lobby`) | `sc4j-engine/api/sc4j-engine.api` |
 | `sc4j-catalog` | 공개된 정보: GitHub 릴리즈, 릴리즈 버전, 새 릴리즈 확인, 모드 목록 | `sc4j-catalog/api/sc4j-catalog.api` |
+| `sc4j-translate` | `ModContext.getTranslator()`의 번역 계약: 번역기, 요청, 번역, 상태, 우선순위 | `sc4j-translate/api/sc4j-translate.api` |
 
 모드 플러그인은 런타임이 제공하는 모드 API인 이 모듈들을 대상으로 모드를 컴파일합니다([모드 제작 가이드 7.1장](mod-guide.ko.md#71-모드-자체의-빌드)).
 

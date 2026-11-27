@@ -1,0 +1,35 @@
+plugins {
+    id 'java-library'
+    id 'org.fogofwarlabs.sc4j.java'
+    id 'org.fogofwarlabs.sc4j.natives'
+}
+
+// The translation service behind the contract: the model layer (tokenizer, sequence model, language identifier, translation model), the
+// presets and their installation, the NLLB preset (pure Java SentencePiece and fastText, CTranslate2 for the encoder and the decoder) and
+// the service with its worker, language decision, batches and cache, and the adapters that carry requests over the launcher link. It knows
+// no engine and no game.
+dependencies {
+    api project(':sc4j-translate')
+    // The launcher's translation service and the runtime's translator that sends to it.
+    api project(':sc4j-launcher-link')
+
+    // The encoder and decoder inference of the model presets through the JavaCPP binding of CTranslate2. Its native libraries and those of
+    // JavaCPP are those of this platform only, in lib/natives of the applications that use the service; CTranslate2 has none for the other
+    // platforms, which then cannot translate.
+    implementation "org.fogofwarlabs:ctranslate2-java:$CTRANSLATE2_VERSION"
+    implementation "org.bytedeco:javacpp:$JAVACPP_VERSION"
+    nativeLibraries "org.bytedeco:javacpp:$JAVACPP_VERSION:$JAVACPP_PLATFORM"
+    if (JAVACPP_PLATFORM in CTRANSLATE2_PLATFORMS) {
+        nativeLibraries "org.fogofwarlabs:ctranslate2-java:$CTRANSLATE2_VERSION:$JAVACPP_PLATFORM"
+    }
+
+    testImplementation testFixtures(project(':sc4j-launcher-link'))
+}
+
+// The tests that need the files of a preset read them from <folder>/<preset id>/, the folder named by the Gradle property
+// sc4j.translation.presets or the environment variable SC4J_TRANSLATION_PRESETS; without it they are skipped.
+tasks.withType(Test).configureEach {
+    systemProperty 'sc4j.translation.presets', providers.gradleProperty('sc4j.translation.presets')
+                                                        .orElse(providers.environmentVariable('SC4J_TRANSLATION_PRESETS'))
+                                                        .getOrElse('')
+}

@@ -19,6 +19,7 @@ import org.fogofwarlabs.sc4j.manifest.test.TestJarUtils;
 import org.fogofwarlabs.sc4j.runtime.RuntimeMain;
 import org.fogofwarlabs.sc4j.runtime.cli.ExitCode;
 import org.fogofwarlabs.sc4j.testmod.*;
+import org.fogofwarlabs.sc4j.translate.service.nllb.NllbPreset;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -40,8 +41,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 
 /**
- * Tests the runtime sequence against test mod jars: a normal run with its reverse shutdown, the exit code of each kind of failure, and the
- * Beacon.Link of a run, which only its command line describes: offered only with a seed source, a game started without the launcher reaches
+ * Tests the runtime sequence against test mod jars: a normal run with its reverse shutdown, the exit code of each kind of failure, a run that
+ * goes on without the launcher link it cannot connect, and the Beacon.Link of a run, which only its command line describes: offered only with a seed source, a game started without the launcher reaches
  * a node on 127.0.0.1 with its account and keeps the node in its peers file, and two games of one account run at once as two connections
  * while the account cannot be deleted.
  */
@@ -176,6 +177,35 @@ final class RuntimeSessionTest {
         Assertions.assertEquals(ExitCode.MOD_FAILURE, run(nothing, "--headless"));
         Assertions.assertTrue(Files.readString(nothing.getLogDirectory(MOD_ID).resolve(Logging.FILE_NAME))
                                    .contains("registered no first scene, headless runner or application"));
+    }
+
+    @Test
+    void run_should_go_on_without_a_launcher_link_that_cannot_be_connected(@TempDir @NotNull Path directory) throws IOException {
+        InstallLayout install = createInstall(directory.resolve("install"), MANIFEST.formatted("0.1", HeadlessMod.class.getName()), true, true);
+        Path socket = directory.resolve("launcher-1.sock");
+
+        Assertions.assertEquals(ExitCode.SUCCESS, run(install, "--headless", "--launcher-link", socket.toString()));
+        Assertions.assertTrue(Files.readString(install.getLogDirectory(MOD_ID).resolve(Logging.FILE_NAME)).contains("LAUNCHER LINK: none"));
+        Assertions.assertTrue(Files.isRegularFile(install.getStorageDirectory(MOD_ID).resolve(HeadlessMod.RUN_FILE)));
+    }
+
+    @Test
+    void run_should_give_the_mod_an_unavailable_translator_without_an_installed_preset(@TempDir @NotNull Path directory) throws IOException {
+        InstallLayout install = createInstall(directory.resolve("install"), MANIFEST.formatted("0.1", HeadlessMod.class.getName()), true, true);
+        Path translationFile = install.getStorageDirectory(MOD_ID).resolve(HeadlessMod.TRANSLATION_FILE);
+        Path logFile = install.getLogDirectory(MOD_ID).resolve(Logging.FILE_NAME);
+
+        Assertions.assertEquals(ExitCode.SUCCESS, run(install, "--headless"));
+        Assertions.assertEquals("UNAVAILABLE", Files.readString(translationFile));
+        Assertions.assertTrue(Files.readString(logFile).contains("TRANSLATION: none"));
+
+        Assertions.assertEquals(ExitCode.SUCCESS, run(install, "--headless", "--translation-preset", "unknown-preset"));
+        Assertions.assertEquals("UNAVAILABLE", Files.readString(translationFile));
+        Assertions.assertTrue(Files.readString(logFile).contains("TRANSLATION: unknown preset unknown-preset"));
+
+        Assertions.assertEquals(ExitCode.SUCCESS, run(install, "--headless", "--translation-preset", NllbPreset.ID));
+        Assertions.assertEquals("UNAVAILABLE", Files.readString(translationFile), "a preset that is not installed translates nothing");
+        Assertions.assertTrue(Files.readString(logFile).contains("TRANSLATION: local preset " + NllbPreset.ID));
     }
 
     @Test

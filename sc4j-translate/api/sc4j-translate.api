@@ -1,0 +1,50 @@
+public final class org.fogofwarlabs.sc4j.translate.ProtectedSpan {
+  public int getEnd();
+  public int getStart();
+  public org.fogofwarlabs.sc4j.translate.ProtectedSpan(int, int);
+}
+
+public final class org.fogofwarlabs.sc4j.translate.Translation {
+  public boolean isTranslated();
+  public java.lang.String getOriginalText();
+  public java.lang.String getTranslatedText();
+  public java.util.Locale getSource();
+  public org.fogofwarlabs.sc4j.translate.Translation(java.lang.String, java.lang.String, java.util.Locale, org.fogofwarlabs.sc4j.translate.TranslationStatus);
+  public org.fogofwarlabs.sc4j.translate.TranslationStatus getStatus();
+  public static org.fogofwarlabs.sc4j.translate.Translation untranslated(java.lang.String, java.util.Locale, org.fogofwarlabs.sc4j.translate.TranslationStatus);
+}
+
+public final class org.fogofwarlabs.sc4j.translate.TranslationPriority extends java.lang.Enum<org.fogofwarlabs.sc4j.translate.TranslationPriority> {
+  public static final org.fogofwarlabs.sc4j.translate.TranslationPriority BATCH;
+  public static final org.fogofwarlabs.sc4j.translate.TranslationPriority CHAT;
+  public static org.fogofwarlabs.sc4j.translate.TranslationPriority valueOf(java.lang.String);
+  public static org.fogofwarlabs.sc4j.translate.TranslationPriority[] values();
+}
+
+public final class org.fogofwarlabs.sc4j.translate.TranslationRequest {
+  public java.lang.String getText();
+  public java.util.List<org.fogofwarlabs.sc4j.translate.ProtectedSpan> getProtectedSpans();
+  public java.util.Locale getTarget();
+  public org.fogofwarlabs.sc4j.translate.TranslationPriority getPriority();
+}
+
+public final class org.fogofwarlabs.sc4j.translate.TranslationRequest$Builder {
+  public org.fogofwarlabs.sc4j.translate.TranslationRequest build();
+  public org.fogofwarlabs.sc4j.translate.TranslationRequest$Builder addProtectedSpan(int, int);
+  public org.fogofwarlabs.sc4j.translate.TranslationRequest$Builder setPriority(org.fogofwarlabs.sc4j.translate.TranslationPriority);
+  public org.fogofwarlabs.sc4j.translate.TranslationRequest$Builder(java.lang.String, java.util.Locale);
+}
+
+public final class org.fogofwarlabs.sc4j.translate.TranslationStatus extends java.lang.Enum<org.fogofwarlabs.sc4j.translate.TranslationStatus> {
+  public static final org.fogofwarlabs.sc4j.translate.TranslationStatus SAME_LANGUAGE;
+  public static final org.fogofwarlabs.sc4j.translate.TranslationStatus SKIPPED;
+  public static final org.fogofwarlabs.sc4j.translate.TranslationStatus TRANSLATED;
+  public static final org.fogofwarlabs.sc4j.translate.TranslationStatus UNAVAILABLE;
+  public static org.fogofwarlabs.sc4j.translate.TranslationStatus valueOf(java.lang.String);
+  public static org.fogofwarlabs.sc4j.translate.TranslationStatus[] values();
+}
+
+public interface org.fogofwarlabs.sc4j.translate.Translator {
+  public abstract java.util.concurrent.CompletableFuture<org.fogofwarlabs.sc4j.translate.Translation> translate(org.fogofwarlabs.sc4j.translate.TranslationRequest);
+  public static org.fogofwarlabs.sc4j.translate.Translator unavailable();
+}

@@ -2,6 +2,7 @@ package org.fogofwarlabs.sc4j.engine.mod;
 
 import org.fogofwarlabs.sc4j.base.log.Logger;
 import org.fogofwarlabs.sc4j.manifest.ModManifest;
+import org.fogofwarlabs.sc4j.translate.Translator;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;
@@ -9,7 +10,7 @@ import java.util.List;
 
 /**
  * Gives a mod what the runtime prepared for its run: the validated manifest and settings, its own storage folder, the install folder, the
- * mod-specific command line arguments and a logger.
+ * mod-specific command line arguments, a logger and a translator for texts shown to the player.
  */
 public interface ModContext {
     /**
@@ -41,4 +42,13 @@ public interface ModContext {
      * @return the logger of the mod, writing to the runtime's log
      */
     @NotNull Logger getLogger();
+
+    /**
+     * Returns the translator of the run: the launcher's translation model when the launcher started the run, else the model the command line
+     * names, else a translator that answers every request with
+     * {@link org.fogofwarlabs.sc4j.translate.TranslationStatus#UNAVAILABLE}. Translations are for display only.
+     *
+     * @return the translator of the run
+     */
+    @NotNull Translator getTranslator();
 }

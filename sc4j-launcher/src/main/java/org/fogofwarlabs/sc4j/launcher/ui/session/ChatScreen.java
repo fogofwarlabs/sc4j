@@ -10,6 +10,7 @@ import javafx.scene.layout.VBox;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.ChatChannel;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.CommunitySession;
 import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChannelChat;
+import org.fogofwarlabs.sc4j.engine.net.beaconlink.community.chat.ChatEntryKind;
 import org.fogofwarlabs.sc4j.launcher.i18n.LauncherTexts;
 import org.fogofwarlabs.sc4j.launcher.session.*;
 import org.fogofwarlabs.sc4j.launcher.ui.*;
@@ -29,7 +30,9 @@ import java.util.function.Function;
  * A channel's input says lines and runs slash commands ({@code /help} lists them); a whisper conversation's input whispers to its player. A
  * right click on a member, or on a name in the log, opens the player's menu with Whisper, Add or Remove friend, Ignore or Unignore, Copy name
  * and Show status, the commands of the account menu. The log ({@link ChatLog}) selects and copies its text across lines and opens its links
- * after asking. Without a connection the screen says why.
+ * after asking. The lines and emotes of other players in the channels and the whispers they send are translated into the display language
+ * while the launcher translates ({@link ChatTranslations}): a line shows its original text until its translation comes, then the translation
+ * with a small mark, and a click switches it between both. Without a connection the screen says why.
  */
 public final class ChatScreen {
     /**
@@ -56,6 +59,7 @@ public final class ChatScreen {
     private final @NotNull String taggedName;
     private final @NotNull LauncherSessionView session;
     private final @NotNull Conversations conversations;
+    private final @NotNull ChatTranslations translations;
     private final @NotNull PlayerTexts playerTexts;
     private final @NotNull Actions actions;
 
@@ -77,6 +81,7 @@ public final class ChatScreen {
     private @Nullable Conversation shownConversation;
     private @NotNull List<?> shownSource;
     private @Nullable Object shownKey;
+    private int shownTranslations;
     private boolean listed;
     private boolean updating;
 
@@ -88,11 +93,13 @@ public final class ChatScreen {
      * @param taggedName    the account's name and tag ({@code Name#abcd12})
      * @param session       the account's session
      * @param conversations the account's whisper conversations and what the user read of them
+     * @param translations  the translations of the chat lines of other players
      * @param modNames      finds the display name of a mod by its id, the id itself for a mod the install does not have
      * @param actions       receives what the screen hands to the window
      */
     public ChatScreen(@NotNull LauncherShell shell, @NotNull LauncherTexts texts, @NotNull String taggedName, @NotNull LauncherSessionView session,
-                      @NotNull Conversations conversations, @NotNull Function<@NotNull String, @NotNull String> modNames, @NotNull Actions actions) {
+                      @NotNull Conversations conversations, @NotNull ChatTranslations translations,
+                      @NotNull Function<@NotNull String, @NotNull String> modNames, @NotNull Actions actions) {
         Button join = ComponentUtils.createSmallButton(texts.get("chat.join"), ButtonRole.SECONDARY);
 
         this.shell         = shell;
@@ -100,6 +107,7 @@ public final class ChatScreen {
         this.taggedName    = taggedName;
         this.session       = session;
         this.conversations = conversations;
+        this.translations  = translations;
         this.playerTexts   = new PlayerTexts(texts, modNames);
         this.actions       = actions;
 
@@ -121,6 +129,7 @@ public final class ChatScreen {
         this.shownConversation = null;
         this.shownSource       = List.of();
         this.shownKey          = null;
+        this.shownTranslations = translations.getVersion();
         this.listed            = false;
         this.updating          = false;
 
@@ -384,10 +393,11 @@ public final class ChatScreen {
             this.logTitle.setText(this.texts.get("chat.title"));
         }
 
-        if (!source.equals(this.shownSource) || !Objects.equals(key, this.shownKey)) {
+        if (!source.equals(this.shownSource) || !Objects.equals(key, this.shownKey) || this.translations.getVersion() != this.shownTranslations) {
             this.log.show(lines, Objects.equals(key, this.shownKey));
-            this.shownSource = source;
-            this.shownKey    = key;
+            this.shownSource       = source;
+            this.shownKey          = key;
+            this.shownTranslations = this.translations.getVersion();
         }
 
         if (!members.equals(this.memberList.getItems())) {
@@ -405,11 +415,20 @@ public final class ChatScreen {
     }
 
     /**
-     * Creates the log line of a channel entry; the session gives no whisper entries, its whispers show in their conversations.
+     * Creates the log line of a channel entry; the session gives no whisper entries, its whispers show in their conversations. The lines and
+     * emotes of other players are translated, an emote without the name it starts with.
      */
     private @NotNull ChatLog.Line createLine(@NotNull ChatEntryView entry) {
         FriendCode code = entry.getPlayer();
         String playerName = entry.getPlayerName() == null ? "" : entry.getPlayerName();
+
+        if (Conversations.isOtherLine(entry, this.session.getFriendCode())) {
+            boolean emote = entry.getKind() == ChatEntryKind.EMOTE;
+            int nameLength = emote && entry.getText().startsWith(playerName) ? playerName.length() : 0;
+
+            return this.createTranslatedLine(entry, emote ? "" : entry.getPrefix().strip(), code, playerName, entry.getText(), nameLength,
+                                             emote ? "text-accent" : "text-body", null);
+        }
 
         return switch (entry.getKind()) {
             case SAY, WHISPER -> new ChatLog.Line(entry.getPrefix().strip(), code, playerName, entry.getText(), "text-body", null);
@@ -428,7 +447,30 @@ public final class ChatScreen {
             case RECEIVED, DELIVERED -> null;
         };
 
+        if (whisper.isIncoming()) {
+            return this.createTranslatedLine(whisper, sender + ":", code, sender, whisper.getText(), 0, "text-body", caption);
+        }
+
         return new ChatLog.Line(sender + ":", code, sender, whisper.getText(), "text-body", caption);
+    }
+
+    /**
+     * Creates the log line of another player's text: its translation with the mark once it came and the user did not switch the line back,
+     * else its original text, with the mark of the original text when a translation exists.
+     */
+    private @NotNull ChatLog.Line createTranslatedLine(@NotNull Object view, @NotNull String prefix, @Nullable FriendCode code,
+                                                       @NotNull String playerName, @NotNull String text, int protectedLength,
+                                                       @NotNull String textStyle, @Nullable String caption) {
+        String translated = this.translations.findTranslation(text, protectedLength, this.texts.getLocale());
+
+        if (translated == null) {
+            return new ChatLog.Line(prefix, code, playerName, text, textStyle, caption);
+        }
+
+        boolean original = this.translations.isOriginalShown(view);
+
+        return new ChatLog.Line(prefix, code, playerName, original ? text : translated, textStyle, caption,
+                                this.texts.get(original ? "chat.original" : "chat.translated"), () -> this.translations.toggle(view), text);
     }
 
     /**

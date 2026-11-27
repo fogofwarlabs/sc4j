@@ -5,6 +5,7 @@ import org.fogofwarlabs.sc4j.engine.mod.ModContext;
 import org.fogofwarlabs.sc4j.engine.mod.ModSettings;
 import org.fogofwarlabs.sc4j.engine.mod.ModStorage;
 import org.fogofwarlabs.sc4j.manifest.ModManifest;
+import org.fogofwarlabs.sc4j.translate.Translator;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;
@@ -20,6 +21,7 @@ final class RuntimeModContext implements ModContext {
     private final @NotNull Path installDirectory;
     private final @NotNull List<@NotNull String> arguments;
     private final @NotNull Logger logger;
+    private final @NotNull Translator translator;
 
     /**
      * Creates a {@link RuntimeModContext} instance.
@@ -30,15 +32,17 @@ final class RuntimeModContext implements ModContext {
      * @param installDirectory the install folder
      * @param arguments        the arguments after {@code --}
      * @param logger           the logger of the mod
+     * @param translator       the translator of the run
      */
     RuntimeModContext(@NotNull ModManifest manifest, @NotNull ModSettings settings, @NotNull ModStorage storage, @NotNull Path installDirectory,
-                      @NotNull List<@NotNull String> arguments, @NotNull Logger logger) {
+                      @NotNull List<@NotNull String> arguments, @NotNull Logger logger, @NotNull Translator translator) {
         this.manifest         = manifest;
         this.settings         = settings;
         this.storage          = storage;
         this.installDirectory = installDirectory;
         this.arguments        = List.copyOf(arguments);
         this.logger           = logger;
+        this.translator       = translator;
     }
 
     /**
@@ -87,5 +91,17 @@ final class RuntimeModContext implements ModContext {
     @Override
     public @NotNull Logger getLogger() {
         return this.logger;
+    }
+
+    /**
+     * Returns the translator of the run: the launcher's translation model when the launcher started the run, else the model the command line
+     * names, else a translator that answers every request with
+     * {@link org.fogofwarlabs.sc4j.translate.TranslationStatus#UNAVAILABLE}. Translations are for display only.
+     *
+     * @return the translator of the run
+     */
+    @Override
+    public @NotNull Translator getTranslator() {
+        return this.translator;
     }
 }

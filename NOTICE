@@ -40,11 +40,12 @@ development install)
   - stb (lwjgl_stb.dll): MIT License or public domain (Unlicense); SC4J takes it under the MIT License. Text: licenses/stb-MIT.txt.
   - libffi 3.4.6 (lwjgl.dll): MIT License. Text: licenses/libffi-MIT.txt.
 
-JavaCPP 1.5.11 (org.bytedeco:javacpp, with its windows-x86_64 natives; runtime, development install)
+JavaCPP 1.5.13 (org.bytedeco:javacpp, with its windows-x86_64 natives; launcher, runtime, development install)
   Apache License 2.0 (LICENSE) or GNU General Public License 2 or later, or GPL 2 with the Classpath Exception
   (licenses/GPL-2.0-with-Classpath-Exception.txt); SC4J takes it under the Apache License 2.0.
-  Its natives include the Microsoft Visual C++ and Universal C runtime libraries (msvcp140, vcruntime140, concrt140, vcomp140,
-  libomp140, ucrtbase, api-ms-win-*.dll), redistributable under the Microsoft Visual Studio licence terms.
+  Its natives include the Microsoft Visual C++ and Universal C runtime libraries (msvcp140, msvcp140_1, msvcp140_2, vcruntime140,
+  vcruntime140_1, vcruntime140_threads, concrt140, vcomp140, libomp140, ucrtbase, api-ms-win-*.dll), redistributable under the
+  Microsoft Visual Studio licence terms.
 
 JavaCPP Presets for FFmpeg 7.1-1.5.11 (org.bytedeco:ffmpeg, the LGPL build, with its windows-x86_64 natives; runtime,
 development install)
@@ -86,6 +87,34 @@ OpenJFX 25.0.2 (javafx-base, javafx-graphics, javafx-controls, with their Window
 OpenJDK Java runtime (an image of the JDK that builds the package, made with its jlink; user package, folder java/)
   GNU General Public License 2 with the Classpath Exception. Text: licenses/GPL-2.0-with-Classpath-Exception.txt. The image carries
   the licence texts and notices of the JDK and of its third-party parts in java/legal/, and its vendor and version in java/release.
+
+CTranslate2 4.9.1 through ctranslate2-java 4.9.1-1-SNAPSHOT (org.fogofwarlabs:ctranslate2-java, with the native libraries of the
+package's platform; launcher, runtime, development install)
+  The binding: Apache License 2.0 (LICENSE). CTranslate2: MIT License. Text: licenses/CTranslate2-MIT.txt.
+  The native libraries contain third-party code under its own licences; the packages that carry a part only are given in brackets:
+  - spdlog, with the fmt library: MIT License. Text: licenses/spdlog-MIT.txt.
+  - JSON for Modern C++ 3.11.2 (nlohmann/json): MIT License. Text: licenses/nlohmann-json-MIT.txt.
+  - half 2.2.0 (half_float): MIT License; avx_mathfun.h: MIT License and zlib License; neon_mathfun.h: zlib License.
+    Texts: licenses/CTranslate2-third-party-headers.txt.
+  - avx512_mathfun.h from SIMD_Utils: BSD 2-Clause License. Text: licenses/simd_utils-BSD-2-Clause.txt.
+  - cpu_features [windows-x64, linux-x64]: Apache License 2.0. Text: licenses/cpu_features-Apache-2.0.txt.
+  - oneDNN 3.1.1 [windows-x64, linux-x64]: Apache License 2.0. Text: licenses/oneDNN-Apache-2.0.txt. Its third-party
+    components and their licences: licenses/oneDNN-THIRD-PARTY-PROGRAMS.txt.
+  - Intel oneAPI Math Kernel Library (oneMKL) 2025.3.0 [windows-x64, linux-x64]: Intel Simplified Software License (Version
+    October 2022). Text: licenses/oneMKL-Intel-Simplified-Software-License.txt.
+  - OpenBLAS 0.3.30 [linux-arm64]: BSD 3-Clause License. Text: licenses/OpenBLAS-BSD-3-Clause.txt.
+  - ruy [linux-arm64, macos-arm64]: Apache License 2.0. Text: licenses/ruy-Apache-2.0.txt.
+  - cpuinfo, used by ruy [linux-arm64, macos-arm64]: BSD 2-Clause License. Text: licenses/cpuinfo-BSD-2-Clause.txt.
+  - BS::thread_pool [macos-arm64]: MIT License. Text: licenses/BS_thread_pool-MIT.txt.
+  - GNU OpenMP runtime library, libgomp.so.1 of GCC [linux-x64, linux-arm64]: GNU General Public License 3 with the GCC Runtime
+    Library Exception 3.1. Texts: licenses/GPL-3.0.txt and licenses/GCC-Runtime-Library-Exception-3.1.txt. Sources:
+    https://gcc.gnu.org.
+  - Intel OpenMP runtime library 2025.3.0, libiomp5md.dll [windows-x64]: Intel End User License Agreement for Developer Tools
+    (Version August 2024). Text: licenses/Intel-OpenMP-EULA-Developer-Tools.txt. Its third-party components and their licences:
+    licenses/Intel-OpenMP-THIRD-PARTY-PROGRAMS.txt.
+  On Windows it uses the Microsoft Visual C++ runtime of the JavaCPP natives above.
+  The translation models that the launcher downloads on request are not part of the distributions; the launcher shows each model's
+  licence before its download.
 
 JetBrains Java Annotations 23.0.0 (org.jetbrains:annotations; every distribution with a Java class path)
   Apache License 2.0 (LICENSE).

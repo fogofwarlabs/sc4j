@@ -2,12 +2,16 @@ package org.fogofwarlabs.sc4j.launcher.ui.session;
 
 import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
+import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.input.*;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.Path;
@@ -24,13 +28,15 @@ import java.util.*;
 
 /**
  * Shows the log of a chat conversation, oldest line first: each line the sender's name, which opens the player's menu, and the text, with a
- * state line under a whisper that is under way or was not delivered. The web addresses of the text ({@link TextLink}) are links.
+ * state line under a whisper that is under way or was not delivered. The web addresses of the text ({@link TextLink}) are links. A
+ * translated line carries a small mark after its text, and a click on it without a move, off its links, switches it between its
+ * translation and its original text.
  * <p>
  * The log is read-only but selectable ({@link LogSelectionModel}): a press and drag selects across lines, Shift with a press extends the
  * selection, a double press selects a word and a press without a drag ends it; above or below the shown lines the end goes to the start of
  * the top line or the end of the bottom line. Copy, by the platform shortcut or the log's menu, takes the selected text, one line (name and
  * text) per line. A press and release on a link without a move asks before the link opens ({@link LinkDialog}); a drag that starts on a link
- * selects. The selection stays on its lines when lines come in and when the log drops its oldest lines.
+ * selects. The selection stays on its lines when lines come in, when the log drops its oldest lines and when a line switches its text.
  */
 final class ChatLog {
     private static final @NotNull String LINE_STYLE_CLASS = "chat-line";
@@ -58,7 +64,8 @@ final class ChatLog {
     }
 
     /**
-     * Holds one line of the log: the sender's name, the player it names, the text with its links, the text's style and a state line under it.
+     * Holds one line of the log: the sender's name, the player it names, the text with its links, the text's style, a state line under it,
+     * and for a translated line its mark, the switch between its translation and its original text, and its original text.
      */
     static final class Line {
         private final @NotNull String prefix;
@@ -67,12 +74,15 @@ final class ChatLog {
         private final @NotNull String text;
         private final @NotNull String textStyle;
         private final @Nullable String caption;
+        private final @Nullable String mark;
+        private final @Nullable Runnable toggle;
 
         private final @NotNull List<@NotNull TextLink> links;
         private final @NotNull String copiedText;
+        private final @NotNull String originalCopiedText;
 
         /**
-         * Creates a {@link Line} instance.
+         * Creates a {@link Line} instance of a line that is not translated.
          *
          * @param prefix     the sender's name with its separator, empty for a line without a sender
          * @param player     the player the line names, or {@code null} for none
@@ -83,15 +93,36 @@ final class ChatLog {
          */
         Line(@NotNull String prefix, @Nullable FriendCode player, @NotNull String playerName, @NotNull String text, @NotNull String textStyle,
              @Nullable String caption) {
+            this(prefix, player, playerName, text, textStyle, caption, null, null, text);
+        }
+
+        /**
+         * Creates a {@link Line} instance.
+         *
+         * @param prefix       the sender's name with its separator, empty for a line without a sender
+         * @param player       the player the line names, or {@code null} for none
+         * @param playerName   the name and tag of the player the line names, empty for none
+         * @param text         the shown text: the translation or the original text
+         * @param textStyle    the style class of the text
+         * @param caption      the state line under the text, or {@code null} for none
+         * @param mark         the mark after the text of a translated line, or {@code null} for none
+         * @param toggle       switches a translated line between its translation and its original text, or {@code null} for none
+         * @param originalText the original text, which keeps the selection on the line when its shown text changes
+         */
+        Line(@NotNull String prefix, @Nullable FriendCode player, @NotNull String playerName, @NotNull String text, @NotNull String textStyle,
+             @Nullable String caption, @Nullable String mark, @Nullable Runnable toggle, @NotNull String originalText) {
             this.prefix     = prefix;
             this.player     = player;
             this.playerName = playerName;
             this.text       = text;
             this.textStyle  = textStyle;
             this.caption    = caption;
+            this.mark       = mark;
+            this.toggle     = toggle;
 
-            this.links      = TextLink.findLinks(text);
-            this.copiedText = prefix.isEmpty() ? text : prefix + NAME_SEPARATOR + text;
+            this.links              = TextLink.findLinks(text);
+            this.copiedText         = prefix.isEmpty() ? text : prefix + NAME_SEPARATOR + text;
+            this.originalCopiedText = prefix.isEmpty() ? originalText : prefix + NAME_SEPARATOR + originalText;
         }
 
         /**
@@ -99,6 +130,13 @@ final class ChatLog {
          */
         @NotNull String getCopiedText() {
             return this.copiedText;
+        }
+
+        /**
+         * @return the line as a copy takes it with its original text, which stays when the line switches its text
+         */
+        private @NotNull String getOriginalCopiedText() {
+            return this.originalCopiedText;
         }
 
         /**
@@ -280,6 +318,17 @@ final class ChatLog {
                 row           = ComponentUtils.createTextRow(Spacing.S, this.nameFlow, text);
             }
 
+            if (line.mark != null) {
+                Label mark = ComponentUtils.createLabel(line.mark, "text-caption");
+                HBox markedRow = ComponentUtils.createRow(Spacing.S, row, mark);
+
+                mark.setMinWidth(Region.USE_PREF_SIZE);
+                row.setMinWidth(0);
+                HBox.setHgrow(row, Priority.ALWAYS);
+                markedRow.setAlignment(Pos.TOP_LEFT);
+                row = markedRow;
+            }
+
             VBox graphic = ComponentUtils.createColumn(Spacing.XS, row);
 
             if (line.caption != null) {
@@ -369,7 +418,7 @@ final class ChatLog {
         }
 
         for (int index = 0; index < kept; index++) {
-            if (!previous.get(dropped + index).getCopiedText().equals(current.get(index).getCopiedText())) {
+            if (!previous.get(dropped + index).getOriginalCopiedText().equals(current.get(index).getOriginalCopiedText())) {
                 return false;
             }
         }
@@ -393,6 +442,10 @@ final class ChatLog {
      * The link under the press that a release without a move opens, or {@code null} for none.
      */
     private @Nullable TextLink pressedLink;
+    /**
+     * The switch of the translated line under the press that a release without a move runs, or {@code null} for none.
+     */
+    private @Nullable Runnable pressedToggle;
 
     /**
      * Creates a {@link ChatLog} instance without lines.
@@ -408,10 +461,11 @@ final class ChatLog {
         this.actions    = actions;
         this.playerMenu = playerMenu;
 
-        this.view        = ComponentUtils.createLogListView();
-        this.selection   = new LogSelectionModel();
-        this.cells       = Collections.newSetFromMap(new WeakHashMap<>());
-        this.pressedLink = null;
+        this.view          = ComponentUtils.createLogListView();
+        this.selection     = new LogSelectionModel();
+        this.cells         = Collections.newSetFromMap(new WeakHashMap<>());
+        this.pressedLink   = null;
+        this.pressedToggle = null;
 
         this.view.setCellFactory(list -> {
             LineCell cell = new LineCell();
@@ -450,7 +504,8 @@ final class ChatLog {
             this.selection.removeFirstLines(countDroppedLines(this.view.getItems(), lines));
         } else {
             this.selection.clear();
-            this.pressedLink = null;
+            this.pressedLink   = null;
+            this.pressedToggle = null;
         }
 
         this.view.getItems().setAll(lines);
@@ -505,7 +560,8 @@ final class ChatLog {
 
         event.consume();
         this.view.requestFocus();
-        this.pressedLink = null;
+        this.pressedLink   = null;
+        this.pressedToggle = null;
 
         if (!cell.isShowingLine() || line == null) {
             this.selection.clear();
@@ -513,7 +569,8 @@ final class ChatLog {
             this.selection.selectWord(cell.getIndex(), line.getCopiedText(), cell.findIndex(event.getSceneX(), event.getSceneY()));
         } else {
             this.selection.press(cell.getIndex(), cell.findIndex(event.getSceneX(), event.getSceneY()), event.isShiftDown());
-            this.pressedLink = event.isShiftDown() ? null : cell.findLink(event.getSceneX(), event.getSceneY());
+            this.pressedLink   = event.isShiftDown() ? null : cell.findLink(event.getSceneX(), event.getSceneY());
+            this.pressedToggle = event.isShiftDown() || this.pressedLink != null ? null : line.toggle;
         }
 
         this.showSelection();
@@ -537,7 +594,8 @@ final class ChatLog {
         LineCell top = null;
         LineCell bottom = null;
 
-        this.pressedLink = null;
+        this.pressedLink   = null;
+        this.pressedToggle = null;
 
         for (LineCell cell : this.cells) {
             if (!cell.isShowingLine()) {
@@ -576,7 +634,8 @@ final class ChatLog {
     }
 
     /**
-     * Releases the press; the selection stays. A release without a move after a press on a link asks before the link opens.
+     * Releases the press; the selection stays. A release without a move after a press on a link asks before the link opens; after a press
+     * elsewhere on a translated line it switches the line between its translation and its original text.
      */
     private void release(@NotNull MouseEvent event) {
         if (event.getButton() != MouseButton.PRIMARY) {
@@ -584,13 +643,21 @@ final class ChatLog {
         }
 
         TextLink link = this.pressedLink;
+        Runnable toggle = this.pressedToggle;
 
         event.consume();
-        this.pressedLink = null;
+        this.pressedLink   = null;
+        this.pressedToggle = null;
         this.selection.release();
 
-        if (link != null && event.isStillSincePress()) {
+        if (!event.isStillSincePress()) {
+            return;
+        }
+
+        if (link != null) {
             new LinkDialog(this.shell, this.texts, link.getAddress(), this.actions::onOpenWebsite).open();
+        } else if (toggle != null) {
+            toggle.run();
         }
     }
 

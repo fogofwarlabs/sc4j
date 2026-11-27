@@ -41,17 +41,45 @@ ext {
     LWJGL_NATIVES = "natives-" + OS + (ARCH == "arm64" ? "-arm64" : "")
     // The platform classifier of the JavaCPP native libraries, which name macOS "macosx".
     JAVACPP_PLATFORM = (OS == "macos" ? "macosx" : OS) + "-" + ARCH
+    // One JavaCPP version for every JavaCPP library of the build (FFmpeg, CTranslate2).
+    JAVACPP_VERSION = '1.5.13'
+    // The CTranslate2 binding of the translation service and the JavaCPP platforms it has native libraries for.
+    CTRANSLATE2_VERSION = '4.9.1-1'
+    CTRANSLATE2_PLATFORMS = ['windows-x86_64', 'linux-x86_64', 'linux-arm64', 'macosx-arm64']
     // The platform of the user package built here, in its file name and launcher/package-platform.txt: windows-x64, linux-x64, linux-arm64,
     // macos-x64 or macos-arm64. The launcher updates only from a package of its own platform.
     PACKAGE_PLATFORM = OS + "-" + (ARCH == "x86_64" ? "x64" : "arm64")
 }
+
+// The libraries of the organization (group org.fogofwarlabs, such as ctranslate2-java) come from Maven Central, their snapshots from its
+// snapshot repository. The Gradle property sc4j.mavenLocal takes them from the local Maven repository first, for a library built and
+// published there with publishToMavenLocal.
+def organizationGroup = 'org.fogofwarlabs'
+def useMavenLocal = providers.gradleProperty('sc4j.mavenLocal').isPresent()
 
 allprojects {
     group = 'org.fogofwarlabs.sc4j'
     version = "$project.version"
 
     repositories {
+        if (useMavenLocal) {
+            mavenLocal {
+                content {
+                    includeGroup organizationGroup
+                }
+            }
+        }
         mavenCentral()
+        maven {
+            name = 'mavenCentralSnapshots'
+            url = 'https://central.sonatype.com/repository/maven-snapshots/'
+            mavenContent {
+                snapshotsOnly()
+            }
+            content {
+                includeGroup organizationGroup
+            }
+        }
     }
 }
 
@@ -116,9 +144,10 @@ configure([project(':sc4j-engine-core'), project(':sc4j-engine-sim')]) { module 
 // method and field of its main classes outside the internal elements: the packages and classes annotated ApiStatus.Internal, which stay
 // public for the engine's own modules and the runtime. apiDump writes it with the JDK's javap to api/<module>.api
 // (checked in); apiCheck, which "check" (and so "build") runs, fails when the compiled classes differ from that file. The base and the
-// manifest are listed too: mods compile against them through the engine. The catalog is the part of the mod API that a mod declares itself.
+// manifest are listed too: mods compile against them through the engine. The catalog is the part of the mod API that a mod declares itself;
+// the translation contract is what the engine's mod context gives.
 def apiModules = ['sc4j-base', 'sc4j-mod-manifest', 'sc4j-engine-core', 'sc4j-engine-sim', 'sc4j-engine-net', 'sc4j-engine-client', 'sc4j-engine',
-                  'sc4j-catalog']
+                  'sc4j-catalog', 'sc4j-translate']
 def apiToolMainClass = 'org.fogofwarlabs.sc4j.tools.api.ApiTool'
 def createApiToolConfiguration = { module ->
     def configuration = module.configurations.create('apiTool') {
@@ -687,6 +716,10 @@ def publishedModules = [
     'sc4j-beaconlink-peer'    : 'Beacon.Link peer library of SC4J: the node roles that the launcher, the runtime and the node program run.',
     'sc4j-beaconlink'         : 'Beacon.Link client of SC4J: node sessions, rooms, participant channels and the overlay that a mod plays over.',
     'sc4j-catalog'            : 'SC4J catalog reader: GitHub releases, release versions, the check for a newer release and the mod catalog.',
+    'sc4j-launcher-link'      : 'SC4J launcher link: the local channel between the launcher and the runtimes it starts, with named services.',
+    'sc4j-translate'          : 'SC4J translation contract: the translator of texts shown to the player, its requests and its answers.',
+    'sc4j-translate-service'  : 'SC4J translation service: model presets and their download, the NLLB preset over CTranslate2, the worker with ' +
+                                'its batches and cache and the service on the launcher link.',
     'sc4j-runtime'            : 'SC4J runtime: reads a mod jar, loads the mod in its own class loader and runs it in a window or headless.'
 ]
 // Inside this build the coordinates of the published modules (as the mod plugin names them) resolve to their projects.
