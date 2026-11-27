@@ -1,3 +1,13 @@
+public final class org.fogofwarlabs.sc4j.translate.GlossaryEntry {
+  public boolean equals(java.lang.Object);
+  public int hashCode();
+  public java.lang.String getSourceTerm();
+  public java.lang.String getTargetTerm();
+  public java.lang.String toString();
+  public java.util.Locale getTarget();
+  public org.fogofwarlabs.sc4j.translate.GlossaryEntry(java.lang.String, java.util.Locale, java.lang.String);
+}
+
 public final class org.fogofwarlabs.sc4j.translate.ProtectedSpan {
   public int getEnd();
   public int getStart();
@@ -14,6 +24,26 @@ public final class org.fogofwarlabs.sc4j.translate.Translation {
   public static org.fogofwarlabs.sc4j.translate.Translation untranslated(java.lang.String, java.util.Locale, org.fogofwarlabs.sc4j.translate.TranslationStatus);
 }
 
+public final class org.fogofwarlabs.sc4j.translate.TranslationContext {
+  public boolean equals(java.lang.Object);
+  public boolean isEmpty();
+  public int hashCode();
+  public java.lang.String getDescription();
+  public java.lang.String getId();
+  public java.lang.String getTextKind();
+  public java.util.List<org.fogofwarlabs.sc4j.translate.GlossaryEntry> getGlossary();
+}
+
+public final class org.fogofwarlabs.sc4j.translate.TranslationContext$Builder {
+  public org.fogofwarlabs.sc4j.translate.TranslationContext build();
+  public org.fogofwarlabs.sc4j.translate.TranslationContext$Builder addGlossaryEntry(java.lang.String, java.util.Locale, java.lang.String);
+  public org.fogofwarlabs.sc4j.translate.TranslationContext$Builder clearGlossary();
+  public org.fogofwarlabs.sc4j.translate.TranslationContext$Builder setDescription(java.lang.String);
+  public org.fogofwarlabs.sc4j.translate.TranslationContext$Builder setTextKind(java.lang.String);
+  public org.fogofwarlabs.sc4j.translate.TranslationContext$Builder();
+  public org.fogofwarlabs.sc4j.translate.TranslationContext$Builder(org.fogofwarlabs.sc4j.translate.TranslationContext);
+}
+
 public final class org.fogofwarlabs.sc4j.translate.TranslationPriority extends java.lang.Enum<org.fogofwarlabs.sc4j.translate.TranslationPriority> {
   public static final org.fogofwarlabs.sc4j.translate.TranslationPriority BATCH;
   public static final org.fogofwarlabs.sc4j.translate.TranslationPriority CHAT;
@@ -25,12 +55,14 @@ public final class org.fogofwarlabs.sc4j.translate.TranslationRequest {
   public java.lang.String getText();
   public java.util.List<org.fogofwarlabs.sc4j.translate.ProtectedSpan> getProtectedSpans();
   public java.util.Locale getTarget();
+  public org.fogofwarlabs.sc4j.translate.TranslationContext getContext();
   public org.fogofwarlabs.sc4j.translate.TranslationPriority getPriority();
 }
 
 public final class org.fogofwarlabs.sc4j.translate.TranslationRequest$Builder {
   public org.fogofwarlabs.sc4j.translate.TranslationRequest build();
   public org.fogofwarlabs.sc4j.translate.TranslationRequest$Builder addProtectedSpan(int, int);
+  public org.fogofwarlabs.sc4j.translate.TranslationRequest$Builder setContext(org.fogofwarlabs.sc4j.translate.TranslationContext);
   public org.fogofwarlabs.sc4j.translate.TranslationRequest$Builder setPriority(org.fogofwarlabs.sc4j.translate.TranslationPriority);
   public org.fogofwarlabs.sc4j.translate.TranslationRequest$Builder(java.lang.String, java.util.Locale);
 }

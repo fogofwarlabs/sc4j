@@ -4,6 +4,7 @@ import org.fogofwarlabs.sc4j.beaconlink.peer.bootstrap.PeerStore;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.file.NodeListFile;
 import org.fogofwarlabs.sc4j.launcher.link.LauncherLinkAddress;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationDevice;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -33,6 +34,7 @@ import java.util.Map;
  *     --no-port-mapping, when the launcher's port mapping setting is off
  *     --launcher-link <install>/userdata/run/launcher-<pid>.sock, when the launcher's link is open
  *     --translation-preset <preset id>, when the launcher translates with an installed preset
+ *     --translation-device cpu, when it does and its model runs on the CPU only
  *}
  * {@code --seeds} is left out while neither seed list exists. Each path is one argument. The token of the launcher's link goes into the
  * environment variable {@value LauncherLinkAddress#TOKEN_ENVIRONMENT_VARIABLE} of the process ({@link #getEnvironment()}), never on the command
@@ -67,6 +69,7 @@ public final class RuntimeCommandLine {
     private static final @NotNull String NO_PORT_MAPPING_OPTION = "--no-port-mapping";
     private static final @NotNull String LAUNCHER_LINK_OPTION = "--launcher-link";
     private static final @NotNull String TRANSLATION_PRESET_OPTION = "--translation-preset";
+    private static final @NotNull String TRANSLATION_DEVICE_OPTION = "--translation-device";
     private static final @NotNull String QUOTE = "\"";
     private static final @NotNull String ARGUMENT_SEPARATOR = " ";
     private static final @NotNull String WINDOWS_NAME_PREFIX = "windows";
@@ -82,13 +85,15 @@ public final class RuntimeCommandLine {
      * @param portMapping       whether the game's Beacon.Link sessions map their socket on the router
      * @param launcherLink      the address of the launcher's link, or {@code null} when the launcher has no link
      * @param translationPreset the id of the installed preset the launcher translates with, or {@code null} for none
+     * @param translationDevice the device the launcher's translation model runs on
      * @param javaHome          the Java runtime that runs the runtime
      * @param windows           whether the runtime runs on Windows (Java program {@value #WINDOWS_JAVA})
      * @return the created {@link RuntimeCommandLine} instance
      */
     public static @NotNull RuntimeCommandLine create(@NotNull InstallLayout install, @NotNull String modId, @NotNull Path modJar,
                                                      @NotNull Path accountDirectory, boolean portMapping, @Nullable LauncherLinkAddress launcherLink,
-                                                     @Nullable String translationPreset, @NotNull Path javaHome, boolean windows) {
+                                                     @Nullable String translationPreset, @NotNull TranslationDevice translationDevice,
+                                                     @NotNull Path javaHome, boolean windows) {
         List<String> arguments = new ArrayList<>();
         Path settingsFile = install.getSettingsFile(modId);
         Path seedsFile = new NodeListFile(install.getNodesFile()).selectExistingOr(new NodeListFile(install.getSeedsFile())).getPath();
@@ -135,6 +140,11 @@ public final class RuntimeCommandLine {
         if (translationPreset != null) {
             arguments.add(TRANSLATION_PRESET_OPTION);
             arguments.add(translationPreset);
+        }
+
+        if (translationPreset != null && translationDevice != TranslationDevice.AUTOMATIC) {
+            arguments.add(TRANSLATION_DEVICE_OPTION);
+            arguments.add(translationDevice.name().toLowerCase(Locale.ROOT));
         }
 
         Map<String, String> environment = launcherLink == null ? Map.of()

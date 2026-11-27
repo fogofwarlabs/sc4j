@@ -85,7 +85,7 @@ public final class ModClassLoader extends URLClassLoader {
      * @return the resulting {@code Class} object
      * @throws ClassNotFoundException if the class could not be found
      * @implSpec A protected class is loaded by the parent only; any other class is looked up in the mod jar first and then in
-     * the parent.
+     *         the parent.
      */
     @Override
     protected @NotNull Class<?> loadClass(@NotNull String name, boolean resolve) throws ClassNotFoundException {
@@ -110,7 +110,7 @@ public final class ModClassLoader extends URLClassLoader {
      * @param name the resource name
      * @return a {@code URL} object for reading the resource; {@code null} if the resource could not be found
      * @implSpec A resource in a protected package comes from the parent only; any other resource is looked up in the mod jar
-     * first and then in the parent.
+     *         first and then in the parent.
      */
     @Override
     public @Nullable URL getResource(@NotNull String name) {
@@ -130,7 +130,7 @@ public final class ModClassLoader extends URLClassLoader {
      * @return an enumeration of {@link URL} objects for the resource
      * @throws IOException if I/O errors occur
      * @implSpec A resource in a protected package comes from the parent only; otherwise the mod jar's resource comes first,
-     * followed by the parent's.
+     *         followed by the parent's.
      */
     @Override
     public @NotNull Enumeration<URL> getResources(@NotNull String name) throws IOException {

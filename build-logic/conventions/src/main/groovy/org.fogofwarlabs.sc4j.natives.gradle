@@ -39,6 +39,7 @@ def stageNativeLibraries = tasks.register('stageNativeLibraries', Sync) {
         systemProperty 'org.bytedeco.javacpp.platform.preloadpath', nativeDirectory.get().asFile.absolutePath
         systemProperty 'org.bytedeco.javacpp.pathsFirst', 'true'
         systemProperty 'org.bytedeco.javacpp.cacheLibraries', 'false'
+        systemProperty 'org.fogofwarlabs.llama.librarypath', nativeDirectory.get().asFile.absolutePath
         jvmArgs '--enable-native-access=ALL-UNNAMED'
     }
 }

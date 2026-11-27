@@ -19,6 +19,7 @@ import org.fogofwarlabs.sc4j.manifest.test.TestJarUtils;
 import org.fogofwarlabs.sc4j.runtime.RuntimeMain;
 import org.fogofwarlabs.sc4j.runtime.cli.ExitCode;
 import org.fogofwarlabs.sc4j.testmod.*;
+import org.fogofwarlabs.sc4j.translate.service.indextranslate.IndexTranslatePreset;
 import org.fogofwarlabs.sc4j.translate.service.nllb.NllbPreset;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
@@ -206,6 +207,11 @@ final class RuntimeSessionTest {
         Assertions.assertEquals(ExitCode.SUCCESS, run(install, "--headless", "--translation-preset", NllbPreset.DISTILLED_600M.getId()));
         Assertions.assertEquals("UNAVAILABLE", Files.readString(translationFile), "a preset that is not installed translates nothing");
         Assertions.assertTrue(Files.readString(logFile).contains("TRANSLATION: local preset " + NllbPreset.DISTILLED_600M.getId()));
+
+        Assertions.assertEquals(ExitCode.SUCCESS, run(install, "--headless", "--translation-preset", IndexTranslatePreset.INDEX_TRANSLATE_2B.getId(),
+                                                      "--translation-device", "cpu"));
+        Assertions.assertEquals("UNAVAILABLE", Files.readString(translationFile));
+        Assertions.assertTrue(Files.readString(logFile).contains("TRANSLATION: local preset " + IndexTranslatePreset.INDEX_TRANSLATE_2B.getId()));
     }
 
     @Test

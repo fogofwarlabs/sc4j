@@ -9,6 +9,8 @@ import org.fogofwarlabs.sc4j.translate.Translator;
 import org.fogofwarlabs.sc4j.translate.service.PresetInstallation;
 import org.fogofwarlabs.sc4j.translate.service.TranslationService;
 import org.fogofwarlabs.sc4j.translate.service.TranslationStorage;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationDevice;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationModelOptions;
 import org.fogofwarlabs.sc4j.translate.service.model.TranslationPreset;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -22,10 +24,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Runs the launcher's translation: one {@link TranslationService} for the chosen preset while it is installed, which translates the
- * launcher's chat and, over the launcher link, the chat of the runtimes the launcher starts. The service loads its models on its first
- * request; without it every request answers {@link TranslationStatus#UNAVAILABLE}. The presets are downloaded ({@link PresetDownload}) and
- * deleted here, only when the user asks; a preset that finishes its download while it is chosen gets its service then.
+ * Runs the launcher's translation: one {@link TranslationService} for the chosen preset on the chosen device while the preset is installed,
+ * which translates the launcher's chat and, over the launcher link, the chat of the runtimes the launcher starts. The service loads its
+ * models on its first request; without it every request answers {@link TranslationStatus#UNAVAILABLE}. The presets are downloaded
+ * ({@link PresetDownload}) and deleted here, only when the user asks; a preset that finishes its download while it is chosen gets its service
+ * then. Choosing another device replaces the service.
  */
 public final class LauncherTranslation implements Translator, Closeable {
     private static final @NotNull Logger LOGGER = Logger.of(LauncherTranslation.class);
@@ -37,11 +40,12 @@ public final class LauncherTranslation implements Translator, Closeable {
     private final @NotNull Map<@NotNull String, @NotNull PresetDownload> downloads;
 
     private @Nullable String chosenPreset;
+    private @NotNull TranslationDevice device;
     private volatile @Nullable TranslationService service;
     private boolean closed;
 
     /**
-     * Creates a {@link LauncherTranslation} instance without a chosen preset.
+     * Creates a {@link LauncherTranslation} instance without a chosen preset, on {@link TranslationDevice#AUTOMATIC}.
      *
      * @param storage the translation storage of the install
      * @param presets the presets offered for download
@@ -53,6 +57,7 @@ public final class LauncherTranslation implements Translator, Closeable {
         this.downloads     = new ConcurrentHashMap<>();
 
         this.chosenPreset = null;
+        this.device       = TranslationDevice.AUTOMATIC;
         this.service      = null;
         this.closed       = false;
 
@@ -92,6 +97,13 @@ public final class LauncherTranslation implements Translator, Closeable {
     }
 
     /**
+     * @return the device the translation model runs on
+     */
+    public synchronized @NotNull TranslationDevice getDevice() {
+        return this.device;
+    }
+
+    /**
      * @return the id of the preset whose service translates, chosen and installed, or {@code null} while the launcher does not translate
      */
     public @Nullable String getActivePresetId() {
@@ -127,6 +139,16 @@ public final class LauncherTranslation implements Translator, Closeable {
      */
     public synchronized void choose(@Nullable String presetId) {
         this.chosenPreset = presetId;
+        this.updateService(false);
+    }
+
+    /**
+     * Chooses the device the translation model runs on; a running service of another device is replaced.
+     *
+     * @param device the device
+     */
+    public synchronized void setDevice(@NotNull TranslationDevice device) {
+        this.device = device;
         this.updateService(false);
     }
 
@@ -214,7 +236,8 @@ public final class LauncherTranslation implements Translator, Closeable {
     }
 
     /**
-     * Gives the chosen preset its service when it is installed and not being downloaded, and closes the service of another preset.
+     * Gives the chosen preset its service on the chosen device when it is installed and not being downloaded, and closes the service of
+     * another preset or device.
      *
      * @param waitForClose whether a replaced service is closed on this thread, else on a thread of its own
      */
@@ -224,12 +247,13 @@ public final class LauncherTranslation implements Translator, Closeable {
         TranslationPreset wanted = chosen != null && (running == null || !running.isRunning()) && this.isInstalled(chosen) ? chosen : null;
         TranslationService current = this.service;
 
-        if (current != null && wanted != null && current.getPreset().getId().equals(wanted.getId()) || current == null && wanted == null) {
+        if (current != null && wanted != null && current.getPreset().getId().equals(wanted.getId()) &&
+            current.getOptions().getDevice() == this.device || current == null && wanted == null) {
             return;
         }
 
-        this.service = wanted == null ? null : new TranslationService(wanted, this.storage);
-        LOGGER.info("TRANSLATION: {0}", wanted == null ? "none" : wanted.getId());
+        this.service = wanted == null ? null : new TranslationService(wanted, new TranslationModelOptions(this.device), this.storage);
+        LOGGER.info("TRANSLATION: {0}", wanted == null ? "none" : wanted.getId() + ", device " + this.device);
 
         if (current == null) {
             return;

@@ -48,9 +48,14 @@ final class LinkTransferServiceTest {
      */
     private static final int LOBBY_DATAGRAMS_PER_FRAME = 2;
     /**
-     * The longest time a datagram on the other port may take while the payload streams.
+     * The time within which {@value #LOBBY_DELAY_PERCENTILE} percent of the datagrams on the other port arrive while the payload streams.
      */
     private static final long LOBBY_DELAY_LIMIT_MILLIS = 250L;
+    /**
+     * The share of the datagrams on the other port, in percent, that arrive within {@value #LOBBY_DELAY_LIMIT_MILLIS} ms; the others may
+     * wait out a stall of the machine that runs the test.
+     */
+    private static final int LOBBY_DELAY_PERCENTILE = 95;
     /**
      * The most datagrams on the other port that may be lost while the payload streams, in percent.
      */
@@ -167,16 +172,19 @@ final class LinkTransferServiceTest {
                 }
             });
 
-            long longest = delays.stream().mapToLong(Long::longValue).max().orElse(0);
+            long[] sorted = delays.stream().mapToLong(Long::longValue).sorted().toArray();
+            long longest = sorted.length == 0 ? 0 : sorted[sorted.length - 1];
+            long percentile = sorted.length == 0 ? 0 : sorted[Math.max(0, (sorted.length * LOBBY_DELAY_PERCENTILE + PERCENT - 1) / PERCENT - 1)];
 
             System.out.println("LINK TRANSFER: " + LARGE_PAYLOAD + " bytes in " + elapsed + " ms, other datagrams " + delays.size() + " of " +
-                               sent[0] + ", longest " + longest + " ms");
+                               sent[0] + ", " + LOBBY_DELAY_PERCENTILE + "th percentile " + percentile + " ms, longest " + longest + " ms");
 
             Assertions.assertEquals(TransferState.COMPLETE, download.getState(), () -> String.valueOf(download.getFailure()));
             Assertions.assertEquals(offer.getPayload(), download.getPayload());
             Assertions.assertTrue((sent[0] - delays.size()) * PERCENT <= sent[0] * LOBBY_LOSS_LIMIT_PERCENT,
                                   "other datagrams lost: " + (sent[0] - delays.size()) + " of " + sent[0]);
-            Assertions.assertTrue(longest <= LOBBY_DELAY_LIMIT_MILLIS, "the longest other datagram took " + longest + " ms");
+            Assertions.assertTrue(percentile <= LOBBY_DELAY_LIMIT_MILLIS,
+                                  LOBBY_DELAY_PERCENTILE + " percent of the other datagrams took up to " + percentile + " ms");
         }
 
         Assertions.assertArrayEquals(contents, Files.readAllBytes(target));

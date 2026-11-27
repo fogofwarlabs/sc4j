@@ -25,18 +25,22 @@ public final class FakeTranslationPreset implements TranslationPreset {
      */
     public static final @NotNull Set<@NotNull String> LANGUAGES = Set.of("en", "ko", "ja", "zh", "es", "de", "fr", "th");
 
+    private static final @NotNull String DEFAULT_ID = "fake";
     private static final @NotNull String DEFAULT_CODE = "en";
     private static final int LANGUAGE_AND_END_TOKENS = 2;
     private static final long BLOCK_SECONDS = 10;
 
+    private final @NotNull String id;
     private final @NotNull List<@NotNull PresetFile> files;
     private final int maximumInputTokens;
     private final @NotNull Map<@NotNull String, @NotNull IdentifiedLanguage> identified;
+    private final @NotNull List<@NotNull TranslationInput> translatedInputs;
     private final @NotNull List<@NotNull String> translatedTexts;
     private final @NotNull List<@NotNull List<@NotNull String>> batches;
     private final @NotNull List<@NotNull String> identifiedTexts;
     private final @NotNull AtomicInteger modelLoads;
     private final @NotNull AtomicInteger modelCloses;
+    private volatile @Nullable TranslationModelOptions modelOptions;
     private volatile boolean failing;
     private volatile @Nullable CountDownLatch blocker;
 
@@ -46,7 +50,17 @@ public final class FakeTranslationPreset implements TranslationPreset {
      * @param maximumInputTokens the input limit of the model
      */
     public FakeTranslationPreset(int maximumInputTokens) {
-        this(List.of(), maximumInputTokens);
+        this(DEFAULT_ID, List.of(), maximumInputTokens);
+    }
+
+    /**
+     * Creates a {@link FakeTranslationPreset} instance without files.
+     *
+     * @param id                 the id of the preset
+     * @param maximumInputTokens the input limit of the model
+     */
+    public FakeTranslationPreset(@NotNull String id, int maximumInputTokens) {
+        this(id, List.of(), maximumInputTokens);
     }
 
     /**
@@ -56,14 +70,28 @@ public final class FakeTranslationPreset implements TranslationPreset {
      * @param maximumInputTokens the input limit of the model
      */
     public FakeTranslationPreset(@NotNull List<@NotNull PresetFile> files, int maximumInputTokens) {
+        this(DEFAULT_ID, files, maximumInputTokens);
+    }
+
+    /**
+     * Creates a {@link FakeTranslationPreset} instance.
+     *
+     * @param id                 the id of the preset
+     * @param files              the files of the preset
+     * @param maximumInputTokens the input limit of the model
+     */
+    public FakeTranslationPreset(@NotNull String id, @NotNull List<@NotNull PresetFile> files, int maximumInputTokens) {
+        this.id                 = id;
         this.files              = files;
         this.maximumInputTokens = maximumInputTokens;
         this.identified         = new ConcurrentHashMap<>();
+        this.translatedInputs   = new CopyOnWriteArrayList<>();
         this.translatedTexts    = new CopyOnWriteArrayList<>();
         this.batches            = new CopyOnWriteArrayList<>();
         this.identifiedTexts    = new CopyOnWriteArrayList<>();
         this.modelLoads         = new AtomicInteger();
         this.modelCloses        = new AtomicInteger();
+        this.modelOptions       = null;
         this.failing            = false;
         this.blocker            = null;
     }
@@ -94,6 +122,20 @@ public final class FakeTranslationPreset implements TranslationPreset {
      */
     public void setBlocker(@Nullable CountDownLatch blocker) {
         this.blocker = blocker;
+    }
+
+    /**
+     * @return the inputs the model translated, in order
+     */
+    public @NotNull List<@NotNull TranslationInput> getTranslatedInputs() {
+        return this.translatedInputs;
+    }
+
+    /**
+     * @return the options the model was last loaded with, or {@code null} before the first load
+     */
+    public @Nullable TranslationModelOptions getModelOptions() {
+        return this.modelOptions;
     }
 
     /**
@@ -133,7 +175,7 @@ public final class FakeTranslationPreset implements TranslationPreset {
 
     @Override
     public @NotNull String getId() {
-        return "fake";
+        return this.id;
     }
 
     @Override
@@ -172,11 +214,12 @@ public final class FakeTranslationPreset implements TranslationPreset {
     }
 
     @Override
-    public @NotNull TranslationModel createTranslationModel(@NotNull Path folder) throws ModelException {
+    public @NotNull TranslationModel createTranslationModel(@NotNull Path folder, @NotNull TranslationModelOptions options) throws ModelException {
         if (this.failing) {
             throw new ModelException("The fake model fails");
         }
 
+        this.modelOptions = options;
         this.modelLoads.incrementAndGet();
 
         return new TranslationModel() {
@@ -214,6 +257,7 @@ public final class FakeTranslationPreset implements TranslationPreset {
                     translations.add("[" + input.getSource().getLanguage() + ">" + input.getTarget().getLanguage() + "] " + input.getText());
                 }
 
+                FakeTranslationPreset.this.translatedInputs.addAll(inputs);
                 FakeTranslationPreset.this.translatedTexts.addAll(texts);
                 FakeTranslationPreset.this.batches.add(texts);
 

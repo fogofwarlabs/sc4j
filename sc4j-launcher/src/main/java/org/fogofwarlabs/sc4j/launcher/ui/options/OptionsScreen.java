@@ -17,6 +17,7 @@ import org.fogofwarlabs.sc4j.launcher.nodes.NodePingResult;
 import org.fogofwarlabs.sc4j.launcher.peer.LauncherNodeRunner;
 import org.fogofwarlabs.sc4j.launcher.translation.LauncherTranslation;
 import org.fogofwarlabs.sc4j.launcher.ui.*;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationDevice;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -87,6 +88,13 @@ public final class OptionsScreen {
          * @param presetId the id of the chosen preset, or {@code null} for Off
          */
         void onTranslationPresetChanged(@Nullable String presetId);
+
+        /**
+         * Called when the user chooses the device the translation model runs on.
+         *
+         * @param device the chosen device
+         */
+        void onTranslationDeviceChanged(@NotNull TranslationDevice device);
 
         /**
          * Called when the user opens a web address, such as the licence of a translation preset.

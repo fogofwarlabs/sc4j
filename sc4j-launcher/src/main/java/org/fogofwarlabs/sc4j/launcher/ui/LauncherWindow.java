@@ -71,6 +71,7 @@ import org.fogofwarlabs.sc4j.manifest.settings.InstallationRecords;
 import org.fogofwarlabs.sc4j.manifest.settings.value.SettingValueStore;
 import org.fogofwarlabs.sc4j.manifest.settings.value.SettingValuesException;
 import org.fogofwarlabs.sc4j.manifest.settings.value.SettingValuesFile;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationDevice;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -447,6 +448,7 @@ public final class LauncherWindow {
         this.run         = null;
         this.selectedJar = this.settings.getLastMod();
 
+        this.translation.setDevice(this.settings.getTranslationDevice());
         this.translation.choose(this.settings.getTranslationPreset());
         this.stage.setScene(this.scene);
         this.stage.setOnCloseRequest(event -> {
@@ -1531,6 +1533,18 @@ public final class LauncherWindow {
             }
 
             /**
+             * Called when the user chooses the device the translation model runs on.
+             *
+             * @param device the chosen device
+             */
+            @Override
+            public void onTranslationDeviceChanged(@NotNull TranslationDevice device) {
+                LauncherWindow.this.settings = LauncherWindow.this.settings.withTranslationDevice(device);
+                LauncherWindow.this.saveSettings();
+                LauncherWindow.this.translation.setDevice(device);
+            }
+
+            /**
              * Called when the user opens a web address, such as the licence of a translation preset.
              *
              * @param address the {@code http} or {@code https} address
@@ -1716,8 +1730,8 @@ public final class LauncherWindow {
 
         RuntimeCommandLine commandLine = RuntimeCommandLine.create(this.install, manifest.getId(), entry.getJar(), chosen.getDirectory(),
                                                                    this.nodeRunner.getSettings().isPortMapping(), this.launcherLink,
-                                                                   this.translation.getActivePresetId(), RuntimeCommandLine.getLauncherJavaHome(),
-                                                                   RuntimeCommandLine.isWindows());
+                                                                   this.translation.getActivePresetId(), this.translation.getDevice(),
+                                                                   RuntimeCommandLine.getLauncherJavaHome(), RuntimeCommandLine.isWindows());
         String failure = null;
         String settingsText = "";
 

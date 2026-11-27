@@ -218,7 +218,7 @@ jar 루트의 `sc4j-mod.json`([데모](../mods/demo/src/main/resources/sc4j-mod.
 
 [`DemoMod`](../mods/demo/src/main/java/org/fogofwarlabs/sc4j/demo/DemoMod.java).
 
-- `initialize(ModContext)`: 필요한 것을 열고 확인합니다. `ModException`은 실행을 거부합니다. `ModContext`는 매니페스트, 설정, 저장 폴더, 설치 폴더, 모드 인자, 로거, 번역기를 줍니다(`getTranslator()`: 사용자가 런처에서 설치한 번역 모델로 플레이어에게 보이는 텍스트를 번역합니다. 모델이 없으면 모든 요청이 `UNAVAILABLE`입니다). 리소스는 모드의 클래스 로더로 읽습니다.
+- `initialize(ModContext)`: 필요한 것을 열고 확인합니다. `ModException`은 실행을 거부합니다. `ModContext`는 매니페스트, 설정, 저장 폴더, 설치 폴더, 모드 인자, 로거, 번역기를 줍니다(`getTranslator()`: 사용자가 런처에서 설치한 번역 모델로 플레이어에게 보이는 텍스트를 번역합니다. 모델이 없으면 모든 요청이 `UNAVAILABLE`입니다. 요청은 `TranslationContext`(텍스트 종류, 설명, 대상 언어별 용어집)를 가질 수 있으며 Index-Translate-2B 같은 모델은 이를 쓰고 NLLB는 무시합니다. 한 번 만들어 재사용합니다). 리소스는 모드의 클래스 로더로 읽습니다.
 - `register(ModRegistration)`: 반환하면 등록이 닫힙니다.
 - `close()`: 역순으로 해제합니다.
 
@@ -427,7 +427,7 @@ for (String file : List.of("maps/first-field.json")) {
 ## 15. 빌드, 설치, 실행
 
 - **설치**: jar를 `<install>/mods/`에 넣습니다. 런처는 `READY`, `WARNING`(고칠 설정), `ERROR`(망가진 jar나 매니페스트, 지원하지 않는 엔진 버전, 없는 그림, 중복 id)로 보여 줍니다.
-- **런타임**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--no-port-mapping] [--launcher-link <file>] [--translation-preset <id>] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]`(`--help`). 종료 코드: 0 정상, 1 실행 실패, 2 명령줄이나 설정 오류, 3 모드 로드나 검증 실패. 로그: `<install>/userdata/logs/<id>/sc4j.log`.
+- **런타임**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--no-port-mapping] [--launcher-link <file>] [--translation-preset <id>] [--translation-device automatic|cpu] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]`(`--help`). 종료 코드: 0 정상, 1 실행 실패, 2 명령줄이나 설정 오류, 3 모드 로드나 검증 실패. 로그: `<install>/userdata/logs/<id>/sc4j.log`.
 - **런처**: 모드의 설정, 저장 폴더, 로그 폴더로 런타임을 시작합니다.
 - **모드 도구**: `SC4J.bat tool <mod id> <tool id> [arguments]`(Linux와 macOS는 `SC4J`, Windows 콘솔은 `SC4J-cli.exe`)는 설치본의 Java 런타임과 런타임이 모드에 주는 클래스 경로(런타임 라이브러리와 모드 jar)로 도구의 `main`을 실행합니다. 작업 폴더는 호출한 곳의 현재 폴더이고, 런타임의 JVM 옵션과 함께 설치 폴더를 시스템 속성 `sc4j.install`(`InstallLayout.INSTALL_PROPERTY`)로 넘기며, 인수를 그대로 넘기고 도구의 종료 코드를 돌려줍니다. `tool`은 설치된 모드의 도구를, `tool <mod id>`는 한 모드의 도구를 보여 줍니다.
 

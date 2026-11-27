@@ -88,7 +88,8 @@ final class NllbPresetTest {
         NllbPreset preset = NllbPreset.DISTILLED_600M;
         Path folder = TranslationTestResources.requirePresetFolder(NllbPreset.DISTILLED_600M.getId());
 
-        try (TranslationModel model = preset.createTranslationModel(folder); LanguageIdentifier identifier = preset.createLanguageIdentifier(folder)) {
+        try (TranslationModel model = preset.createTranslationModel(folder, TranslationModelOptions.DEFAULT);
+             LanguageIdentifier identifier = preset.createLanguageIdentifier(folder)) {
             List<String> batch = model.translate(List.of(new TranslationInput("Let's play another game.", Locale.ENGLISH, Locale.KOREAN),
                                                          new TranslationInput("안녕하세요, 같이 게임 하실 분?", Locale.KOREAN, Locale.ENGLISH)));
             String korean = batch.get(0);

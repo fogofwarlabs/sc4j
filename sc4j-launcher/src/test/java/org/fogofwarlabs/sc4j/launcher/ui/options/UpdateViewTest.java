@@ -20,6 +20,7 @@ import org.fogofwarlabs.sc4j.launcher.ui.Tone;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
 import org.fogofwarlabs.sc4j.translate.service.TranslationPresetUtils;
 import org.fogofwarlabs.sc4j.translate.service.TranslationStorage;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationDevice;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
@@ -73,6 +74,10 @@ final class UpdateViewTest {
 
         @Override
         public void onTranslationPresetChanged(@Nullable String presetId) {
+        }
+
+        @Override
+        public void onTranslationDeviceChanged(@NotNull TranslationDevice device) {
         }
 
         @Override

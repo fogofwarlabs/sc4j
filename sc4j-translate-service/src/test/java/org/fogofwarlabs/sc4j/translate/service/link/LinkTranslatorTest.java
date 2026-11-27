@@ -5,12 +5,11 @@ import org.fogofwarlabs.sc4j.launcher.link.LauncherLinkAddress;
 import org.fogofwarlabs.sc4j.launcher.link.LauncherLinkClient;
 import org.fogofwarlabs.sc4j.launcher.link.LauncherLinkServer;
 import org.fogofwarlabs.sc4j.launcher.link.SocketTempDirFactory;
-import org.fogofwarlabs.sc4j.translate.Translation;
-import org.fogofwarlabs.sc4j.translate.TranslationRequest;
-import org.fogofwarlabs.sc4j.translate.TranslationStatus;
-import org.fogofwarlabs.sc4j.translate.Translator;
+import org.fogofwarlabs.sc4j.translate.*;
 import org.fogofwarlabs.sc4j.translate.service.FakeTranslationPreset;
 import org.fogofwarlabs.sc4j.translate.service.TranslationService;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationInput;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationModelOptions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -25,9 +24,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
- * Tests the translator of a runtime over a launcher link in the same process: requests are answered by the launcher's service, a closed link
- * moves the requests to a local service created once, or to {@link TranslationStatus#UNAVAILABLE} without one, and a failure of the
- * launcher's service answers {@link TranslationStatus#UNAVAILABLE} without the local service.
+ * Tests the translator of a runtime over a launcher link in the same process: requests are answered by the launcher's service with their
+ * contexts, a closed link moves the requests to a local service created once, or to {@link TranslationStatus#UNAVAILABLE} without one, and a
+ * failure of the launcher's service answers {@link TranslationStatus#UNAVAILABLE} without the local service.
  */
 final class LinkTranslatorTest {
     private static final @NotNull String VERSION = "0.1.0-TEST";
@@ -36,6 +35,10 @@ final class LinkTranslatorTest {
     private static final int LARGE_INPUT_LIMIT = 512;
     private static final @NotNull Duration IDLE_TIME = Duration.ofMinutes(10);
     private static final long TIMEOUT_SECONDS = 10L;
+    private static final @NotNull TranslationContext CONTEXT = new TranslationContext.Builder().setTextKind("chat message")
+                                                                                               .setDescription("Short messages between players.")
+                                                                                               .addGlossaryEntry("tower", Locale.ENGLISH, "Tower")
+                                                                                               .build();
 
     @TempDir(factory = SocketTempDirFactory.class)
     Path folder;
@@ -73,6 +76,28 @@ final class LinkTranslatorTest {
             Assertions.assertEquals(Locale.KOREAN, translation.getSource());
             Assertions.assertEquals(1, launcherPreset.getModelLoads());
             Assertions.assertFalse(translator.isLocal());
+        }
+    }
+
+    @Test
+    void translate_should_send_the_context_with_each_request() throws Exception {
+        FakeTranslationPreset launcherPreset = this.createPreset();
+        TranslationRequest first = new TranslationRequest.Builder(KOREAN_TEXT, Locale.ENGLISH).setContext(CONTEXT).build();
+        TranslationRequest second = new TranslationRequest.Builder(KOREAN_TEXT + "!", Locale.ENGLISH).setContext(CONTEXT).build();
+
+        try (TranslationService launcherService = this.createService(launcherPreset);
+             LauncherLinkServer server = this.openServer();
+             LauncherLinkClient client = LauncherLinkClient.connect(server.getAddress(), VERSION);
+             LinkTranslator translator = new LinkTranslator(client, null)) {
+            server.register(TranslationLinkService.SERVICE_NAME, new TranslationLinkService(launcherService));
+
+            Assertions.assertEquals(TranslationStatus.TRANSLATED, translate(translator, first).getStatus());
+            Assertions.assertEquals(TranslationStatus.TRANSLATED, translate(translator, second).getStatus());
+            Assertions.assertEquals(2, launcherPreset.getTranslatedInputs().size());
+
+            for (TranslationInput input : launcherPreset.getTranslatedInputs()) {
+                Assertions.assertEquals(CONTEXT, input.getContext());
+            }
         }
     }
 
@@ -158,7 +183,7 @@ final class LinkTranslatorTest {
     }
 
     private @NotNull TranslationService createService(@NotNull FakeTranslationPreset preset) {
-        return new TranslationService(preset, this.folder.resolve("presets"), null, IDLE_TIME);
+        return new TranslationService(preset, TranslationModelOptions.DEFAULT, this.folder.resolve("presets"), null, IDLE_TIME);
     }
 
     private @NotNull LauncherLinkServer openServer() throws Exception {

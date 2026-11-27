@@ -75,7 +75,7 @@ public interface LockstepTransport {
      * Drops the overdue participants on a person's request, the waiting dialog's drop button. A transport without waiting state ignores it.
      *
      * @implSpec Requests the drop of every overdue participant of the waiting state ({@link WaitingPeers#requestDrop}); the transport drops
-     * them at its next receive.
+     *         them at its next receive.
      */
     default void dropWaitingPeers() {
         WaitingPeers waiting = this.getWaitingPeers();

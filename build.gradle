@@ -46,6 +46,9 @@ ext {
     // The CTranslate2 binding of the translation service and the JavaCPP platforms it has native libraries for.
     CTRANSLATE2_VERSION = '4.9.1-1'
     CTRANSLATE2_PLATFORMS = ['windows-x86_64', 'linux-x86_64', 'linux-arm64', 'macosx-arm64']
+    // The llama.cpp binding of the translation service and the platforms it has native libraries for, named like the JavaCPP platforms.
+    LLAMA_VERSION = '0.1.0'
+    LLAMA_PLATFORMS = ['windows-x86_64', 'linux-x86_64', 'macosx-arm64']
     // The platform of the user package built here, in its file name and launcher/package-platform.txt: windows-x64, linux-x64, linux-arm64,
     // macos-x64 or macos-arm64. The launcher updates only from a package of its own platform.
     PACKAGE_PLATFORM = OS + "-" + (ARCH == "x86_64" ? "x64" : "arm64")
@@ -430,7 +433,8 @@ tasks.register('runDevInstall', JavaExec) {
                 '-Dorg.bytedeco.javacpp.platform.linkpath=' + nativeDirectory,
                 '-Dorg.bytedeco.javacpp.platform.preloadpath=' + nativeDirectory,
                 '-Dorg.bytedeco.javacpp.pathsFirst=true',
-                '-Dorg.bytedeco.javacpp.cacheLibraries=false'
+                '-Dorg.bytedeco.javacpp.cacheLibraries=false',
+                '-Dorg.fogofwarlabs.llama.librarypath=' + nativeDirectory
     }
 }
 

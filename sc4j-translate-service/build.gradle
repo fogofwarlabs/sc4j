@@ -5,9 +5,9 @@ plugins {
 }
 
 // The translation service behind the contract: the model layer (tokenizer, sequence model, language identifier, translation model), the
-// presets and their installation, the NLLB preset (pure Java SentencePiece and fastText, CTranslate2 for the encoder and the decoder) and
-// the service with its worker, language decision, batches and cache, and the adapters that carry requests over the launcher link. It knows
-// no engine and no game.
+// presets and their installation, the NLLB preset (pure Java SentencePiece and fastText, CTranslate2 for the encoder and the decoder), the
+// Index-Translate preset (llama.cpp with the fastText identifier of NLLB) and the service with its worker, language decision, batches and
+// cache, and the adapters that carry requests over the launcher link. It knows no engine and no game.
 dependencies {
     api project(':sc4j-translate')
     // The launcher's translation service and the runtime's translator that sends to it.
@@ -21,6 +21,14 @@ dependencies {
     nativeLibraries "org.bytedeco:javacpp:$JAVACPP_VERSION:$JAVACPP_PLATFORM"
     if (JAVACPP_PLATFORM in CTRANSLATE2_PLATFORMS) {
         nativeLibraries "org.fogofwarlabs:ctranslate2-java:$CTRANSLATE2_VERSION:$JAVACPP_PLATFORM"
+    }
+
+    // The text generation of the Index-Translate preset through the FFM binding of llama.cpp. Its native libraries are those of this
+    // platform only, in lib/natives of the applications, which name that folder in org.fogofwarlabs.llama.librarypath; llama-java has none
+    // for the other platforms, which then cannot run the preset.
+    implementation "org.fogofwarlabs:llama-java:$LLAMA_VERSION"
+    if (JAVACPP_PLATFORM in LLAMA_PLATFORMS) {
+        nativeLibraries "org.fogofwarlabs:llama-java:$LLAMA_VERSION:$JAVACPP_PLATFORM"
     }
 
     testImplementation testFixtures(project(':sc4j-launcher-link'))

@@ -15,11 +15,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 /**
- * Translates through the {@value TranslationLinkService#SERVICE_NAME} service of the launcher that started the runtime. Once the link is
- * closed, and for a request that failed because the link closed, it translates with a local {@link TranslationService}, which it creates on
- * the first such request from its factory, so that the models are loaded in the runtime only without a launcher; without a factory those
- * requests answer {@link TranslationStatus#UNAVAILABLE}. A request that the launcher answers with a failure while the link is open, or whose
- * answer cannot be read, answers {@link TranslationStatus#UNAVAILABLE} too.
+ * Translates through the {@value TranslationLinkService#SERVICE_NAME} service of the launcher that started the runtime; each request carries
+ * its whole context. Once the link is closed, and for a request that failed because the link closed, it translates with a local
+ * {@link TranslationService}, which it creates on the first such request from its factory, so that the models are loaded in the runtime only
+ * without a launcher; without a factory those requests answer {@link TranslationStatus#UNAVAILABLE}. A request that the launcher answers
+ * with a failure while the link is open, or whose answer cannot be read, answers {@link TranslationStatus#UNAVAILABLE} too.
  */
 public final class LinkTranslator implements Translator, AutoCloseable {
     private static final @NotNull Logger LOGGER = Logger.of(LinkTranslator.class);

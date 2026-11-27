@@ -1,9 +1,8 @@
 package org.fogofwarlabs.sc4j.translate.service;
 
-import org.fogofwarlabs.sc4j.translate.Translation;
-import org.fogofwarlabs.sc4j.translate.TranslationPriority;
-import org.fogofwarlabs.sc4j.translate.TranslationRequest;
-import org.fogofwarlabs.sc4j.translate.TranslationStatus;
+import org.fogofwarlabs.sc4j.translate.*;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationDevice;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationModelOptions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -17,8 +16,9 @@ import java.util.Locale;
 import java.util.concurrent.*;
 
 /**
- * Tests the translation service with a fake preset: the decision order, protected spans, splitting, the cache, the queue priority, the
- * batches, the idle close of the models and the answers when the models are missing or the service is closed.
+ * Tests the translation service with a fake preset: the decision order, protected spans, whole runs and their chunks, the context and the
+ * options, the cache and its key, the queue priority, the batches, the idle close of the models and the answers when the models are missing
+ * or the service is closed.
  */
 final class TranslationServiceTest {
     private static final int LARGE_INPUT_LIMIT = 512;
@@ -91,19 +91,25 @@ final class TranslationServiceTest {
     }
 
     @Test
-    void translate_should_translate_sentence_by_sentence() throws Exception {
+    void translate_should_give_the_model_whole_runs_with_their_context_and_the_options() throws Exception {
         FakeTranslationPreset preset = new FakeTranslationPreset(LARGE_INPUT_LIMIT);
+        TranslationContext context = new TranslationContext.Builder().setTextKind("chat message").build();
+        TranslationModelOptions options = new TranslationModelOptions(TranslationDevice.CPU);
 
-        try (TranslationService service = this.createService(preset, LONG_IDLE_TIME)) {
-            Translation translation = translate(service, new TranslationRequest.Builder("Good game. Want a rematch?  Sure!", Locale.KOREAN).build());
+        try (TranslationService service = new TranslationService(preset, options, this.folder.resolve("presets"), null, LONG_IDLE_TIME)) {
+            Translation translation = translate(service, new TranslationRequest.Builder("Good game. Want a rematch?  Sure!", Locale.KOREAN)
+                    .setContext(context)
+                    .build());
 
-            Assertions.assertEquals(List.of("Good game.", "Want a rematch?", "Sure!"), preset.getTranslatedTexts());
-            Assertions.assertEquals("[en>ko] Good game. [en>ko] Want a rematch? [en>ko] Sure!", translation.getTranslatedText());
+            Assertions.assertEquals(List.of("Good game. Want a rematch?  Sure!"), preset.getTranslatedTexts());
+            Assertions.assertEquals("[en>ko] Good game. Want a rematch?  Sure!", translation.getTranslatedText());
+            Assertions.assertSame(context, preset.getTranslatedInputs().getFirst().getContext());
+            Assertions.assertSame(options, preset.getModelOptions());
         }
     }
 
     @Test
-    void translate_should_split_sentences_longer_than_the_input_limit() throws Exception {
+    void translate_should_split_runs_longer_than_the_input_limit_into_chunks_of_sentences() throws Exception {
         FakeTranslationPreset preset = new FakeTranslationPreset(6);
 
         try (TranslationService service = this.createService(preset, LONG_IDLE_TIME)) {
@@ -114,6 +120,14 @@ final class TranslationServiceTest {
             Assertions.assertEquals(List.of("One two three.", "Four five.", "Six seven eight nine", "ten."), preset.getTranslatedTexts());
             Assertions.assertEquals("[en>ko] One two three. [en>ko] Four five. [en>ko] Six seven eight nine [en>ko] ten.",
                                     translation.getTranslatedText());
+        }
+
+        FakeTranslationPreset grouping = new FakeTranslationPreset(7);
+
+        try (TranslationService service = this.createService(grouping, LONG_IDLE_TIME)) {
+            translate(service, new TranslationRequest.Builder("One two. Three. Four five six seven.", Locale.KOREAN).build());
+
+            Assertions.assertEquals(List.of("One two. Three.", "Four five six seven."), grouping.getTranslatedTexts());
         }
     }
 
@@ -137,6 +151,36 @@ final class TranslationServiceTest {
             Assertions.assertEquals("[en>ko] See you later", translation.getTranslatedText());
             Assertions.assertEquals(List.of(), other.getTranslatedTexts());
             Assertions.assertEquals(0, other.getModelLoads());
+        }
+    }
+
+    @Test
+    void translate_should_keep_translations_by_preset_and_context() throws Exception {
+        TranslationContext context = new TranslationContext.Builder().setTextKind("chat message").build();
+        TranslationContext otherContext = new TranslationContext.Builder().setTextKind("menu text").build();
+        TranslationRequest plain = new TranslationRequest.Builder("See you later", Locale.KOREAN).build();
+        TranslationRequest withContext = new TranslationRequest.Builder("See you later", Locale.KOREAN).setContext(context).build();
+        TranslationRequest sameContext = new TranslationRequest.Builder("See you later", Locale.KOREAN)
+                .setContext(new TranslationContext.Builder().setTextKind("chat message").build())
+                .build();
+        TranslationRequest withOtherContext = new TranslationRequest.Builder("See you later", Locale.KOREAN).setContext(otherContext).build();
+        FakeTranslationPreset preset = new FakeTranslationPreset(LARGE_INPUT_LIMIT);
+
+        try (TranslationService service = this.createService(preset, LONG_IDLE_TIME)) {
+            for (TranslationRequest request : List.of(plain, withContext, sameContext, withOtherContext, plain)) {
+                translate(service, request);
+            }
+
+            Assertions.assertEquals(3, preset.getTranslatedTexts().size(), "one translation per context id, none for the repeated requests");
+        }
+
+        FakeTranslationPreset otherPreset = new FakeTranslationPreset("other", LARGE_INPUT_LIMIT);
+
+        try (TranslationService service = this.createService(otherPreset, LONG_IDLE_TIME)) {
+            translate(service, plain);
+            translate(service, withContext);
+
+            Assertions.assertEquals(2, otherPreset.getTranslatedTexts().size(), "another preset does not take the cached translations");
         }
     }
 
@@ -191,10 +235,10 @@ final class TranslationServiceTest {
             blocker.countDown();
             CompletableFuture.allOf(first, alpha, gamma, beta).get(WAIT_SECONDS, TimeUnit.SECONDS);
 
-            Assertions.assertEquals(List.of(List.of("first text"), List.of("alpha text", "beta text.", "Second one."), List.of("gamma text")),
+            Assertions.assertEquals(List.of(List.of("first text"), List.of("alpha text", "beta text. Second one."), List.of("gamma text")),
                                     preset.getBatches());
             Assertions.assertEquals("[en>ko] alpha text", alpha.get().getTranslatedText());
-            Assertions.assertEquals("[en>ja] beta text.[en>ja] Second one.", beta.get().getTranslatedText());
+            Assertions.assertEquals("[en>ja] beta text. Second one.", beta.get().getTranslatedText());
             Assertions.assertEquals("[en>ko] gamma text", gamma.get().getTranslatedText());
         }
     }
@@ -345,6 +389,6 @@ final class TranslationServiceTest {
     }
 
     private @NotNull TranslationService createService(@NotNull FakeTranslationPreset preset, @NotNull Duration idleTime) {
-        return new TranslationService(preset, this.folder.resolve("presets"), this.folder.resolve("cache"), idleTime);
+        return new TranslationService(preset, TranslationModelOptions.DEFAULT, this.folder.resolve("presets"), this.folder.resolve("cache"), idleTime);
     }
 }

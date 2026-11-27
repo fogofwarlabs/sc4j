@@ -2,6 +2,7 @@ package org.fogofwarlabs.sc4j.launcher.settings;
 
 import org.fogofwarlabs.sc4j.catalog.ReleaseVersion;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationDevice;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -14,14 +15,14 @@ import java.nio.file.Path;
 
 /**
  * Tests reading and writing the launcher settings file {@code userdata/launcher.json}, with the launcher version the player skipped, the
- * muted chat sound, the translation preset and the high-performance GPU switch.
+ * muted chat sound, the translation preset and device, and the high-performance GPU switch.
  */
 final class LauncherSettingsFileTest {
     @Test
     void write_and_read_should_keep_every_setting(@TempDir @NotNull Path directory) throws IOException {
         LauncherSettingsFile file = new LauncherSettingsFile(directory.resolve("userdata").resolve("launcher.json"));
         LauncherSettings settings = new LauncherSettings(UiLanguage.KOREAN, "my-mod.jar", new WindowState(-8, 40, 1280, 800, true), "owner/fork",
-                                                         "1.2.0", true, "nllb-200-distilled-600m", false);
+                                                         "1.2.0", true, "nllb-200-distilled-600m", TranslationDevice.CPU, false);
 
         file.write(settings);
 
@@ -44,9 +45,30 @@ final class LauncherSettingsFileTest {
         Assertions.assertEquals("nllb-200-distilled-600m", read.getTranslationPreset());
         Assertions.assertNull(read.withTranslationPreset(null).getTranslationPreset());
         Assertions.assertNull(LauncherSettings.DEFAULT.getTranslationPreset(), "the chat is not translated by default");
+        Assertions.assertEquals(TranslationDevice.CPU, read.getTranslationDevice());
+        Assertions.assertEquals(TranslationDevice.AUTOMATIC, read.withTranslationDevice(TranslationDevice.AUTOMATIC).getTranslationDevice());
+        Assertions.assertEquals(TranslationDevice.AUTOMATIC, LauncherSettings.DEFAULT.getTranslationDevice());
         Assertions.assertFalse(read.isHighPerformanceGpu());
         Assertions.assertTrue(read.withHighPerformanceGpu(true).isHighPerformanceGpu());
         Assertions.assertTrue(LauncherSettings.DEFAULT.isHighPerformanceGpu(), "games run on the high-performance GPU by default");
+    }
+
+    @Test
+    void write_and_read_should_leave_out_the_default_device_and_refuse_an_unknown_one(@TempDir @NotNull Path directory) throws IOException {
+        LauncherSettingsFile file = new LauncherSettingsFile(directory.resolve("launcher.json"));
+
+        file.write(LauncherSettings.DEFAULT);
+
+        Assertions.assertEquals("{\"format\": 1}\n", Files.readString(file.getPath(), StandardCharsets.UTF_8));
+        Assertions.assertEquals(TranslationDevice.AUTOMATIC, file.read().getTranslationDevice());
+
+        file.write(LauncherSettings.DEFAULT.withTranslationDevice(TranslationDevice.CPU));
+
+        Assertions.assertEquals("{\"format\": 1, \"translationDevice\": \"cpu\"}\n", Files.readString(file.getPath(), StandardCharsets.UTF_8));
+
+        Files.writeString(file.getPath(), "{\"format\": 1, \"translationDevice\": \"gpu\"}");
+
+        Assertions.assertThrows(IOException.class, file::read);
     }
 
     @Test

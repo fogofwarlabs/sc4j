@@ -218,7 +218,7 @@ The mod reads it with `ModContext.getSettings().getDirectory(key)`.
 
 [`DemoMod`](../mods/demo/src/main/java/org/fogofwarlabs/sc4j/demo/DemoMod.java).
 
-- `initialize(ModContext)`: open and check what the mod needs; `ModException` refuses the run. `ModContext` gives the manifest, settings, storage, install folder, mod arguments, logger and translator (`getTranslator()`: translates texts shown to the player with the translation model the user installed in the launcher; without one every request answers `UNAVAILABLE`). Read resources through the mod's class loader.
+- `initialize(ModContext)`: open and check what the mod needs; `ModException` refuses the run. `ModContext` gives the manifest, settings, storage, install folder, mod arguments, logger and translator (`getTranslator()`: translates texts shown to the player with the translation model the user installed in the launcher; without one every request answers `UNAVAILABLE`. A request may carry a `TranslationContext`: the kind of text, a description and a glossary per target language, which models such as Index-Translate-2B use and NLLB ignores; build it once and reuse it). Read resources through the mod's class loader.
 - `register(ModRegistration)`: the registration closes when it returns.
 - `close()`: release in reverse order.
 
@@ -427,7 +427,7 @@ Demo: `DemoLobby`, [`BeaconLinkScene`](../mods/demo/src/main/java/org/fogofwarla
 ## 15. Building, installing and running
 
 - **Install**: put the jar into `<install>/mods/`. The launcher shows `READY`, `WARNING` (settings to fix) or `ERROR` (broken jar or manifest, unsupported engine version, missing image, duplicate id).
-- **Runtime**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--no-port-mapping] [--launcher-link <file>] [--translation-preset <id>] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]` (`--help`). Exit codes: 0 normal, 1 run failure, 2 command line or settings error, 3 mod load or validation failure. Log: `<install>/userdata/logs/<id>/sc4j.log`.
+- **Runtime**: `sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>] [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--no-port-mapping] [--launcher-link <file>] [--translation-preset <id>] [--translation-device automatic|cpu] [--headless] [--replay <file>] [--join <address>] [-- <mod arguments>]` (`--help`). Exit codes: 0 normal, 1 run failure, 2 command line or settings error, 3 mod load or validation failure. Log: `<install>/userdata/logs/<id>/sc4j.log`.
 - **Launcher**: starts the runtime with the mod's settings, storage and log folders.
 - **Mod tools**: `SC4J.bat tool <mod id> <tool id> [arguments]` (Linux and macOS `SC4J`, Windows console `SC4J-cli.exe`) runs the tool's `main` with the install's Java runtime and the class path the runtime gives the mod (the runtime's libraries and the mod jar), in the caller's current folder, with the JVM options of the runtime and the install folder in the system property `sc4j.install` (`InstallLayout.INSTALL_PROPERTY`); the arguments are passed on and the tool's exit status is returned. `tool` lists the tools of the installed mods, `tool <mod id>` those of one mod.
 

@@ -2,23 +2,21 @@ package org.fogofwarlabs.sc4j.runtime.cli;
 
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
 import org.fogofwarlabs.sc4j.beaconlink.protocol.file.ConfiguredNode;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationDevice;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Holds the parsed command line of the runtime:
  * {@snippet lang = "text":
  * sc4j-runtime --mod <jar> [--install <dir>] [--settings <json>] [--storage <dir>] [--log <dir>]
  *              [--account <dir>] [--seeds <file>] [--seed <host:port>]... [--peers <file>] [--no-port-mapping]
- *              [--launcher-link <file>] [--translation-preset <id>] [--headless] [--replay <file>] [--join <address>]
- *              [-- <mod arguments>]
+ *              [--launcher-link <file>] [--translation-preset <id>] [--translation-device automatic|cpu] [--headless]
+ *              [--replay <file>] [--join <address>] [-- <mod arguments>]
  *}
  * Paths are made absolute against the working directory. Every argument after {@code --} belongs to the mod. The settings, storage and log
  * options that are not given take their defaults from the install layout once the mod id is known. Beacon.Link takes nothing from the install
@@ -26,7 +24,8 @@ import java.util.Set;
  * Its sessions map their socket on the router unless {@code --no-port-mapping} is given. {@code --launcher-link} names the socket of the
  * launcher that started the run; the launcher passes the token of that link in the environment, not on the command line.
  * {@code --translation-preset} names the installed translation preset that the mod's translator uses when the run has no launcher link or
- * its link closes. Only {@code --seed} may be given more than once.
+ * its link closes, and {@code --translation-device} the device its model runs on (default {@code automatic}). Only {@code --seed} may be
+ * given more than once.
  */
 public final class RuntimeCommandLine {
     /**
@@ -46,6 +45,7 @@ public final class RuntimeCommandLine {
                                                   --no-port-mapping          do not ask the router to open the Beacon.Link port
                                                   --launcher-link <file>     the socket of the launcher that started the run (token in SC4J_LAUNCHER_LINK_TOKEN)
                                                   --translation-preset <id>  the installed translation preset used without the launcher
+                                                  --translation-device <d>   the device of that preset's model: automatic (default) or cpu
                                                   --headless                 run without window, audio and input
                                                   --replay <file>            play a replay (passed to the mod)
                                                   --join <address>           join a game (passed to the mod)
@@ -66,6 +66,7 @@ public final class RuntimeCommandLine {
     private static final @NotNull String NO_PORT_MAPPING_OPTION = "--no-port-mapping";
     private static final @NotNull String LAUNCHER_LINK_OPTION = "--launcher-link";
     private static final @NotNull String TRANSLATION_PRESET_OPTION = "--translation-preset";
+    private static final @NotNull String TRANSLATION_DEVICE_OPTION = "--translation-device";
     private static final @NotNull String HEADLESS_OPTION = "--headless";
     private static final @NotNull String REPLAY_OPTION = "--replay";
     private static final @NotNull String JOIN_OPTION = "--join";
@@ -96,6 +97,7 @@ public final class RuntimeCommandLine {
         boolean portMapping = true;
         Path launcherLink = null;
         String translationPreset = null;
+        TranslationDevice translationDevice = TranslationDevice.AUTOMATIC;
         Path replay = null;
         String join = null;
         boolean headless = false;
@@ -119,7 +121,7 @@ public final class RuntimeCommandLine {
                 case NO_PORT_MAPPING_OPTION -> portMapping = false;
                 case HELP_OPTION, SHORT_HELP_OPTION -> help = true;
                 case MOD_OPTION, INSTALL_OPTION, SETTINGS_OPTION, STORAGE_OPTION, LOG_OPTION, ACCOUNT_OPTION, SEEDS_OPTION, SEED_OPTION, PEERS_OPTION,
-                     LAUNCHER_LINK_OPTION, TRANSLATION_PRESET_OPTION, REPLAY_OPTION, JOIN_OPTION -> {
+                     LAUNCHER_LINK_OPTION, TRANSLATION_PRESET_OPTION, TRANSLATION_DEVICE_OPTION, REPLAY_OPTION, JOIN_OPTION -> {
                     if (index + 1 >= arguments.length) {
                         throw Exceptions.newIllegalArgumentException("The option {0} needs a value.", argument);
                     }
@@ -138,6 +140,7 @@ public final class RuntimeCommandLine {
                         case PEERS_OPTION -> peersFile = parsePath(argument, value);
                         case LAUNCHER_LINK_OPTION -> launcherLink = parsePath(argument, value);
                         case TRANSLATION_PRESET_OPTION -> translationPreset = value;
+                        case TRANSLATION_DEVICE_OPTION -> translationDevice = parseTranslationDevice(value);
                         case REPLAY_OPTION -> replay = parsePath(argument, value);
                         default -> join = value;
                     }
@@ -153,9 +156,19 @@ public final class RuntimeCommandLine {
         return new RuntimeCommandLine(help, mod,
                                       install, settings, storage, log,
                                       account, seedsFile, seeds, peersFile, portMapping,
-                                      launcherLink, translationPreset,
+                                      launcherLink, translationPreset, translationDevice,
                                       headless, replay, join,
                                       modArguments);
+    }
+
+    private static @NotNull TranslationDevice parseTranslationDevice(@NotNull String value) {
+        for (TranslationDevice device : TranslationDevice.values()) {
+            if (device.name().toLowerCase(Locale.ROOT).equals(value)) {
+                return device;
+            }
+        }
+
+        throw Exceptions.newIllegalArgumentException("The option {0} has an unknown device: {1}", TRANSLATION_DEVICE_OPTION, value);
     }
 
     private static @NotNull Path parsePath(@NotNull String option, @NotNull String value) {
@@ -183,6 +196,7 @@ public final class RuntimeCommandLine {
 
     private final @Nullable Path launcherLink;
     private final @Nullable String translationPreset;
+    private final @NotNull TranslationDevice translationDevice;
 
     private final boolean headless;
     private final @Nullable Path replay;
@@ -206,6 +220,7 @@ public final class RuntimeCommandLine {
      * @param portMapping       whether the Beacon.Link sessions map their socket on the router
      * @param launcherLink      the socket of the launcher's link, or {@code null} for a run without a launcher
      * @param translationPreset the id of the translation preset used without the launcher, or {@code null} for none
+     * @param translationDevice the device the model of that preset runs on
      * @param headless          whether the run has no window, audio and input
      * @param replay            the replay to play, or {@code null}
      * @param join              the address of the game to join, or {@code null}
@@ -215,7 +230,7 @@ public final class RuntimeCommandLine {
                                @Nullable Path install, @Nullable Path settings, @Nullable Path storage, @Nullable Path log,
                                @Nullable Path account, @Nullable Path seedsFile, @NotNull List<@NotNull ConfiguredNode> seeds, @Nullable Path peersFile,
                                boolean portMapping,
-                               @Nullable Path launcherLink, @Nullable String translationPreset,
+                               @Nullable Path launcherLink, @Nullable String translationPreset, @NotNull TranslationDevice translationDevice,
                                boolean headless, @Nullable Path replay, @Nullable String join,
                                @NotNull List<@NotNull String> modArguments) {
         this.help = help;
@@ -234,6 +249,7 @@ public final class RuntimeCommandLine {
 
         this.launcherLink      = launcherLink;
         this.translationPreset = translationPreset;
+        this.translationDevice = translationDevice;
 
         this.headless = headless;
         this.replay   = replay;
@@ -338,6 +354,14 @@ public final class RuntimeCommandLine {
      */
     public @Nullable String getTranslationPreset() {
         return this.translationPreset;
+    }
+
+    /**
+     * @return the device the model of the translation preset runs on ({@code --translation-device}), by default
+     *         {@link TranslationDevice#AUTOMATIC}
+     */
+    public @NotNull TranslationDevice getTranslationDevice() {
+        return this.translationDevice;
     }
 
     /**

@@ -44,8 +44,8 @@ This repository holds the engine, the runtime, the launcher, Beacon.Link and the
 | `sc4j-runtime` | runs one mod jar, in a window or headless |
 | `sc4j-launcher` | the launcher (JavaFX) |
 | `sc4j-launcher-link` | the local channel between the launcher and the runtimes it starts: token, frames, named services |
-| `sc4j-translate` | the translation contract that mods see: translator, request, translation, status |
-| `sc4j-translate-service` | chat translation: model presets and their download, the NLLB preset (SentencePiece, CTranslate2, fastText), the service on the launcher link |
+| `sc4j-translate` | the translation contract that mods see: translator, request with its context (text kind, description, glossary), translation, status |
+| `sc4j-translate-service` | chat translation: model presets and their download, the Index-Translate-2B preset (llama.cpp through llama-java, GPU or CPU), the NLLB presets (SentencePiece, CTranslate2), the fastText language identifier, the service and its cache, the service on the launcher link |
 | `sc4j-catalog` | what is published: GitHub releases, the check for a newer release, the mod catalog; used by the launcher, shipped by the runtime for mods |
 | `sc4j-beaconlink-protocol`, `-peer`, `-node`, `sc4j-beaconlink` | Beacon.Link wire protocol, peer library, headless node, client |
 | [`mods/`](mods/) | the demo mod |

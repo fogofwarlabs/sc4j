@@ -18,8 +18,8 @@ import java.util.*;
 import java.util.stream.Stream;
 
 /**
- * Keeps translations by preset id, source code, target code and text: the most recently used ones in memory, and every one in a disk folder
- * when one is given, one file per translation named by the SHA-256 of its key. A file holds its key and the translation, so a key whose
+ * Keeps translations by preset id, source code, target code, context id and text: the most recently used ones in memory, and every one in a
+ * disk folder when one is given, one file per translation named by the SHA-256 of its key. A file holds its key and the translation, so a key whose
  * file holds another key misses. When the folder is opened with more files than its limit, the oldest are deleted. Used by one thread.
  */
 final class TranslationCache {
@@ -30,8 +30,9 @@ final class TranslationCache {
     private static final @NotNull String DIGEST_ALGORITHM = "SHA-256";
     private static final @NotNull Logger LOGGER = Logger.of(TranslationCache.class);
 
-    private static @NotNull String createKey(@NotNull String presetId, @NotNull String sourceCode, @NotNull String targetCode, @NotNull String text) {
-        return presetId + KEY_SEPARATOR + sourceCode + KEY_SEPARATOR + targetCode + KEY_SEPARATOR + text;
+    private static @NotNull String createKey(@NotNull String presetId, @NotNull String sourceCode, @NotNull String targetCode,
+                                             @NotNull String contextId, @NotNull String text) {
+        return presetId + KEY_SEPARATOR + sourceCode + KEY_SEPARATOR + targetCode + KEY_SEPARATOR + contextId + KEY_SEPARATOR + text;
     }
 
     private static @NotNull String createFileName(@NotNull String key) {
@@ -79,11 +80,13 @@ final class TranslationCache {
      * @param presetId   the preset id
      * @param sourceCode the preset's code of the source language
      * @param targetCode the preset's code of the target language
+     * @param contextId  the id of the request's context, or an empty text for none
      * @param text       the original text
      * @return the translation, or {@code null} when it is not kept
      */
-    @Nullable String find(@NotNull String presetId, @NotNull String sourceCode, @NotNull String targetCode, @NotNull String text) {
-        String key = createKey(presetId, sourceCode, targetCode, text);
+    @Nullable String find(@NotNull String presetId, @NotNull String sourceCode, @NotNull String targetCode, @NotNull String contextId,
+                          @NotNull String text) {
+        String key = createKey(presetId, sourceCode, targetCode, contextId, text);
         String translation = this.memory.get(key);
 
         if (translation != null || this.folder == null) {
@@ -115,11 +118,13 @@ final class TranslationCache {
      * @param presetId    the preset id
      * @param sourceCode  the preset's code of the source language
      * @param targetCode  the preset's code of the target language
+     * @param contextId   the id of the request's context, or an empty text for none
      * @param text        the original text
      * @param translation the translation
      */
-    void store(@NotNull String presetId, @NotNull String sourceCode, @NotNull String targetCode, @NotNull String text, @NotNull String translation) {
-        String key = createKey(presetId, sourceCode, targetCode, text);
+    void store(@NotNull String presetId, @NotNull String sourceCode, @NotNull String targetCode, @NotNull String contextId, @NotNull String text,
+               @NotNull String translation) {
+        String key = createKey(presetId, sourceCode, targetCode, contextId, text);
 
         this.memory.put(key, translation);
 

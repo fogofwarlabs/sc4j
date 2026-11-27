@@ -10,9 +10,14 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Translates with an NLLB model: the input of a text is its source language token, its SentencePiece pieces and the end token; the output
- * starts with the target language token, which is removed before the pieces are joined to text. The language tokens are the FLORES-200
- * codes, such as {@code kor_Hang}.
+ * Translates with an NLLB model, which translates sentence by sentence: a text is split into its sentences, a sentence longer than the
+ * model's input limit in pieces ({@link TextSplitter#split}); the sentences of all texts of a batch are translated in one call, a sentence
+ * without letters stays as it is, and the translated sentences of a text are joined in the way of the target language
+ * ({@link TextSplitter#join}).
+ * <p>
+ * The input of a sentence is its source language token, its SentencePiece pieces and the end token; the output starts with the target
+ * language token, which is removed before the pieces are joined to text. The language tokens are the FLORES-200 codes, such as
+ * {@code kor_Hang}.
  */
 public final class NllbTranslationModel implements TranslationModel {
     /**
@@ -20,13 +25,20 @@ public final class NllbTranslationModel implements TranslationModel {
      */
     public static final @NotNull String END_TOKEN = "</s>";
 
-    private static final int MAXIMUM_INPUT_TOKENS = 512;
+    /**
+     * The largest number of tokens of one sentence the model reads, language and end tokens included.
+     */
+    private static final int MAXIMUM_SENTENCE_TOKENS = 512;
     /**
      * The output length allowed per input token, and the output tokens allowed beyond that, which end a greedy decoding that repeats itself.
      */
     private static final int OUTPUT_TOKENS_PER_INPUT_TOKEN = 2;
     private static final int EXTRA_OUTPUT_TOKENS = 16;
     private static final int LANGUAGE_AND_END_TOKENS = 2;
+    /**
+     * The model input index of a sentence without letters, which stays as it is.
+     */
+    private static final int KEPT_SENTENCE = -1;
 
     private static @NotNull String findLanguageToken(@NotNull Locale language) {
         String code = NllbLanguages.findCode(language);
@@ -54,15 +66,16 @@ public final class NllbTranslationModel implements TranslationModel {
     }
 
     /**
-     * @return the largest number of tokens one input may have, language and end tokens included
+     * @return the largest number of tokens one input may have, as {@link #countTokens} counts them: no limit, since the model splits its
+     *         inputs into sentences
      */
     @Override
     public int getMaximumInputTokens() {
-        return MAXIMUM_INPUT_TOKENS;
+        return Integer.MAX_VALUE;
     }
 
     /**
-     * Counts the tokens of a text as {@link #translate} feeds it to the model, language and end tokens included.
+     * Counts the tokens of a text as {@link #translate} feeds it to the model, language and end tokens included, as if it were one sentence.
      *
      * @param text the text
      * @return the number of tokens
@@ -75,15 +88,67 @@ public final class NllbTranslationModel implements TranslationModel {
     /**
      * Translates a batch of texts that fit {@link #getMaximumInputTokens()}; longer input is cut there.
      * <p>
-     * The output of a text is limited to twice its input tokens and a fixed margin, the target language token included.
+     * The texts are translated sentence by sentence; the context is not used.
      *
-     * @param inputs the texts with their languages
+     * @param inputs the texts with their languages and contexts
      * @return the translated texts, in the order of the inputs
      * @throws ModelException           if the inference fails
      * @throws IllegalArgumentException if the preset does not support a language
      */
     @Override
     public @NotNull List<@NotNull String> translate(@NotNull List<@NotNull TranslationInput> inputs) throws ModelException {
+        List<List<String>> sentences = new ArrayList<>(inputs.size());
+        List<List<Integer>> sentenceIndexes = new ArrayList<>(inputs.size());
+        List<TranslationInput> sentenceInputs = new ArrayList<>();
+
+        for (TranslationInput input : inputs) {
+            List<String> inputSentences = new ArrayList<>();
+            List<Integer> inputIndexes = new ArrayList<>();
+
+            for (String piece : TextSplitter.split(input.getText(), input.getSource(), this::countTokens, MAXIMUM_SENTENCE_TOKENS)) {
+                String sentence = piece.strip();
+
+                if (sentence.isEmpty()) {
+                    continue;
+                }
+
+                inputSentences.add(sentence);
+
+                if (TextSplitter.hasLetters(sentence)) {
+                    inputIndexes.add(sentenceInputs.size());
+                    sentenceInputs.add(new TranslationInput(sentence, input.getSource(), input.getTarget()));
+                } else {
+                    inputIndexes.add(KEPT_SENTENCE);
+                }
+            }
+
+            sentences.add(inputSentences);
+            sentenceIndexes.add(inputIndexes);
+        }
+
+        List<String> outputs = sentenceInputs.isEmpty() ? List.of() : this.translateSentences(sentenceInputs);
+        List<String> translations = new ArrayList<>(inputs.size());
+
+        for (int index = 0; index < inputs.size(); index++) {
+            List<String> pieces = new ArrayList<>();
+
+            for (int sentence = 0; sentence < sentences.get(index).size(); sentence++) {
+                int outputIndex = sentenceIndexes.get(index).get(sentence);
+
+                pieces.add(outputIndex == KEPT_SENTENCE ? sentences.get(index).get(sentence) : outputs.get(outputIndex));
+            }
+
+            translations.add(TextSplitter.join(pieces, inputs.get(index).getTarget()));
+        }
+
+        return translations;
+    }
+
+    /**
+     * Translates a batch of sentences in one call of the sequence model; a sentence longer than {@link #MAXIMUM_SENTENCE_TOKENS} is cut
+     * there. The output of a sentence is limited to twice its input tokens and a fixed margin, the target language token included.
+     */
+    private @NotNull List<@NotNull String> translateSentences(@NotNull List<@NotNull TranslationInput> inputs) throws ModelException {
         String[][] sources = new String[inputs.size()][];
         String[][] targetPrefixes = new String[inputs.size()][];
         int[] outputLimits = new int[inputs.size()];
@@ -94,7 +159,7 @@ public final class NllbTranslationModel implements TranslationModel {
             String sourceToken = findLanguageToken(input.getSource());
             String targetToken = findLanguageToken(input.getTarget());
             String[] pieces = this.tokenizer.encode(input.getText());
-            int pieceCount = Math.min(pieces.length, MAXIMUM_INPUT_TOKENS - LANGUAGE_AND_END_TOKENS);
+            int pieceCount = Math.min(pieces.length, MAXIMUM_SENTENCE_TOKENS - LANGUAGE_AND_END_TOKENS);
             String[] source = new String[pieceCount + LANGUAGE_AND_END_TOKENS];
 
             source[0] = sourceToken;

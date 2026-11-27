@@ -177,14 +177,16 @@ configurations.consumable('modJarElements') {
 }
 
 // The engine runtime of the plugin's version and the native libraries of its LWJGL and JavaCPP libraries (org.bytedeco, and the
-// CTranslate2 binding of the organization, org.fogofwarlabs) for this platform. A group without natives for this platform maps to null.
+// CTranslate2 and llama.cpp bindings of the organization, org.fogofwarlabs) for this platform. A group without natives for this platform
+// maps to null; a binding of the organization has natives only for the platforms listed for it.
 def runtime = configurations.dependencyScope('sc4jRuntime')
 dependencies.add('sc4jRuntime', engineModule('sc4j-runtime'))
 def runtimeClasspath = configurations.resolvable('sc4jRuntimeClasspath') {
     extendsFrom(runtime.get())
     attributes(javaRuntime)
 }
-def ctranslate2Platforms = ['windows-x86_64', 'linux-x86_64', 'linux-arm64', 'macosx-arm64']
+def organizationNativePlatforms = ['ctranslate2-java': ['windows-x86_64', 'linux-x86_64', 'linux-arm64', 'macosx-arm64'],
+                                   'llama-java'      : ['windows-x86_64', 'linux-x86_64', 'macosx-arm64']]
 def nativeClassifiers = {
     def operatingSystem = System.getProperty('os.name').toLowerCase(Locale.ROOT)
     def arm = System.getProperty('os.arch').toLowerCase(Locale.ROOT) in ['aarch64', 'arm64']
@@ -198,15 +200,22 @@ def nativeClassifiers = {
     } else {
         throw new GradleException('The engine runtime has no native libraries for ' + System.getProperty('os.name') + '.')
     }
-    classifiers['org.fogofwarlabs'] = classifiers['org.bytedeco'] in ctranslate2Platforms ? classifiers['org.bytedeco'] : null
+    classifiers['org.fogofwarlabs'] = classifiers['org.bytedeco']
     return classifiers
+}
+def findNativeClassifier = { Map classifiers, ModuleComponentIdentifier component ->
+    def classifier = classifiers[component.group]
+    if (component.group == 'org.fogofwarlabs' && !(classifier in organizationNativePlatforms.getOrDefault(component.module, []))) {
+        return null
+    }
+    return classifier
 }
 def runtimeNatives = files({
     def classifiers = nativeClassifiers()
     def natives = runtimeClasspath.get().incoming.artifacts.artifacts.collect { artifact -> artifact.id.componentIdentifier }.findAll { component ->
-        component instanceof ModuleComponentIdentifier && classifiers[component.group] != null
+        component instanceof ModuleComponentIdentifier && findNativeClassifier(classifiers, component) != null
     }.collect { component ->
-        dependencies.create(component.group + ':' + component.module + ':' + component.version + ':' + classifiers[component.group])
+        dependencies.create(component.group + ':' + component.module + ':' + component.version + ':' + findNativeClassifier(classifiers, component))
     }
     def configuration = configurations.detachedConfiguration(natives as Dependency[])
     configuration.transitive = false
@@ -250,6 +259,7 @@ tasks.register('run', JavaExec) {
     systemProperty 'org.bytedeco.javacpp.platform.preloadpath', nativeFolder
     systemProperty 'org.bytedeco.javacpp.pathsFirst', 'true'
     systemProperty 'org.bytedeco.javacpp.cacheLibraries', 'false'
+    systemProperty 'org.fogofwarlabs.llama.librarypath', nativeFolder
     // The options of --args follow the mod and the install, so that mod arguments after "--" stay last.
     doFirst {
         args = ['--mod', jarFile.get().asFile.absolutePath, '--install', install.get().asFile.absolutePath] + args

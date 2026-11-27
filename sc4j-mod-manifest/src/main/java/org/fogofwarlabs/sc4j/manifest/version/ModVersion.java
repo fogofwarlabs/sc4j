@@ -117,7 +117,7 @@ public final class ModVersion {
      * {@return a string representation of the object}
      *
      * @implSpec Returns the manifest text form {@code major.minor.patch}, followed by {@code -} and the pre-release label if
-     * there is one.
+     *         there is one.
      */
     @Override
     public @NotNull String toString() {

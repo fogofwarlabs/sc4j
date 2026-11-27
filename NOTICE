@@ -116,6 +116,14 @@ package's platform; launcher, runtime, development install)
   The translation models that the launcher downloads on request are not part of the distributions; the launcher shows each model's
   licence before its download.
 
+llama.cpp through llama-java 0.1.0 (org.fogofwarlabs:llama-java, with the native libraries of the package's platform; launcher,
+runtime, development install)
+  The binding: Apache License 2.0 (LICENSE). llama.cpp and ggml, release b12811: MIT License. Text: licenses/llama.cpp-MIT.txt.
+  - LLVM OpenMP runtime library, libomp.dll [windows-x64]: Apache License 2.0 with LLVM Exceptions; parts under the University of
+    Illinois/NCSA Open Source License and the MIT License. Text: licenses/LLVM-OpenMP-Apache-2.0-WITH-LLVM-exception.txt.
+  On Linux it uses the GNU OpenMP runtime (libgomp.so.1) and the Vulkan loader (libvulkan.so.1) of the system, on macOS Accelerate and
+  Metal of the operating system, and on Windows the Microsoft Visual C++ runtime of the JavaCPP natives above.
+
 JetBrains Java Annotations 23.0.0 (org.jetbrains:annotations; every distribution with a Java class path)
   Apache License 2.0 (LICENSE).
 

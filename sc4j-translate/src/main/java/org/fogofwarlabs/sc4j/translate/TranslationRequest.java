@@ -2,6 +2,7 @@ package org.fogofwarlabs.sc4j.translate;
 
 import org.fogofwarlabs.sc4j.base.exception.Exceptions;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -9,8 +10,8 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Describes a text to translate: the text, the target language, the protected spans that stay verbatim and the priority. The translator
- * identifies the source language.
+ * Describes a text to translate: the text, the target language, the protected spans that stay verbatim, the priority and the
+ * {@link TranslationContext}, if any. The translator identifies the source language.
  */
 public final class TranslationRequest {
     /**
@@ -22,10 +23,11 @@ public final class TranslationRequest {
 
         private final @NotNull List<@NotNull ProtectedSpan> protectedSpans;
         private @NotNull TranslationPriority priority;
+        private @Nullable TranslationContext context;
 
         /**
-         * Creates a {@link Builder} instance for a text and a target language, with no protected span and the priority
-         * {@link TranslationPriority#CHAT}.
+         * Creates a {@link Builder} instance for a text and a target language, with no protected span, the priority
+         * {@link TranslationPriority#CHAT} and no context.
          *
          * @param text   the text to translate
          * @param target the language to translate into
@@ -36,6 +38,7 @@ public final class TranslationRequest {
 
             this.protectedSpans = new ArrayList<>();
             this.priority       = TranslationPriority.CHAT;
+            this.context        = null;
         }
 
         /**
@@ -70,6 +73,18 @@ public final class TranslationRequest {
         }
 
         /**
+         * Sets the context of the text.
+         *
+         * @param context the context, or {@code null} for none
+         * @return this instance for chaining
+         */
+        public @NotNull Builder setContext(@Nullable TranslationContext context) {
+            this.context = context;
+
+            return this;
+        }
+
+        /**
          * Builds a {@link TranslationRequest} instance with the protected spans in text order.
          *
          * @return the built {@link TranslationRequest} instance
@@ -87,7 +102,7 @@ public final class TranslationRequest {
                 }
             }
 
-            return new TranslationRequest(this.text, this.target, List.copyOf(spans), this.priority);
+            return new TranslationRequest(this.text, this.target, List.copyOf(spans), this.priority, this.context);
         }
     }
 
@@ -96,13 +111,15 @@ public final class TranslationRequest {
     private final @NotNull Locale target;
     private final @NotNull List<@NotNull ProtectedSpan> protectedSpans;
     private final @NotNull TranslationPriority priority;
+    private final @Nullable TranslationContext context;
 
     private TranslationRequest(@NotNull String text, @NotNull Locale target, @NotNull List<@NotNull ProtectedSpan> protectedSpans,
-                               @NotNull TranslationPriority priority) {
+                               @NotNull TranslationPriority priority, @Nullable TranslationContext context) {
         this.text           = text;
         this.target         = target;
         this.protectedSpans = protectedSpans;
         this.priority       = priority;
+        this.context        = context;
     }
 
     /**
@@ -131,5 +148,12 @@ public final class TranslationRequest {
      */
     public @NotNull TranslationPriority getPriority() {
         return this.priority;
+    }
+
+    /**
+     * @return the context of the text, or {@code null} for none
+     */
+    public @Nullable TranslationContext getContext() {
+        return this.context;
     }
 }

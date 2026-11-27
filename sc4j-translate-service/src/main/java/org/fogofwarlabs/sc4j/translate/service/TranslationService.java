@@ -26,12 +26,13 @@ import java.util.concurrent.atomic.AtomicLong;
  * A request is decided in this order: the text runs between the protected spans are what is translated, and a text longer than the
  * limit or without letters in them is skipped; the source language is the top label of the preset's language identifier for the runs; a
  * source language equal to the target is the same language. A preset without identifier, or a label that is no language of the preset,
- * gives {@link TranslationStatus#UNAVAILABLE}. Each run is translated sentence by sentence, a sentence longer than the model's input limit
- * in pieces ({@link TextSplitter}), and its translation is kept in a {@link TranslationCache}.
+ * gives {@link TranslationStatus#UNAVAILABLE}. Each run goes to the model whole with the request's context, a run longer than the model's
+ * input limit in chunks of whole sentences ({@link TextSplitter#chunk}), and its translation is kept in a {@link TranslationCache} under the
+ * preset id, the languages, the context id and the run.
  * <p>
  * The worker translates in batches: it takes the first waiting request and the requests of the same priority queued behind it until their
  * runs that are not in the cache reach {@link #MAXIMUM_BATCH_RUNS}. A request whose runs are all in the cache is answered at once; the
- * sentences of the other runs, each distinct run once, are translated in one call of the model.
+ * chunks of the other runs, each distinct run and context once, are translated in one call of the model.
  */
 public final class TranslationService implements Translator, AutoCloseable {
     /**
@@ -55,13 +56,13 @@ public final class TranslationService implements Translator, AutoCloseable {
     private static final @NotNull String SPACE = " ";
     private static final char KEY_SEPARATOR = '\u0000';
     /**
-     * The model input index of a sentence without letters, which stays as it is.
+     * The context id of a request without context.
      */
-    private static final int KEPT_SENTENCE = -1;
+    private static final @NotNull String NO_CONTEXT_ID = "";
     /**
-     * The languages written without spaces between sentences.
+     * The model input index of a chunk without letters, which stays as it is.
      */
-    private static final @NotNull Set<@NotNull String> UNSPACED_LANGUAGES = Set.of("ja", "zh", "yue", "th", "lo", "km", "my");
+    private static final int KEPT_CHUNK = -1;
 
     /**
      * A queued request with its future; a task without request stops the worker.
@@ -83,7 +84,8 @@ public final class TranslationService implements Translator, AutoCloseable {
     }
 
     /**
-     * A request of a batch that waits for the model: its runs, its languages and the translation of each run, {@code null} until known.
+     * A request of a batch that waits for the model: its runs, its languages, its context id and the translation of each run, {@code null}
+     * until known.
      */
     private static final class PendingRequest {
         private final @NotNull TranslationRequest request;
@@ -92,16 +94,20 @@ public final class TranslationService implements Translator, AutoCloseable {
         private final @NotNull Locale source;
         private final @NotNull String sourceCode;
         private final @NotNull String targetCode;
+        private final @NotNull String contextId;
         private final @Nullable String @NotNull [] translatedRuns;
 
         private PendingRequest(@NotNull TranslationRequest request, @NotNull CompletableFuture<@NotNull Translation> future,
                                @NotNull List<int @NotNull []> runs, @NotNull Locale source, @NotNull String sourceCode, @NotNull String targetCode) {
+            TranslationContext context = request.getContext();
+
             this.request        = request;
             this.future         = future;
             this.runs           = runs;
             this.source         = source;
             this.sourceCode     = sourceCode;
             this.targetCode     = targetCode;
+            this.contextId      = context == null ? NO_CONTEXT_ID : context.getId();
             this.translatedRuns = new String[runs.size()];
         }
 
@@ -112,38 +118,37 @@ public final class TranslationService implements Translator, AutoCloseable {
         }
 
         private @NotNull String getRunKey(int index) {
-            return this.sourceCode + KEY_SEPARATOR + this.targetCode + KEY_SEPARATOR + this.getRunText(index);
+            return this.sourceCode + KEY_SEPARATOR + this.targetCode + KEY_SEPARATOR + this.contextId + KEY_SEPARATOR + this.getRunText(index);
         }
     }
 
     /**
-     * A distinct run of a batch that the model translates: its text, its target language and codes, and its sentences, each with the index
-     * of the model input that translates it or {@link #KEPT_SENTENCE}.
+     * A distinct run of a batch that the model translates: its text, its target language, codes and context id, and its chunks, each with
+     * the index of the model input that translates it or {@link #KEPT_CHUNK}.
      */
     private static final class BatchRun {
         private final @NotNull String text;
         private final @NotNull Locale target;
         private final @NotNull String sourceCode;
         private final @NotNull String targetCode;
+        private final @NotNull String contextId;
 
-        private final @NotNull List<@NotNull String> sentences;
+        private final @NotNull List<@NotNull String> chunks;
         private final @NotNull List<@NotNull Integer> inputIndexes;
 
-        private BatchRun(@NotNull String text, @NotNull Locale target, @NotNull String sourceCode, @NotNull String targetCode) {
+        private BatchRun(@NotNull String text, @NotNull Locale target, @NotNull String sourceCode, @NotNull String targetCode,
+                         @NotNull String contextId) {
             this.text       = text;
             this.target     = target;
             this.sourceCode = sourceCode;
             this.targetCode = targetCode;
+            this.contextId  = contextId;
 
-            this.sentences    = new ArrayList<>();
+            this.chunks       = new ArrayList<>();
             this.inputIndexes = new ArrayList<>();
         }
     }
 
-
-    private static boolean hasLetters(@NotNull String text) {
-        return text.codePoints().anyMatch(Character::isLetter);
-    }
 
     private static @NotNull Translation createUntranslated(@NotNull TranslationRequest request, @Nullable Locale source, @NotNull TranslationStatus status) {
         return Translation.untranslated(request.getText(), source, status);
@@ -196,7 +201,7 @@ public final class TranslationService implements Translator, AutoCloseable {
                 runEnd--;
             }
 
-            if (hasLetters(text.substring(runStart, runEnd))) {
+            if (TextSplitter.hasLetters(text.substring(runStart, runEnd))) {
                 runs.add(new int[]{runStart, runEnd});
             }
 
@@ -208,6 +213,7 @@ public final class TranslationService implements Translator, AutoCloseable {
 
 
     private final @NotNull TranslationPreset preset;
+    private final @NotNull TranslationModelOptions options;
     private final @NotNull Path presetFolder;
     private final long idleNanos;
 
@@ -232,22 +238,26 @@ public final class TranslationService implements Translator, AutoCloseable {
      * idle time {@link #IDLE_TIME}, and starts its worker thread. No model is loaded until a request needs it.
      *
      * @param preset  the preset
+     * @param options the options the preset creates its translation model with
      * @param storage the translation storage of the install
      */
-    public TranslationService(@NotNull TranslationPreset preset, @NotNull TranslationStorage storage) {
-        this(preset, storage.getPresetFolder(preset), storage.getCacheFolder(), IDLE_TIME);
+    public TranslationService(@NotNull TranslationPreset preset, @NotNull TranslationModelOptions options, @NotNull TranslationStorage storage) {
+        this(preset, options, storage.getPresetFolder(preset), storage.getCacheFolder(), IDLE_TIME);
     }
 
     /**
      * Creates a {@link TranslationService} instance and starts its worker thread. No model is loaded until a request needs it.
      *
      * @param preset       the preset
+     * @param options      the options the preset creates its translation model with
      * @param presetFolder the folder of the preset's installed files
      * @param cacheFolder  the folder of the disk cache, or {@code null} to keep translations in memory only
      * @param idleTime     the time without requests after which the models are closed
      */
-    public TranslationService(@NotNull TranslationPreset preset, @NotNull Path presetFolder, @Nullable Path cacheFolder, @NotNull Duration idleTime) {
+    public TranslationService(@NotNull TranslationPreset preset, @NotNull TranslationModelOptions options,
+                              @NotNull Path presetFolder, @Nullable Path cacheFolder, @NotNull Duration idleTime) {
         this.preset       = preset;
+        this.options      = options;
         this.presetFolder = presetFolder;
         this.idleNanos    = idleTime.toNanos();
 
@@ -274,6 +284,13 @@ public final class TranslationService implements Translator, AutoCloseable {
      */
     public @NotNull TranslationPreset getPreset() {
         return this.preset;
+    }
+
+    /**
+     * @return the options the preset creates its translation model with
+     */
+    public @NotNull TranslationModelOptions getOptions() {
+        return this.options;
     }
 
     /**
@@ -415,7 +432,8 @@ public final class TranslationService implements Translator, AutoCloseable {
             int uncachedRuns = 0;
 
             for (int index = 0; index < waiting.runs.size(); index++) {
-                waiting.translatedRuns[index] = this.cache.find(this.preset.getId(), waiting.sourceCode, waiting.targetCode, waiting.getRunText(index));
+                waiting.translatedRuns[index] = this.cache.find(this.preset.getId(), waiting.sourceCode, waiting.targetCode, waiting.contextId,
+                                                                waiting.getRunText(index));
 
                 if (waiting.translatedRuns[index] == null) {
                     uncachedRuns++;
@@ -516,7 +534,8 @@ public final class TranslationService implements Translator, AutoCloseable {
 
     /**
      * Translates the runs of the pending requests that are not in the cache with the model, which is loaded here when needed, keeps their
-     * translations in the cache and answers the requests.
+     * translations in the cache and answers the requests. A run is one model input with its request's context, or one input per chunk when
+     * it has more tokens than the model's input limit; a chunk without letters stays as it is.
      *
      * @throws ModelException if the model cannot be loaded or fails
      */
@@ -529,6 +548,7 @@ public final class TranslationService implements Translator, AutoCloseable {
 
         Map<String, BatchRun> batchRuns = new LinkedHashMap<>();
         List<TranslationInput> inputs = new ArrayList<>();
+        int maximumTokens = translationModel.getMaximumInputTokens();
 
         for (PendingRequest request : pending) {
             Locale target = request.request.getTarget();
@@ -541,22 +561,22 @@ public final class TranslationService implements Translator, AutoCloseable {
                 }
 
                 String text = request.getRunText(index);
-                BatchRun batchRun = new BatchRun(text, target, request.sourceCode, request.targetCode);
+                BatchRun batchRun = new BatchRun(text, target, request.sourceCode, request.targetCode, request.contextId);
 
-                for (String piece : TextSplitter.split(text, request.source, translationModel::countTokens, translationModel.getMaximumInputTokens())) {
-                    String sentence = piece.strip();
+                for (String piece : TextSplitter.chunk(text, request.source, translationModel::countTokens, maximumTokens)) {
+                    String chunk = piece.strip();
 
-                    if (sentence.isEmpty()) {
+                    if (chunk.isEmpty()) {
                         continue;
                     }
 
-                    batchRun.sentences.add(sentence);
+                    batchRun.chunks.add(chunk);
 
-                    if (hasLetters(sentence)) {
+                    if (TextSplitter.hasLetters(chunk)) {
                         batchRun.inputIndexes.add(inputs.size());
-                        inputs.add(new TranslationInput(sentence, request.source, target));
+                        inputs.add(new TranslationInput(chunk, request.source, target, request.request.getContext()));
                     } else {
-                        batchRun.inputIndexes.add(KEPT_SENTENCE);
+                        batchRun.inputIndexes.add(KEPT_CHUNK);
                     }
                 }
 
@@ -569,22 +589,18 @@ public final class TranslationService implements Translator, AutoCloseable {
 
         for (Map.Entry<String, BatchRun> entry : batchRuns.entrySet()) {
             BatchRun batchRun = entry.getValue();
-            String separator = UNSPACED_LANGUAGES.contains(batchRun.target.getLanguage()) ? "" : SPACE;
-            StringBuilder translated = new StringBuilder();
+            List<String> translatedChunks = new ArrayList<>(batchRun.chunks.size());
 
-            for (int index = 0; index < batchRun.sentences.size(); index++) {
+            for (int index = 0; index < batchRun.chunks.size(); index++) {
                 int inputIndex = batchRun.inputIndexes.get(index);
-                String translatedSentence = inputIndex == KEPT_SENTENCE ? batchRun.sentences.get(index) : outputs.get(inputIndex);
 
-                if (!translated.isEmpty() && !translatedSentence.isEmpty()) {
-                    translated.append(separator);
-                }
-
-                translated.append(translatedSentence);
+                translatedChunks.add(inputIndex == KEPT_CHUNK ? batchRun.chunks.get(index) : outputs.get(inputIndex));
             }
 
-            translations.put(entry.getKey(), translated.toString());
-            this.cache.store(this.preset.getId(), batchRun.sourceCode, batchRun.targetCode, batchRun.text, translated.toString());
+            String translated = TextSplitter.join(translatedChunks, batchRun.target);
+
+            translations.put(entry.getKey(), translated);
+            this.cache.store(this.preset.getId(), batchRun.sourceCode, batchRun.targetCode, batchRun.contextId, batchRun.text, translated);
         }
 
         for (PendingRequest request : pending) {
@@ -604,7 +620,7 @@ public final class TranslationService implements Translator, AutoCloseable {
         }
 
         try {
-            this.model = this.preset.createTranslationModel(this.presetFolder);
+            this.model = this.preset.createTranslationModel(this.presetFolder, this.options);
         } catch (ModelException | RuntimeException | LinkageError exception) {
             LOGGER.warning("Cannot load the translation model of {0}: {1}", this.preset.getId(), exception.getMessage());
             this.modelFailedNanos = System.nanoTime();

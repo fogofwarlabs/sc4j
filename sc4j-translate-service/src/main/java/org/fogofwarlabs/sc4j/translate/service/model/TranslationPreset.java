@@ -62,11 +62,12 @@ public interface TranslationPreset {
     /**
      * Loads the translation model from the installed files.
      *
-     * @param folder the folder holding the preset's files
+     * @param folder  the folder holding the preset's files
+     * @param options the options of the model, such as its device; the preset applies those its model supports
      * @return the loaded translation model, which the caller closes
      * @throws ModelException if a file is missing or cannot be loaded
      */
-    @NotNull TranslationModel createTranslationModel(@NotNull Path folder) throws ModelException;
+    @NotNull TranslationModel createTranslationModel(@NotNull Path folder, @NotNull TranslationModelOptions options) throws ModelException;
 
     /**
      * Loads the language identifier from the installed files.

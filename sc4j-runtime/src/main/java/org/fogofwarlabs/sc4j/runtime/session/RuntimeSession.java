@@ -48,6 +48,7 @@ import org.fogofwarlabs.sc4j.translate.service.TranslationPresetUtils;
 import org.fogofwarlabs.sc4j.translate.service.TranslationService;
 import org.fogofwarlabs.sc4j.translate.service.TranslationStorage;
 import org.fogofwarlabs.sc4j.translate.service.link.LinkTranslator;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationModelOptions;
 import org.fogofwarlabs.sc4j.translate.service.model.TranslationPreset;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -72,8 +73,9 @@ import java.util.function.Supplier;
  * <li>create the mod's class loader;</li>
  * <li>create the {@code entry} class;</li>
  * <li>open the mod's translator: over the launcher link when the run has one, which translates with a local service of the preset the
- * command line names ({@code --translation-preset}) once the link closes; without a link a local service of that preset; else a translator
- * that answers every request as unavailable. A preset id that SC4J does not offer is logged and gives no local service;</li>
+ * command line names ({@code --translation-preset}, on {@code --translation-device}) once the link closes; without a link a local service
+ * of that preset; else a translator that answers every request as unavailable. A preset id that SC4J does not offer is logged and gives no
+ * local service;</li>
  * <li>{@link Mod#initialize} with the settings, storage, logger, install folder and translator;</li>
  * <li>{@link Mod#register};</li>
  * <li>close the registration and compute the mod identity;</li>
@@ -321,7 +323,8 @@ public final class RuntimeSession {
         String presetId = this.commandLine.getTranslationPreset();
         TranslationPreset preset = presetId == null ? null : TranslationPresetUtils.findPreset(presetId);
         TranslationStorage storage = TranslationStorage.of(install.getUserDataDirectory());
-        Supplier<TranslationService> localFactory = preset == null ? null : () -> new TranslationService(preset, storage);
+        TranslationModelOptions options = new TranslationModelOptions(this.commandLine.getTranslationDevice());
+        Supplier<TranslationService> localFactory = preset == null ? null : () -> new TranslationService(preset, options, storage);
         LauncherLinkClient link = this.launcherLink;
 
         if (presetId != null && preset == null) {

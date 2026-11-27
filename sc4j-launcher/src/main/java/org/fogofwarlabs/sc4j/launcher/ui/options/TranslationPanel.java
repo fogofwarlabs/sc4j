@@ -14,6 +14,7 @@ import org.fogofwarlabs.sc4j.launcher.translation.LauncherTranslation;
 import org.fogofwarlabs.sc4j.launcher.translation.PresetDownload;
 import org.fogofwarlabs.sc4j.launcher.ui.*;
 import org.fogofwarlabs.sc4j.translate.service.model.PresetFile;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationDevice;
 import org.fogofwarlabs.sc4j.translate.service.model.TranslationPreset;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -23,8 +24,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Shows the chat translation panel of the Settings screen: the model the chat is translated with (Off or one of the presets) and, for each
- * preset, its name, download size, licence (a link) and state, with Download, Cancel while it downloads, and Delete once installed. Download
+ * Shows the chat translation panel of the Settings screen: the model the chat is translated with (Off or one of the presets), the device it
+ * runs on (Automatic or CPU) and, for each preset, its name, download size, licence (a link) and state, with Download, Cancel while it
+ * downloads, and Delete once installed. Download
  * first shows the preset's licence and size and starts only when the user confirms; Delete asks first. The states are refreshed twice a
  * second while the panel is shown; a download goes on when the panel is left.
  */
@@ -47,6 +49,35 @@ final class TranslationPanel {
          */
         private PresetOption(@Nullable TranslationPreset preset, @NotNull String name) {
             this.preset = preset;
+            this.name   = name;
+        }
+
+        /**
+         * {@return a string representation of the object}
+         *
+         * @implSpec Returns the shown name.
+         */
+        @Override
+        public @NotNull String toString() {
+            return this.name;
+        }
+    }
+
+    /**
+     * Holds one entry of the device choice.
+     */
+    private static final class DeviceOption {
+        private final @NotNull TranslationDevice device;
+        private final @NotNull String name;
+
+        /**
+         * Creates a {@link DeviceOption} instance.
+         *
+         * @param device the device
+         * @param name   the shown name
+         */
+        private DeviceOption(@NotNull TranslationDevice device, @NotNull String name) {
+            this.device = device;
             this.name   = name;
         }
 
@@ -157,6 +188,7 @@ final class TranslationPanel {
 
     private final @NotNull PresetOption off;
     private final @NotNull ComboBox<PresetOption> choice;
+    private final @NotNull ComboBox<DeviceOption> deviceChoice;
     private final @NotNull List<@NotNull PresetRow> rows;
     private @NotNull List<@NotNull TranslationPreset> listedPresets;
     private boolean listing;
@@ -169,7 +201,7 @@ final class TranslationPanel {
      * @param shell       shows the panel's dialogs
      * @param texts       the launcher texts of the display language
      * @param translation the launcher's translation, its presets and their downloads
-     * @param actions     receives the chosen preset and the licence addresses to open
+     * @param actions     receives the chosen preset and device and the licence addresses to open
      */
     TranslationPanel(@NotNull LauncherShell shell, @NotNull LauncherTexts texts, @NotNull LauncherTranslation translation,
                      @NotNull OptionsScreen.Actions actions) {
@@ -182,6 +214,7 @@ final class TranslationPanel {
 
         this.off           = new PresetOption(null, texts.get("translation.none"));
         this.choice        = ComponentUtils.createComboBox(ControlWidth.M);
+        this.deviceChoice  = ComponentUtils.createComboBox(ControlWidth.M);
         this.rows          = new ArrayList<>();
         this.listedPresets = List.of();
         this.listing       = false;
@@ -197,8 +230,17 @@ final class TranslationPanel {
             }
         });
 
+        this.listDevices();
+        this.deviceChoice.valueProperty().addListener((observable, previous, current) -> {
+            if (current != null) {
+                this.actions.onTranslationDeviceChanged(current.device);
+            }
+        });
+
         body = ComponentUtils.createPanelBody(ComponentUtils.createParagraph(texts.get("translation.help"), "text-caption"),
-                                              ComponentUtils.createForm(ComponentUtils.createField(texts.get("translation.model"), this.choice)));
+                                              ComponentUtils.createForm(ComponentUtils.createField(texts.get("translation.model"), this.choice),
+                                                                        ComponentUtils.createField(texts.get("translation.device"),
+                                                                                                   this.deviceChoice)));
 
         for (PresetRow row : this.rows) {
             body.getChildren().addAll(new Separator(), row.root);
@@ -241,6 +283,17 @@ final class TranslationPanel {
         }
 
         this.listChoices();
+    }
+
+    /**
+     * Lists the devices in the device choice, with the launcher's device selected.
+     */
+    private void listDevices() {
+        DeviceOption automatic = new DeviceOption(TranslationDevice.AUTOMATIC, this.texts.get("translation.device.automatic"));
+        DeviceOption cpu = new DeviceOption(TranslationDevice.CPU, this.texts.get("translation.device.cpu"));
+
+        this.deviceChoice.getItems().setAll(automatic, cpu);
+        this.deviceChoice.setValue(this.translation.getDevice() == TranslationDevice.CPU ? cpu : automatic);
     }
 
     /**

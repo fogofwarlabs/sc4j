@@ -69,12 +69,13 @@ final class OptionsScreenTest {
                                                                                 ConfiguredNode.of("seed.example.net", NODE_PORT + 1, null));
 
     /**
-     * Records the pinged peers, holding their results back, the chosen translation presets, the high-performance GPU switch changes and the
-     * opened addresses.
+     * Records the pinged peers, holding their results back, the chosen translation presets and devices, the high-performance GPU switch
+     * changes and the opened addresses.
      */
     private static final class PingActions implements OptionsScreen.Actions {
         private final @NotNull List<@NotNull ConfiguredNode> pinged;
         private final @NotNull List<@Nullable String> chosenPresets;
+        private final @NotNull List<@NotNull TranslationDevice> chosenDevices;
         private final @NotNull List<@NotNull Boolean> highPerformanceGpuChanges;
         private final @NotNull List<@NotNull String> opened;
 
@@ -84,6 +85,7 @@ final class OptionsScreenTest {
         private PingActions() {
             this.pinged                    = new ArrayList<>();
             this.chosenPresets             = new ArrayList<>();
+            this.chosenDevices             = new ArrayList<>();
             this.highPerformanceGpuChanges = new ArrayList<>();
             this.opened                    = new ArrayList<>();
         }
@@ -114,6 +116,11 @@ final class OptionsScreenTest {
         @Override
         public void onTranslationPresetChanged(@Nullable String presetId) {
             this.chosenPresets.add(presetId);
+        }
+
+        @Override
+        public void onTranslationDeviceChanged(@NotNull TranslationDevice device) {
+            this.chosenDevices.add(device);
         }
 
         @Override
@@ -164,7 +171,7 @@ final class OptionsScreenTest {
         }
 
         @Override
-        public @NotNull TranslationModel createTranslationModel(@NotNull Path folder) throws ModelException {
+        public @NotNull TranslationModel createTranslationModel(@NotNull Path folder, @NotNull TranslationModelOptions options) throws ModelException {
             throw new ModelException("The small preset has no model.");
         }
 
@@ -221,9 +228,13 @@ final class OptionsScreenTest {
     }
 
     private static @NotNull ComboBox<?> findModelChoice(@NotNull Node root, @NotNull LauncherTexts texts) {
+        return findComboBox(root, texts.get("translation.none"));
+    }
+
+    private static @NotNull ComboBox<?> findComboBox(@NotNull Node root, @NotNull String firstItem) {
         return (ComboBox<?>) root.lookupAll(".combo-box").stream()
                                  .filter(node -> node instanceof ComboBox<?> box && !box.getItems().isEmpty() &&
-                                                 texts.get("translation.none").equals(box.getItems().getFirst().toString()))
+                                                 firstItem.equals(box.getItems().getFirst().toString()))
                                  .findFirst()
                                  .orElseThrow();
     }
@@ -361,7 +372,7 @@ final class OptionsScreenTest {
     @Test
     void translation_panel_shows_the_licence_before_a_download_and_reports_the_chosen_model(@TempDir @NotNull Path directory) throws Exception {
         LauncherTexts texts = LauncherTexts.of(UiLanguage.ENGLISH);
-        TranslationPreset preset = TranslationPresetUtils.getPresets().getFirst();
+        TranslationPreset preset = TranslationPresetUtils.getPresets().getLast();
         PingActions actions = new PingActions();
 
         LauncherFxScenario.run(() -> {
@@ -407,6 +418,14 @@ final class OptionsScreenTest {
             choice = findModelChoice(screen.getRoot(), texts);
 
             Assertions.assertEquals(1, choice.getItems().size(), "only Off is offered");
+
+            // The device choice offers Automatic and CPU and reports the chosen one.
+            ComboBox<?> device = findComboBox(screen.getRoot(), texts.get("translation.device.automatic"));
+
+            Assertions.assertEquals(List.of(texts.get("translation.device.automatic"), texts.get("translation.device.cpu")),
+                                    device.getItems().stream().map(Object::toString).toList());
+            device.getSelectionModel().select(1);
+            Assertions.assertEquals(List.of(TranslationDevice.CPU), actions.chosenDevices);
 
             return null;
         });

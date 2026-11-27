@@ -12,7 +12,8 @@ import java.util.Locale;
  * Encodes the requests and the translations of the {@value TranslationLinkService#SERVICE_NAME} service of the launcher link. Launcher and
  * runtime come from one install, so the form carries no version:
  * {@snippet lang = "text":
- * request:     text, target language tag, priority name, int span count, (int start, int end) per span
+ * request:     text, target language tag, priority name, int span count, (int start, int end) per span, boolean has context,
+ *              [text kind, description, int entry count, (source term, target language tag, target term) per entry]
  * translation: original text, translated text, boolean has source, [source language tag], status name
  *}
  * A text is an {@code int} byte length followed by its UTF-8 bytes; numbers are big-endian.
@@ -26,6 +27,7 @@ final class TranslationCodecUtils {
      */
     static byte @NotNull [] encodeRequest(@NotNull TranslationRequest request) {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        TranslationContext context = request.getContext();
 
         try (DataOutputStream output = new DataOutputStream(bytes)) {
             writeText(output, request.getText());
@@ -36,6 +38,20 @@ final class TranslationCodecUtils {
             for (ProtectedSpan span : request.getProtectedSpans()) {
                 output.writeInt(span.getStart());
                 output.writeInt(span.getEnd());
+            }
+
+            output.writeBoolean(context != null);
+
+            if (context != null) {
+                writeText(output, context.getTextKind());
+                writeText(output, context.getDescription());
+                output.writeInt(context.getGlossary().size());
+
+                for (GlossaryEntry entry : context.getGlossary()) {
+                    writeText(output, entry.getSourceTerm());
+                    writeText(output, entry.getTarget().toLanguageTag());
+                    writeText(output, entry.getTargetTerm());
+                }
             }
         } catch (IOException exception) {
             throw Exceptions.newUncheckedIOException(exception);
@@ -65,6 +81,10 @@ final class TranslationCodecUtils {
 
             for (int index = 0; index < spanCount; index++) {
                 builder.addProtectedSpan(input.readInt(), input.readInt());
+            }
+
+            if (input.readBoolean()) {
+                builder.setContext(readContext(input));
             }
 
             checkEnd(input);
@@ -122,6 +142,24 @@ final class TranslationCodecUtils {
         } catch (IllegalArgumentException exception) {
             throw Exceptions.newIOException(exception, "Invalid translation: {0}", exception.getMessage());
         }
+    }
+
+    private static @NotNull TranslationContext readContext(@NotNull DataInputStream input) throws IOException {
+        TranslationContext.Builder builder = new TranslationContext.Builder().setTextKind(readText(input)).setDescription(readText(input));
+        int entryCount = input.readInt();
+
+        if (entryCount < 0 || entryCount > input.available()) {
+            throw Exceptions.newIOException("Invalid glossary entry count: {0}", entryCount);
+        }
+
+        for (int index = 0; index < entryCount; index++) {
+            String sourceTerm = readText(input);
+            Locale target = Locale.forLanguageTag(readText(input));
+
+            builder.addGlossaryEntry(sourceTerm, target, readText(input));
+        }
+
+        return builder.build();
     }
 
     private static void writeText(@NotNull DataOutputStream output, @NotNull String text) throws IOException {

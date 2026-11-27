@@ -7,6 +7,7 @@ import org.fogofwarlabs.sc4j.base.json.JsonWriterUtils;
 import org.fogofwarlabs.sc4j.catalog.ReleaseVersion;
 import org.fogofwarlabs.sc4j.catalog.github.ReleaseRepository;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationDevice;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -30,13 +32,15 @@ import java.util.Map;
  *   "skippedVersion": "1.2.0",
  *   "chatSoundMuted": true,
  *   "translationPreset": "nllb-200-distilled-600m",
+ *   "translationDevice": "cpu",
  *   "highPerformanceGpu": false
  * }
  *}
  * Every field but {@code format} is optional: without {@code language} the launcher follows the operating system's language, without
  * {@code updateRepository} it updates from {@link LauncherSettings#DEFAULT_UPDATE_REPOSITORY}, without {@code skippedVersion} it skips
- * no version, without {@code chatSoundMuted} the chat sound is on, without {@code translationPreset} the chat is not translated, and without
- * {@code highPerformanceGpu} games run on the high-performance GPU.
+ * no version, without {@code chatSoundMuted} the chat sound is on, without {@code translationPreset} the chat is not translated, without
+ * {@code translationDevice} the translation model runs on the {@code automatic} device, and without {@code highPerformanceGpu} games run on
+ * the high-performance GPU.
  */
 public final class LauncherSettingsFile {
     /**
@@ -57,6 +61,7 @@ public final class LauncherSettingsFile {
     private static final @NotNull String SKIPPED_VERSION_FIELD = "skippedVersion";
     private static final @NotNull String CHAT_SOUND_MUTED_FIELD = "chatSoundMuted";
     private static final @NotNull String TRANSLATION_PRESET_FIELD = "translationPreset";
+    private static final @NotNull String TRANSLATION_DEVICE_FIELD = "translationDevice";
     private static final @NotNull String HIGH_PERFORMANCE_GPU_FIELD = "highPerformanceGpu";
 
     private static @Nullable UiLanguage readLanguage(@NotNull Path path, @Nullable Object value) throws IOException {
@@ -71,6 +76,22 @@ public final class LauncherSettingsFile {
         }
 
         return language;
+    }
+
+    private static @NotNull TranslationDevice readTranslationDevice(@NotNull Path path, @Nullable Object value) throws IOException {
+        if (value == null) {
+            return LauncherSettings.DEFAULT.getTranslationDevice();
+        }
+
+        if (value instanceof String name) {
+            for (TranslationDevice device : TranslationDevice.values()) {
+                if (device.name().toLowerCase(Locale.ROOT).equals(name)) {
+                    return device;
+                }
+            }
+        }
+
+        throw Exceptions.newIOException("Invalid launcher settings file {0}: unknown translation device {1}", path, value);
     }
 
     private static @Nullable WindowState readWindow(@NotNull Path path, @Nullable Object value) throws IOException {
@@ -159,6 +180,8 @@ public final class LauncherSettingsFile {
             throw Exceptions.newIOException("Invalid launcher settings file {0}: translationPreset must be a preset id", this.path);
         }
 
+        TranslationDevice translationDevice = readTranslationDevice(this.path, object.get(TRANSLATION_DEVICE_FIELD));
+
         Object highPerformanceGpu = object.get(HIGH_PERFORMANCE_GPU_FIELD);
 
         if (highPerformanceGpu != null && !(highPerformanceGpu instanceof Boolean)) {
@@ -167,7 +190,8 @@ public final class LauncherSettingsFile {
 
         return new LauncherSettings(readLanguage(this.path, object.get(LANGUAGE_FIELD)), (String) lastMod,
                                     readWindow(this.path, object.get(WINDOW_FIELD)), (String) updateRepository, (String) skippedVersion,
-                                    Boolean.TRUE.equals(chatSoundMuted), (String) translationPreset, !Boolean.FALSE.equals(highPerformanceGpu));
+                                    Boolean.TRUE.equals(chatSoundMuted), (String) translationPreset, translationDevice,
+                                    !Boolean.FALSE.equals(highPerformanceGpu));
     }
 
     /**
@@ -216,6 +240,10 @@ public final class LauncherSettingsFile {
 
         if (settings.getTranslationPreset() != null) {
             object.put(TRANSLATION_PRESET_FIELD, settings.getTranslationPreset());
+        }
+
+        if (settings.getTranslationDevice() != LauncherSettings.DEFAULT.getTranslationDevice()) {
+            object.put(TRANSLATION_DEVICE_FIELD, settings.getTranslationDevice().name().toLowerCase(Locale.ROOT));
         }
 
         if (!settings.isHighPerformanceGpu()) {

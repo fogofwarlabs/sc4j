@@ -29,8 +29,8 @@ include 'sc4j-beaconlink-node'
 // The Beacon.Link client that the runtime gives a mod, with the loopback NAT emulator of the network tests (test fixtures).
 include 'sc4j-beaconlink'
 // Chat translation: the contract that every side sees (no implementation), and the service behind it: model presets and their
-// installation, the SentencePiece tokenizer, the CTranslate2 sequence model and the fastText language identifier, the worker with its
-// batches and cache (no engine).
+// installation, the SentencePiece tokenizer, the CTranslate2 sequence model, the llama.cpp text generator and the fastText language
+// identifier, the worker with its batches and cache (no engine).
 include 'sc4j-translate'
 include 'sc4j-translate-service'
 

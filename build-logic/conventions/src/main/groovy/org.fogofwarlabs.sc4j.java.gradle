@@ -63,7 +63,8 @@ plugins.withId('java') {
     }
 }
 
-// An application with native libraries loads them from lib/natives; the JavaCPP options serve FFmpeg, the engine's video default.
+// An application with native libraries loads them from lib/natives; the JavaCPP options serve FFmpeg, the engine's video default, and
+// CTranslate2, the llama.cpp option the translation service.
 plugins.withId('application') {
     tasks.named('startScripts') {
         defaultJvmOpts = providers.provider {
@@ -77,7 +78,8 @@ plugins.withId('application') {
                 '-Dorg.bytedeco.javacpp.platform.linkpath=APP_HOME_PLACEHOLDER/lib/natives',
                 '-Dorg.bytedeco.javacpp.platform.preloadpath=APP_HOME_PLACEHOLDER/lib/natives',
                 '-Dorg.bytedeco.javacpp.pathsFirst=true',
-                '-Dorg.bytedeco.javacpp.cacheLibraries=false'
+                '-Dorg.bytedeco.javacpp.cacheLibraries=false',
+                '-Dorg.fogofwarlabs.llama.librarypath=APP_HOME_PLACEHOLDER/lib/natives'
             ] : [])
         }.get()
         doLast {

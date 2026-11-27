@@ -29,7 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Tests the preset installation against a local HTTP server: downloads checked by size and checksum, progress, files kept between
- * installations, cancellation and deletion.
+ * installations, files shared with other preset folders, cancellation and deletion.
  */
 final class PresetInstallationTest {
     private static final int LARGE_INPUT_LIMIT = 512;
@@ -152,6 +152,23 @@ final class PresetInstallationTest {
         first.delete();
 
         Assertions.assertArrayEquals(shared, Files.readAllBytes(second.getFolder().resolve("shared.bin")), "deleting one preset keeps the other's file");
+    }
+
+    @Test
+    void install_should_take_a_file_of_the_same_checksum_under_another_name_from_another_preset_folder() throws IOException {
+        byte[] shared = "shared file".getBytes(StandardCharsets.UTF_8);
+        PresetInstallation installation = this.createInstallation(List.of(this.serve("identifier.bin", shared, shared)));
+        Path other = installation.getFolder().resolveSibling("other");
+
+        Files.createDirectories(other);
+        Files.write(other.resolve("unrelated.bin"), "other file!".getBytes(StandardCharsets.UTF_8));
+        Files.write(other.resolve("renamed.bin"), shared);
+
+        installation.install((installed, total) -> {
+        });
+
+        Assertions.assertArrayEquals(shared, Files.readAllBytes(installation.getFolder().resolve("identifier.bin")));
+        Assertions.assertEquals(0, this.requests.get());
     }
 
     @Test

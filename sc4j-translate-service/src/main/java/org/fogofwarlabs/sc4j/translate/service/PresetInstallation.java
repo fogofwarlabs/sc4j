@@ -20,15 +20,18 @@ import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.concurrent.CancellationException;
 
 /**
  * Installs the files of a preset into its folder and deletes them. A download goes to a {@code .part} file next to its target, is checked
  * against the preset's size and SHA-256 checksum, and only then takes the file's name, so a file of the folder is always complete; files
- * that are already there with their size are kept. A file that a preset folder next to this one holds with the same name, size and checksum,
- * such as a file that two presets share, is linked from there, or copied where links are not supported, instead of downloaded. The installation runs only when {@link #install} is called, on the caller's thread, and
- * stops when {@link #cancel()} is called or the thread is interrupted.
+ * that are already there with their size are kept. A file that a preset folder next to this one holds with the same size and checksum,
+ * under any name, such as a file that two presets share, is linked from there, or copied where links are not supported, instead of
+ * downloaded, so that a shared file is downloaded once. The installation runs only when {@link #install} is called, on the caller's thread,
+ * and stops when {@link #cancel()} is called or the thread is interrupted.
  */
 public final class PresetInstallation {
     private static final @NotNull String PARTIAL_SUFFIX = ".part";
@@ -196,9 +199,11 @@ public final class PresetInstallation {
      * @return the installed bytes after the file
      */
     private long installFile(@NotNull PresetFile file, long installedBefore, long total, @NotNull ProgressListener listener) throws IOException {
-        Path copy = this.findCopy(file);
+        for (Path copy : this.findCopies(file)) {
+            if (!this.isCopyValid(copy, file, installedBefore, total, listener)) {
+                continue;
+            }
 
-        if (copy != null && this.isCopyValid(copy, file, installedBefore, total, listener)) {
             Path target = this.folder.resolve(file.getName());
 
             try {
@@ -217,29 +222,45 @@ public final class PresetInstallation {
     }
 
     /**
-     * Finds the file in the preset folders next to this one.
+     * Finds the files of the preset folders next to this one that may be the file: the files of its size, those of its name first.
      *
-     * @return a file with the same name and size, or {@code null} when no other preset folder has one
+     * @return the candidate files, which may be empty
      */
-    private @Nullable Path findCopy(@NotNull PresetFile file) throws IOException {
+    private @NotNull List<@NotNull Path> findCopies(@NotNull PresetFile file) throws IOException {
         Path own = this.folder.toAbsolutePath();
         Path presets = own.getParent();
+        List<Path> named = new ArrayList<>();
+        List<Path> others = new ArrayList<>();
 
         if (presets == null) {
-            return null;
+            return named;
         }
 
         try (DirectoryStream<Path> folders = Files.newDirectoryStream(presets, Files::isDirectory)) {
             for (Path other : folders) {
-                Path candidate = other.resolve(file.getName());
+                if (other.equals(own)) {
+                    continue;
+                }
 
-                if (!other.equals(own) && Files.isRegularFile(candidate) && Files.size(candidate) == file.getSize()) {
-                    return candidate;
+                try (DirectoryStream<Path> candidates = Files.newDirectoryStream(other, Files::isRegularFile)) {
+                    for (Path candidate : candidates) {
+                        if (Files.size(candidate) != file.getSize()) {
+                            continue;
+                        }
+
+                        if (candidate.getFileName().toString().equals(file.getName())) {
+                            named.add(candidate);
+                        } else {
+                            others.add(candidate);
+                        }
+                    }
                 }
             }
         }
 
-        return null;
+        named.addAll(others);
+
+        return named;
     }
 
     /**

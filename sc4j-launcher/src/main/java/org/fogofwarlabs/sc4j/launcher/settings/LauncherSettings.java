@@ -3,14 +3,15 @@ package org.fogofwarlabs.sc4j.launcher.settings;
 import org.fogofwarlabs.sc4j.catalog.ReleaseCheck;
 import org.fogofwarlabs.sc4j.catalog.ReleaseVersion;
 import org.fogofwarlabs.sc4j.launcher.i18n.UiLanguage;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationDevice;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
  * Holds the launcher's own settings, {@code userdata/launcher.json}: the UI language chosen on the Settings screen, the mod selected last,
  * the window state, the update repository, the launcher version the player chose to skip, whether the chat sound is muted, the
- * translation preset chosen for the chat and whether games run on the high-performance GPU. Instances are immutable; each {@code with}
- * method creates a changed copy.
+ * translation preset chosen for the chat and the device it runs on, and whether games run on the high-performance GPU. Instances are
+ * immutable; each {@code with} method creates a changed copy.
  */
 public final class LauncherSettings {
     /**
@@ -20,9 +21,10 @@ public final class LauncherSettings {
 
     /**
      * The settings before anything is saved: the system language, no last mod, the default window, the default update repository, no
-     * skipped version, the chat sound on, no translation preset and games on the high-performance GPU.
+     * skipped version, the chat sound on, no translation preset, the automatic translation device and games on the high-performance GPU.
      */
-    public static final @NotNull LauncherSettings DEFAULT = new LauncherSettings(null, null, null, null, null, false, null, true);
+    public static final @NotNull LauncherSettings DEFAULT = new LauncherSettings(null, null, null, null, null, false, null, TranslationDevice.AUTOMATIC,
+                                                                                 true);
 
     private final @Nullable UiLanguage language;
     private final @Nullable String lastMod;
@@ -31,6 +33,7 @@ public final class LauncherSettings {
     private final @Nullable String skippedVersion;
     private final boolean chatSoundMuted;
     private final @Nullable String translationPreset;
+    private final @NotNull TranslationDevice translationDevice;
     private final boolean highPerformanceGpu;
 
     /**
@@ -43,10 +46,12 @@ public final class LauncherSettings {
      * @param skippedVersion     the launcher version the player chose to skip, such as {@code 1.2.0}, or {@code null}
      * @param chatSoundMuted     whether the chat notification sound is muted
      * @param translationPreset  the id of the translation preset chosen for the chat, or {@code null} for none
+     * @param translationDevice  the device the translation model runs on
      * @param highPerformanceGpu whether games run on the high-performance GPU
      */
     public LauncherSettings(@Nullable UiLanguage language, @Nullable String lastMod, @Nullable WindowState window, @Nullable String updateRepository,
-                            @Nullable String skippedVersion, boolean chatSoundMuted, @Nullable String translationPreset, boolean highPerformanceGpu) {
+                            @Nullable String skippedVersion, boolean chatSoundMuted, @Nullable String translationPreset,
+                            @NotNull TranslationDevice translationDevice, boolean highPerformanceGpu) {
         this.language           = language;
         this.lastMod            = lastMod;
         this.window             = window;
@@ -54,6 +59,7 @@ public final class LauncherSettings {
         this.skippedVersion     = skippedVersion;
         this.chatSoundMuted     = chatSoundMuted;
         this.translationPreset  = translationPreset;
+        this.translationDevice  = translationDevice;
         this.highPerformanceGpu = highPerformanceGpu;
     }
 
@@ -114,6 +120,13 @@ public final class LauncherSettings {
     }
 
     /**
+     * @return the device the translation model runs on
+     */
+    public @NotNull TranslationDevice getTranslationDevice() {
+        return this.translationDevice;
+    }
+
+    /**
      * @return {@code true} if games run on the high-performance GPU, {@code false} otherwise
      */
     public boolean isHighPerformanceGpu() {
@@ -138,7 +151,7 @@ public final class LauncherSettings {
      */
     public @NotNull LauncherSettings withLanguage(@Nullable UiLanguage language) {
         return new LauncherSettings(language, this.lastMod, this.window, this.updateRepository, this.skippedVersion, this.chatSoundMuted,
-                                    this.translationPreset, this.highPerformanceGpu);
+                                    this.translationPreset, this.translationDevice, this.highPerformanceGpu);
     }
 
     /**
@@ -149,7 +162,7 @@ public final class LauncherSettings {
      */
     public @NotNull LauncherSettings withLastMod(@Nullable String lastMod) {
         return new LauncherSettings(this.language, lastMod, this.window, this.updateRepository, this.skippedVersion, this.chatSoundMuted,
-                                    this.translationPreset, this.highPerformanceGpu);
+                                    this.translationPreset, this.translationDevice, this.highPerformanceGpu);
     }
 
     /**
@@ -160,7 +173,7 @@ public final class LauncherSettings {
      */
     public @NotNull LauncherSettings withWindow(@Nullable WindowState window) {
         return new LauncherSettings(this.language, this.lastMod, window, this.updateRepository, this.skippedVersion, this.chatSoundMuted,
-                                    this.translationPreset, this.highPerformanceGpu);
+                                    this.translationPreset, this.translationDevice, this.highPerformanceGpu);
     }
 
     /**
@@ -173,7 +186,7 @@ public final class LauncherSettings {
         String savedRepository = DEFAULT_UPDATE_REPOSITORY.equals(updateRepository) ? null : updateRepository;
 
         return new LauncherSettings(this.language, this.lastMod, this.window, savedRepository, this.skippedVersion, this.chatSoundMuted,
-                                    this.translationPreset, this.highPerformanceGpu);
+                                    this.translationPreset, this.translationDevice, this.highPerformanceGpu);
     }
 
     /**
@@ -186,7 +199,7 @@ public final class LauncherSettings {
         String savedVersion = skippedVersion == null ? null : skippedVersion.toString();
 
         return new LauncherSettings(this.language, this.lastMod, this.window, this.updateRepository, savedVersion, this.chatSoundMuted,
-                                    this.translationPreset, this.highPerformanceGpu);
+                                    this.translationPreset, this.translationDevice, this.highPerformanceGpu);
     }
 
     /**
@@ -197,7 +210,7 @@ public final class LauncherSettings {
      */
     public @NotNull LauncherSettings withChatSoundMuted(boolean chatSoundMuted) {
         return new LauncherSettings(this.language, this.lastMod, this.window, this.updateRepository, this.skippedVersion, chatSoundMuted,
-                                    this.translationPreset, this.highPerformanceGpu);
+                                    this.translationPreset, this.translationDevice, this.highPerformanceGpu);
     }
 
     /**
@@ -208,7 +221,18 @@ public final class LauncherSettings {
      */
     public @NotNull LauncherSettings withTranslationPreset(@Nullable String translationPreset) {
         return new LauncherSettings(this.language, this.lastMod, this.window, this.updateRepository, this.skippedVersion, this.chatSoundMuted,
-                                    translationPreset, this.highPerformanceGpu);
+                                    translationPreset, this.translationDevice, this.highPerformanceGpu);
+    }
+
+    /**
+     * Creates a copy with another translation device.
+     *
+     * @param translationDevice the device the translation model runs on
+     * @return the created {@link LauncherSettings} instance
+     */
+    public @NotNull LauncherSettings withTranslationDevice(@NotNull TranslationDevice translationDevice) {
+        return new LauncherSettings(this.language, this.lastMod, this.window, this.updateRepository, this.skippedVersion, this.chatSoundMuted,
+                                    this.translationPreset, translationDevice, this.highPerformanceGpu);
     }
 
     /**
@@ -219,6 +243,6 @@ public final class LauncherSettings {
      */
     public @NotNull LauncherSettings withHighPerformanceGpu(boolean highPerformanceGpu) {
         return new LauncherSettings(this.language, this.lastMod, this.window, this.updateRepository, this.skippedVersion, this.chatSoundMuted,
-                                    this.translationPreset, highPerformanceGpu);
+                                    this.translationPreset, this.translationDevice, highPerformanceGpu);
     }
 }

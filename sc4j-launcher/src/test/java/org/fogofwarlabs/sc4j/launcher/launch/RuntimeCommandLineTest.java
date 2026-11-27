@@ -2,6 +2,7 @@ package org.fogofwarlabs.sc4j.launcher.launch;
 
 import org.fogofwarlabs.sc4j.launcher.link.LauncherLinkAddress;
 import org.fogofwarlabs.sc4j.manifest.install.InstallLayout;
+import org.fogofwarlabs.sc4j.translate.service.model.TranslationDevice;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -58,7 +59,7 @@ final class RuntimeCommandLineTest {
         Files.writeString(install.getSeedsFile(), NODE_LIST);
 
         RuntimeCommandLine commandLine = RuntimeCommandLine.create(install, "my-mod", jar, getAccountDirectory(install), true, null, null,
-                                                                   root.resolve("java"), true);
+                                                                   TranslationDevice.AUTOMATIC, root.resolve("java"), true);
 
         Assertions.assertEquals(List.of(java.toString(),
                                         "-XX:-UsePerfData", "-Djava.io.tmpdir=" + runtime + "/.cache/tmp", "-cp", runtime + "/lib/*", "main.Main",
@@ -83,14 +84,16 @@ final class RuntimeCommandLineTest {
         InstallLayout install = InstallLayout.of(directory);
         Path jar = directory.resolve("mods").resolve("demo.jar");
 
-        Assertions.assertFalse(RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null, directory, true)
+        Assertions.assertFalse(RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null,
+                                                         TranslationDevice.AUTOMATIC, directory, true)
                                                  .getArguments().contains("--seeds"),
                                "without a list the peers file is the only seed source");
 
         Files.createDirectories(install.getNodesFile().getParent());
         Files.writeString(install.getNodesFile(), NODE_LIST);
 
-        List<String> arguments = RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null, directory, true)
+        List<String> arguments = RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null,
+                                                           TranslationDevice.AUTOMATIC, directory, true)
                                                    .getArguments();
 
         Assertions.assertEquals(install.getNodesFile().toString(), arguments.get(arguments.indexOf("--seeds") + 1));
@@ -101,9 +104,11 @@ final class RuntimeCommandLineTest {
         InstallLayout install = InstallLayout.of(directory);
         Path jar = directory.resolve("mods").resolve("demo.jar");
 
-        Assertions.assertFalse(RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null, directory, true)
+        Assertions.assertFalse(RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null,
+                                                         TranslationDevice.AUTOMATIC, directory, true)
                                                  .getArguments().contains("--no-port-mapping"));
         Assertions.assertEquals("--no-port-mapping", RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), false, null, null,
+                                                                               TranslationDevice.AUTOMATIC,
                                                                                directory, true).getArguments().getLast());
     }
 
@@ -112,8 +117,10 @@ final class RuntimeCommandLineTest {
         InstallLayout install = InstallLayout.of(directory);
         Path jar = directory.resolve("mods").resolve("demo.jar");
         LauncherLinkAddress link = LauncherLinkAddress.create(directory.resolve("userdata").resolve("run").resolve("launcher-1.sock"));
-        RuntimeCommandLine linked = RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, link, null, directory, true);
-        RuntimeCommandLine unlinked = RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null, directory, true);
+        RuntimeCommandLine linked = RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, link, null,
+                                                              TranslationDevice.AUTOMATIC, directory, true);
+        RuntimeCommandLine unlinked = RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null,
+                                                                TranslationDevice.AUTOMATIC, directory, true);
         List<String> arguments = linked.getArguments();
 
         Assertions.assertEquals(link.getSocket().toString(), arguments.get(arguments.indexOf("--launcher-link") + 1));
@@ -124,16 +131,25 @@ final class RuntimeCommandLineTest {
     }
 
     @Test
-    void create_should_pass_the_translation_preset_only_when_given(@TempDir @NotNull Path directory) {
+    void create_should_pass_the_translation_preset_and_a_cpu_device_only_when_given(@TempDir @NotNull Path directory) {
         InstallLayout install = InstallLayout.of(directory);
         Path jar = directory.resolve("mods").resolve("demo.jar");
-        List<String> translated = RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, "nllb-200-distilled-600m",
-                                                            directory, true).getArguments();
-        List<String> untranslated = RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null, directory, true)
+        List<String> translated = RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null,
+                                                            "index-translate-2b", TranslationDevice.AUTOMATIC, directory, true)
+                                                    .getArguments();
+        List<String> onCpu = RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null,
+                                                       "index-translate-2b", TranslationDevice.CPU, directory, true)
+                                               .getArguments();
+        List<String> untranslated = RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null,
+                                                              TranslationDevice.CPU, directory, true)
                                                       .getArguments();
 
-        Assertions.assertEquals("nllb-200-distilled-600m", translated.get(translated.indexOf("--translation-preset") + 1));
+        Assertions.assertEquals("index-translate-2b", translated.get(translated.indexOf("--translation-preset") + 1));
+        Assertions.assertFalse(translated.contains("--translation-device"));
+        Assertions.assertEquals(List.of("--translation-preset", "index-translate-2b", "--translation-device", "cpu"),
+                                onCpu.subList(onCpu.size() - 4, onCpu.size()));
         Assertions.assertFalse(untranslated.contains("--translation-preset"));
+        Assertions.assertFalse(untranslated.contains("--translation-device"));
     }
 
     @Test
@@ -142,7 +158,7 @@ final class RuntimeCommandLineTest {
         InstallLayout install = InstallLayout.of(directory);
         Path java = writePrograms(install, directory.resolve("jdk"), "java");
         RuntimeCommandLine commandLine = RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null,
-                                                                   directory.resolve("jdk"), false);
+                                                                   TranslationDevice.AUTOMATIC, directory.resolve("jdk"), false);
 
         Assertions.assertEquals(java, commandLine.getProgram());
         Assertions.assertNull(commandLine.getMissingProgram());
@@ -158,15 +174,16 @@ final class RuntimeCommandLineTest {
         Path libraries = install.getRuntimeDirectory().resolve("lib");
 
         Files.delete(libraries);
-        Assertions.assertEquals(libraries, RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null, javaHome,
-                                                                     true).getMissingProgram());
+        Assertions.assertEquals(libraries, RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null,
+                                                                     TranslationDevice.AUTOMATIC, javaHome, true).getMissingProgram());
 
         Files.delete(launchFile);
-        Assertions.assertEquals(launchFile, RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null, javaHome,
-                                                                      true).getMissingProgram());
+        Assertions.assertEquals(launchFile, RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null,
+                                                                      TranslationDevice.AUTOMATIC, javaHome, true).getMissingProgram());
 
         Files.delete(java);
-        Assertions.assertEquals(java, RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null, javaHome, true)
+        Assertions.assertEquals(java, RuntimeCommandLine.create(install, "demo", jar, getAccountDirectory(install), true, null, null,
+                                                                TranslationDevice.AUTOMATIC, javaHome, true)
                                                         .getMissingProgram());
     }
 
@@ -176,7 +193,7 @@ final class RuntimeCommandLineTest {
         Path jar = root.resolve("mods").resolve("my-mod.jar");
         InstallLayout install = InstallLayout.of(root);
         RuntimeCommandLine commandLine = RuntimeCommandLine.create(install, "my-mod", jar, getAccountDirectory(install), true, null, null,
-                                                                   root.resolve("java"), true);
+                                                                   TranslationDevice.AUTOMATIC, root.resolve("java"), true);
         String text = commandLine.describe();
         String java = root.resolve("java").resolve("bin").resolve("java.exe").toString();
 

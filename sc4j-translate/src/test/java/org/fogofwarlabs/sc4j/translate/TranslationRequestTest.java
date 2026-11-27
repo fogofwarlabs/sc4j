@@ -36,6 +36,15 @@ final class TranslationRequestTest {
     }
 
     @Test
+    void build_should_carry_the_context_into_the_request() {
+        TranslationContext context = new TranslationContext.Builder().setTextKind("chat message").build();
+        TranslationRequest request = new TranslationRequest.Builder("hello", Locale.KOREAN).setContext(context).build();
+
+        Assertions.assertSame(context, request.getContext());
+        Assertions.assertNull(new TranslationRequest.Builder("hello", Locale.KOREAN).build().getContext());
+    }
+
+    @Test
     void the_unavailable_translator_should_answer_unavailable_at_once() {
         TranslationRequest request = new TranslationRequest.Builder("hello", Locale.KOREAN).build();
         Translation translation = Translator.unavailable().translate(request).join();

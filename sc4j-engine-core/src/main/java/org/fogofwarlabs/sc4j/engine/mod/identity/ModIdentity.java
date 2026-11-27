@@ -239,7 +239,7 @@ public final class ModIdentity {
      * @param other the reference object with which to compare
      * @return {@code true} if this object is the same as the other argument, {@code false} otherwise
      * @implSpec Two identities are equal when the engine versions, mod ids, mod versions, content digests and identity data
-     * digests are equal.
+     *         digests are equal.
      */
     @Override
     public boolean equals(@Nullable Object other) {
