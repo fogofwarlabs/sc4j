@@ -4,13 +4,13 @@ import org.fogofwarlabs.sc4j.base.exception.Exceptions;
 import org.fogofwarlabs.sc4j.engine.resource.audio.SoundClip;
 import org.jetbrains.annotations.NotNull;
 import org.lwjgl.stb.STBVorbis;
+import org.lwjgl.stb.STBVorbisInfo;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 import java.util.Arrays;
 
@@ -59,6 +59,11 @@ public final class WaveData {
     private static final int OGG_CAPTURE_PATTERN_BYTES = 4;
 
     /**
+     * The long block length in maximal frame sizes of {@code stb_vorbis}: one decoded frame holds up to one long block of samples per channel.
+     */
+    private static final int LONG_BLOCK_FRAME_SIZES = 2;
+
+    /**
      * Creates a {@link WaveData} instance by decoding a sound file: Ogg Vorbis data to 16-bit PCM with {@code stb_vorbis}, any other file as mono or
      * stereo 8-bit, 16-bit or 24-bit PCM of a RIFF WAVE container; 24-bit samples are reduced to {@code 16} bits.
      * <p>
@@ -75,32 +80,85 @@ public final class WaveData {
 
         ByteBuffer input = MemoryUtil.memAlloc(contents.length);
 
-        try (MemoryStack stack = MemoryStack.stackPush()) {
+        try {
             input.put(contents).flip();
 
-            IntBuffer channels = stack.mallocInt(1);
-            IntBuffer sampleRate = stack.mallocInt(1);
-            ShortBuffer decodedSamples = STBVorbis.stb_vorbis_decode_memory(input, channels, sampleRate);
+            return decodeVorbis(input);
+        } finally {
+            MemoryUtil.memFree(input);
+        }
+    }
 
-            if (decodedSamples == null) {
+    /**
+     * Creates a {@link WaveData} instance by decoding an Ogg Vorbis stream frame by frame up to its end. Frames without samples are skipped;
+     * decoding ends when the decoder reports an error or a frame without samples reads no more input.
+     *
+     * @param input the complete file in native memory
+     * @return the created {@link WaveData} instance
+     * @throws IOException if the stream cannot be opened, has neither {@code 1} nor {@code 2} channels or holds no samples
+     */
+    private static @NotNull WaveData decodeVorbis(@NotNull ByteBuffer input) throws IOException {
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            long decoder = STBVorbis.stb_vorbis_open_memory(input, stack.mallocInt(1), null);
+
+            if (decoder == MemoryUtil.NULL) {
                 throw Exceptions.newIOException("Ogg Vorbis sound cannot be decoded.");
             }
 
             try {
-                byte[] samples = new byte[decodedSamples.remaining() * Short.BYTES];
+                STBVorbisInfo info = STBVorbis.stb_vorbis_get_info(decoder, STBVorbisInfo.malloc(stack));
+                int channels = info.channels();
 
-                ByteBuffer.wrap(samples).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(decodedSamples);
-
-                if (channels.get(0) != MONO_CHANNELS && channels.get(0) != STEREO_CHANNELS) {
-                    throw Exceptions.newIOException("Ogg Vorbis sound has {0} channels.", channels.get(0));
+                if (channels != MONO_CHANNELS && channels != STEREO_CHANNELS) {
+                    throw Exceptions.newIOException("Ogg Vorbis sound has {0} channels.", channels);
                 }
 
-                return new WaveData(channels.get(0), sampleRate.get(0), Short.SIZE, samples);
+                ShortBuffer frame = MemoryUtil.memAllocShort(channels * info.max_frame_size() * LONG_BLOCK_FRAME_SIZES);
+
+                try {
+                    short[] samples = new short[frame.capacity()];
+                    int sampleCount = 0;
+                    int inputOffset = STBVorbis.stb_vorbis_get_file_offset(decoder);
+
+                    while (true) {
+                        int frameLength = STBVorbis.stb_vorbis_get_frame_short_interleaved(decoder, channels, frame);
+                        int previousInputOffset = inputOffset;
+
+                        inputOffset = STBVorbis.stb_vorbis_get_file_offset(decoder);
+
+                        if (frameLength == 0) {
+                            if (STBVorbis.stb_vorbis_get_error(decoder) != STBVorbis.VORBIS__no_error || inputOffset == previousInputOffset) {
+                                break;
+                            }
+
+                            continue;
+                        }
+
+                        int frameSamples = frameLength * channels;
+
+                        if (sampleCount + frameSamples > samples.length) {
+                            samples = Arrays.copyOf(samples, Math.max(samples.length * 2, sampleCount + frameSamples));
+                        }
+
+                        frame.get(0, samples, sampleCount, frameSamples);
+                        sampleCount += frameSamples;
+                    }
+
+                    if (sampleCount == 0) {
+                        throw Exceptions.newIOException("Ogg Vorbis sound has no samples.");
+                    }
+
+                    byte[] contents = new byte[sampleCount * Short.BYTES];
+
+                    ByteBuffer.wrap(contents).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(samples, 0, sampleCount);
+
+                    return new WaveData(channels, info.sample_rate(), Short.SIZE, contents);
+                } finally {
+                    MemoryUtil.memFree(frame);
+                }
             } finally {
-                MemoryUtil.memFree(decodedSamples);
+                STBVorbis.stb_vorbis_close(decoder);
             }
-        } finally {
-            MemoryUtil.memFree(input);
         }
     }
 

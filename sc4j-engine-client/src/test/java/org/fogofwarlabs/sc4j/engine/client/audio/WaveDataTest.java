@@ -1,16 +1,19 @@
 package org.fogofwarlabs.sc4j.engine.client.audio;
 
+import org.fogofwarlabs.sc4j.base.exception.Exceptions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 
 /**
  * Checks that {@link WaveData#decode} keeps RIFF WAVE PCM samples, reduces 24-bit samples to their upper {@code 16} bits, skips padded unknown
- * chunks and rejects malformed files.
+ * chunks, rejects malformed files and decodes Ogg Vorbis streams up to their end.
  */
 final class WaveDataTest {
     private static final int RIFF_IDENTIFIER = 0x46464952;
@@ -66,6 +69,31 @@ final class WaveDataTest {
     private static final int TRAILING_BYTES = 10;
     private static final int TRAILING_CHUNK_BYTES = 0xFFFF0000;
     private static final int RIFF_HEADER_EXCLUDED_BYTES = 8;
+
+    /**
+     * The Ogg Vorbis stream cut out of a longer stereo {@code 44100} Hz stream: its pages keep the granule positions of the longer stream, it starts
+     * with one long block followed by short blocks, has a run of long blocks after them and ends without an end-of-stream page.
+     */
+    private static final String CUT_STREAM_RESOURCE = "/audio/cut-stream.ogg";
+    private static final int CUT_STREAM_CHANNELS = 2;
+    private static final int CUT_STREAM_SAMPLE_RATE = 44100;
+    private static final int CUT_STREAM_HEADER_PAGES_BYTES = 3927;
+
+    /**
+     * The sample frames decoded from the cut stream: the {@code 12224} its packets after the first one add up to, less the {@code 896} at the start
+     * that overlap the first long block and are discarded.
+     */
+    private static final int CUT_STREAM_SAMPLE_FRAMES = 11328;
+
+    private static byte @NotNull [] readCutStream() throws IOException {
+        try (InputStream input = WaveDataTest.class.getResourceAsStream(CUT_STREAM_RESOURCE)) {
+            if (input == null) {
+                throw Exceptions.newIOException("Missing test resource {0}", CUT_STREAM_RESOURCE);
+            }
+
+            return input.readAllBytes();
+        }
+    }
 
     private static byte @NotNull [] createWaveContents() {
         ByteBuffer result = ByteBuffer.allocate(FILE_BYTES).order(ByteOrder.LITTLE_ENDIAN);
@@ -143,5 +171,22 @@ final class WaveDataTest {
         misaligned[DATA_CHUNK_BYTES_OFFSET] = MISALIGNED_DATA_CHUNK_BYTES;
 
         Assertions.assertThrows(IOException.class, () -> WaveData.decode(misaligned));
+    }
+
+    @Test
+    void decode_should_decode_a_cut_ogg_vorbis_stream_past_its_frames_without_samples() throws IOException {
+        WaveData data = WaveData.decode(readCutStream());
+
+        Assertions.assertEquals(CUT_STREAM_CHANNELS, data.getChannels());
+        Assertions.assertEquals(CUT_STREAM_SAMPLE_RATE, data.getSampleRate());
+        Assertions.assertEquals(Short.SIZE, data.getSampleBits());
+        Assertions.assertEquals(CUT_STREAM_SAMPLE_FRAMES * CUT_STREAM_CHANNELS * Short.BYTES, data.getSamples().length);
+    }
+
+    @Test
+    void decode_should_reject_an_ogg_vorbis_stream_without_audio() throws IOException {
+        byte[] headers = Arrays.copyOf(readCutStream(), CUT_STREAM_HEADER_PAGES_BYTES);
+
+        Assertions.assertThrows(IOException.class, () -> WaveData.decode(headers));
     }
 }
